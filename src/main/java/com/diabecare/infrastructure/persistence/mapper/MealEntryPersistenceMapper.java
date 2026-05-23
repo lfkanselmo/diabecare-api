@@ -15,7 +15,6 @@ public interface MealEntryPersistenceMapper {
     @Mapping(target = "mealType", expression = "java(entry.getMealType().name())")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "version", ignore = true)
     @Mapping(target = "items", ignore = true)
     MealEntryEntity toEntity(MealEntry entry);
 

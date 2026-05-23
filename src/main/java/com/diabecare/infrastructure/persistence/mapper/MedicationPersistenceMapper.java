@@ -14,7 +14,6 @@ public interface MedicationPersistenceMapper {
     @Mapping(target = "frequency", expression = "java(medication.getFrequency().name())")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "version", ignore = true)
     MedicationEntity toEntity(Medication medication);
 
     @Mapping(target = "medicationId", source = "id")

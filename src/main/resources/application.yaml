@@ -68,6 +68,8 @@ logging:
     com.diabecare: DEBUG
     org.springframework.security: DEBUG
     org.hibernate.SQL: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.web.servlet.mvc.method.annotation: DEBUG
 
 springdoc:
   swagger-ui:

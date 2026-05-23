@@ -15,7 +15,6 @@ public interface GlucoseReadingPersistenceMapper {
     @Mapping(target = "readingType", expression = "java(reading.getReadingType().name())")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "version", ignore = true)
     GlucoseReadingEntity toEntity(GlucoseReading reading);
 
     @Mapping(target = "readingId", source = "id")

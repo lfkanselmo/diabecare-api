@@ -14,7 +14,6 @@ public interface PatientPersistenceMapper {
     @Mapping(target = "preferredGlucoseUnit", expression = "java(patient.getPreferredGlucoseUnit().name())")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "version", ignore = true)
     PatientEntity toEntity(Patient patient);
 
     @Mapping(target = "patientId", source = "id")

@@ -21,7 +21,6 @@ import java.util.UUID;
 public class GlucoseReadingEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "patient_id", nullable = false)
@@ -52,7 +51,4 @@ public class GlucoseReadingEntity {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    @Version
-    private Long version;
 }

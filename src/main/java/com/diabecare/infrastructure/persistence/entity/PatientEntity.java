@@ -22,7 +22,6 @@ import java.util.UUID;
 public class PatientEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "user_id", nullable = false, unique = true)
@@ -65,7 +64,4 @@ public class PatientEntity {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    @Version
-    private Long version;
 }

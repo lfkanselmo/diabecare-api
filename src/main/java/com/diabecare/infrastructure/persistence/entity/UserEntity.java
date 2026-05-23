@@ -42,7 +42,4 @@ public class UserEntity {
     @LastModifiedDate
     @Column(nullable = false)
     private LocalDateTime updatedAt;
-
-    @Version
-    private Long version;
 }

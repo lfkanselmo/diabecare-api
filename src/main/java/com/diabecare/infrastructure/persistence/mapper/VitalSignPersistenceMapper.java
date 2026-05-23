@@ -11,7 +11,6 @@ public interface VitalSignPersistenceMapper {
     @Mapping(target = "id", source = "vitalId")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "version", ignore = true)
     VitalSignEntity toEntity(VitalSign vitalSign);
 
     @Mapping(target = "vitalId", source = "id")
