@@ -5,6 +5,7 @@ import com.diabecare.domain.model.GlucoseReading;
 import com.diabecare.domain.model.GlucoseUnit;
 import com.diabecare.domain.model.ReadingType;
 import com.diabecare.presentation.dto.request.RegisterGlucoseRequest;
+import com.diabecare.presentation.dto.response.GlucoseCorrelationResponse;
 import com.diabecare.presentation.dto.response.GlucoseReadingResponse;
 import com.diabecare.presentation.dto.response.GlucoseStatsResponse;
 import com.diabecare.presentation.mapper.GlucoseReadingPresentationMapper;
@@ -51,15 +52,28 @@ public class GlucoseController {
     }
 
     @GetMapping("/{patientId}/history")
-    public ResponseEntity<List<GlucoseReadingResponse>> getHistory(
+    public ResponseEntity<GlucoseCorrelationResponse> getHistory(
             @PathVariable UUID patientId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
 
-        List<GlucoseReadingResponse> readings = getGlucoseHistoryUseCase
-                .getByPatientAndDateRange(patientId, from, to)
+        GetGlucoseHistoryUseCase.Result result =
+                getGlucoseHistoryUseCase.getByPatientAndDateRange(patientId, from, to);
+
+        List<GlucoseReadingResponse> readings = result.readings()
                 .stream().map(readingMapper::toResponse).toList();
-        return ResponseEntity.ok(readings);
+
+        List<GlucoseCorrelationResponse.MealMarkerResponse> markers = result.mealEntries()
+                .stream()
+                .map(m -> new GlucoseCorrelationResponse.MealMarkerResponse(
+                        m.getConsumedAt().toString(),
+                        m.getMealType().name(),
+                        m.getTotalCalories().doubleValue(),
+                        m.getTotalCarbohydrates().doubleValue()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(new GlucoseCorrelationResponse(readings, markers));
     }
 
     @GetMapping("/{patientId}/stats")
