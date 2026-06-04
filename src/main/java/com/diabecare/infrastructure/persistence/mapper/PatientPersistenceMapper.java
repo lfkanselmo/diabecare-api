@@ -12,6 +12,7 @@ public interface PatientPersistenceMapper {
     @Mapping(target = "diabetesType", expression = "java(patient.getDiabetesType().name())")
     @Mapping(target = "activityLevel", expression = "java(patient.getActivityLevel().name())")
     @Mapping(target = "preferredGlucoseUnit", expression = "java(patient.getPreferredGlucoseUnit().name())")
+    @Mapping(target = "targetGlucoseCorrection", source = "targetGlucoseForCorrection")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     PatientEntity toEntity(Patient patient);
@@ -20,5 +21,6 @@ public interface PatientPersistenceMapper {
     @Mapping(target = "diabetesType", expression = "java(DiabetesType.valueOf(entity.getDiabetesType()))")
     @Mapping(target = "activityLevel", expression = "java(ActivityLevel.valueOf(entity.getActivityLevel()))")
     @Mapping(target = "preferredGlucoseUnit", expression = "java(GlucoseUnit.valueOf(entity.getPreferredGlucoseUnit()))")
+    @Mapping(target = "targetGlucoseForCorrection", source = "targetGlucoseCorrection")
     Patient toDomain(PatientEntity entity);
 }

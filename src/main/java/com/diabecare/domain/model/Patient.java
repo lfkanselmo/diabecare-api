@@ -25,6 +25,9 @@ public class Patient {
     private Integer dailyCalorieGoal;
     private ActivityLevel activityLevel;
     private GlucoseUnit preferredGlucoseUnit;
+    private BigDecimal insulinSensitivityFactor;
+    private BigDecimal insulinToCarbRatio;
+    private BigDecimal targetGlucoseForCorrection;
 
     public static Patient create(
             UUID userId,
@@ -94,6 +97,14 @@ public class Patient {
 
     public void updatePreferredGlucoseUnit(GlucoseUnit unit) {
         this.preferredGlucoseUnit = unit;
+    }
+
+    public void updateInsulinProfile(BigDecimal sensitivityFactor,
+                                     BigDecimal carbRatio,
+                                     BigDecimal targetGlucose) {
+        this.insulinSensitivityFactor = sensitivityFactor;
+        this.insulinToCarbRatio = carbRatio;
+        this.targetGlucoseForCorrection = targetGlucose;
     }
 
     private static void validateFullName(String fullName) {

@@ -64,4 +64,13 @@ public class PatientEntity {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Column(name = "insulin_sensitivity_factor", precision = 6, scale = 2)
+    private BigDecimal insulinSensitivityFactor;
+
+    @Column(name = "insulin_to_carb_ratio", precision = 6, scale = 2)
+    private BigDecimal insulinToCarbRatio;
+
+    @Column(name = "target_glucose_correction", precision = 6, scale = 2)
+    private BigDecimal targetGlucoseCorrection;
 }
