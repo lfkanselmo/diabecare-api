@@ -73,4 +73,7 @@ public class PatientEntity {
 
     @Column(name = "target_glucose_correction", precision = 6, scale = 2)
     private BigDecimal targetGlucoseCorrection;
+
+    @Column(name = "biological_sex", length = 10)
+    private String biologicalSex;
 }

@@ -4,6 +4,7 @@ import com.diabecare.application.port.in.GetPatientUseCase;
 import com.diabecare.application.port.in.RegisterPatientUseCase;
 import com.diabecare.application.port.in.RegisterUserUseCase;
 import com.diabecare.application.dto.UserRecord;
+import com.diabecare.domain.model.BiologicalSex;
 import com.diabecare.domain.model.DiabetesType;
 import com.diabecare.domain.model.Patient;
 import com.diabecare.infrastructure.config.JwtProperties;
@@ -55,7 +56,10 @@ public class AuthController {
                         LocalDate.parse(request.dateOfBirth()),
                         DiabetesType.valueOf(request.diabetesType()),
                         LocalDate.parse(request.diagnosisDate()),
-                        new BigDecimal(request.heightCm())
+                        new BigDecimal(request.heightCm()),
+                        request.biologicalSex() != null
+                                ? BiologicalSex.valueOf(request.biologicalSex())
+                                : BiologicalSex.NOT_SPECIFIED
                 ));
 
         String token = generateToken(request.email());

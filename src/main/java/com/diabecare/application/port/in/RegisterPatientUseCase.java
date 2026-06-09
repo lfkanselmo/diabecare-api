@@ -1,5 +1,6 @@
 package com.diabecare.application.port.in;
 
+import com.diabecare.domain.model.BiologicalSex;
 import com.diabecare.domain.model.DiabetesType;
 import com.diabecare.domain.model.Patient;
 
@@ -15,7 +16,8 @@ public interface RegisterPatientUseCase {
             LocalDate dateOfBirth,
             DiabetesType diabetesType,
             LocalDate diagnosisDate,
-            BigDecimal heightCm
+            BigDecimal heightCm,
+            BiologicalSex biologicalSex
     ) {}
 
     Patient execute(Command command);

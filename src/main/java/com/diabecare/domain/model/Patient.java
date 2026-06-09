@@ -28,6 +28,7 @@ public class Patient {
     private BigDecimal insulinSensitivityFactor;
     private BigDecimal insulinToCarbRatio;
     private BigDecimal targetGlucoseForCorrection;
+    private BiologicalSex biologicalSex;
 
     public static Patient create(
             UUID userId,
@@ -54,6 +55,7 @@ public class Patient {
                 .targetGlucoseMax(BigDecimal.valueOf(180))
                 .activityLevel(ActivityLevel.SEDENTARY)
                 .preferredGlucoseUnit(GlucoseUnit.MG_DL)
+                .biologicalSex(BiologicalSex.NOT_SPECIFIED)
                 .build();
     }
 
@@ -105,6 +107,14 @@ public class Patient {
         this.insulinSensitivityFactor = sensitivityFactor;
         this.insulinToCarbRatio = carbRatio;
         this.targetGlucoseForCorrection = targetGlucose;
+    }
+
+    public boolean isFemale() {
+        return biologicalSex == BiologicalSex.FEMALE;
+    }
+
+    public void updateBiologicalSex(BiologicalSex sex) {
+        this.biologicalSex = sex;
     }
 
     private static void validateFullName(String fullName) {

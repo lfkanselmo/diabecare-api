@@ -16,5 +16,9 @@ public record PatientResponse(
         BigDecimal targetGlucoseMax,
         Integer dailyCalorieGoal,
         String activityLevel,
-        String preferredGlucoseUnit
+        String preferredGlucoseUnit,
+        BigDecimal insulinSensitivityFactor,
+        BigDecimal insulinToCarbRatio,
+        BigDecimal targetGlucoseForCorrection,
+        String biologicalSex
 ) {}

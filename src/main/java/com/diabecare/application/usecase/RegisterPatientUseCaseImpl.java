@@ -4,6 +4,7 @@ import com.diabecare.application.port.in.RegisterPatientUseCase;
 import com.diabecare.application.port.out.LoadPatientPort;
 import com.diabecare.application.port.out.SavePatientPort;
 import com.diabecare.domain.exception.InvalidPatientDataException;
+import com.diabecare.domain.model.BiologicalSex;
 import com.diabecare.domain.model.Patient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,10 @@ public class RegisterPatientUseCaseImpl implements RegisterPatientUseCase {
                 command.diagnosisDate(),
                 command.heightCm()
         );
+
+        patient.updateBiologicalSex(command.biologicalSex() != null
+                ? command.biologicalSex()
+                : BiologicalSex.NOT_SPECIFIED);
         return savePatientPort.save(patient);
     }
 }

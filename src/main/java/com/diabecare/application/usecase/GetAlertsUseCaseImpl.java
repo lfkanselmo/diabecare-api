@@ -3,10 +3,12 @@ package com.diabecare.application.usecase;
 import com.diabecare.application.port.in.GetAlertsUseCase;
 import com.diabecare.application.port.out.LoadGlucoseReadingPort;
 import com.diabecare.application.port.out.LoadMealEntryPort;
+import com.diabecare.application.port.out.LoadMenstrualCyclePort;
 import com.diabecare.application.port.out.LoadPatientPort;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.*;
 import com.diabecare.domain.service.MedicalCalculatorService;
+import com.diabecare.infrastructure.config.DiabeCareProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,11 +28,9 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
     private final LoadPatientPort loadPatientPort;
     private final LoadGlucoseReadingPort loadGlucoseReadingPort;
     private final LoadMealEntryPort loadMealEntryPort;
+    private final LoadMenstrualCyclePort loadMenstrualCyclePort;
     private final MedicalCalculatorService medicalCalculatorService;
-
-    private static final int HOURS_WITHOUT_GLUCOSE = 8;
-    private static final int STREAK_DAYS = 7;
-    private static final double GOOD_TIR_THRESHOLD = 70.0;
+    private final DiabeCareProperties properties;
 
     @Override
     public List<Alert> getAlerts(UUID patientId) {
@@ -43,15 +43,18 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
         alerts.addAll(checkGlucoseAlerts(patient, now));
         alerts.addAll(checkCalorieAlert(patient, now));
         alerts.addAll(checkPositiveStreak(patient, now));
+        alerts.addAll(checkMenstrualCycleAlert(patient));
 
         return alerts;
     }
 
     private List<Alert> checkGlucoseAlerts(Patient patient, LocalDateTime now) {
         List<Alert> alerts = new ArrayList<>();
+        int hoursWithout = properties.clinical().hoursWithoutGlucoseAlert();
+
         List<GlucoseReading> readings = loadGlucoseReadingPort
                 .findByPatientIdAndDateRange(patient.getPatientId(),
-                        now.minusHours(HOURS_WITHOUT_GLUCOSE), now);
+                        now.minusHours(hoursWithout), now);
 
         if (readings.isEmpty()) {
             alerts.add(Alert.builder()
@@ -59,7 +62,7 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
                     .severity(Alert.Severity.INFO)
                     .title("Sin registros recientes")
                     .message("No has registrado tu glucosa en las últimas " +
-                            HOURS_WITHOUT_GLUCOSE + " horas.")
+                            hoursWithout + " horas.")
                     .build());
             return alerts;
         }
@@ -86,7 +89,8 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
                 .findByPatientIdAndDateRange(patient.getPatientId(),
                         now.minusDays(7), now);
 
-        if (weekReadings.size() >= 3) {
+        int minReadings = properties.clinical().minReadingsForStats();
+        if (weekReadings.size() >= minReadings) {
             BigDecimal avg = medicalCalculatorService.calculateAverage(weekReadings);
             if (avg.compareTo(patient.getTargetGlucoseMax()) > 0) {
                 alerts.add(Alert.builder()
@@ -129,25 +133,90 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
 
     private List<Alert> checkPositiveStreak(Patient patient, LocalDateTime now) {
         List<Alert> alerts = new ArrayList<>();
+        int streakDays = properties.clinical().streakDays();
+        double tirThreshold = properties.clinical().goodTirThreshold();
 
         List<GlucoseReading> readings = loadGlucoseReadingPort
                 .findByPatientIdAndDateRange(patient.getPatientId(),
-                        now.minusDays(STREAK_DAYS), now);
+                        now.minusDays(streakDays), now);
 
-        if (readings.size() < 5) return alerts;
+        int minReadings = properties.clinical().minReadingsForStats();
+        if (readings.size() < minReadings) return alerts;
 
         BigDecimal tir = medicalCalculatorService.calculateTimeInRange(
                 readings, patient.getTargetGlucoseMin(), patient.getTargetGlucoseMax());
 
-        if (tir.doubleValue() >= GOOD_TIR_THRESHOLD) {
+        if (tir.doubleValue() >= tirThreshold) {
             alerts.add(Alert.builder()
                     .type(Alert.AlertType.POSITIVE_STREAK)
                     .severity(Alert.Severity.SUCCESS)
                     .title("¡Excelente control!")
                     .message(String.format("Tu tiempo en rango los últimos %d días es %.1f%%. " +
-                            "¡Sigue así!", STREAK_DAYS, tir.doubleValue()))
+                            "¡Sigue así!", streakDays, tir.doubleValue()))
                     .build());
         }
+
+        return alerts;
+    }
+
+    private List<Alert> checkMenstrualCycleAlert(Patient patient) {
+        List<Alert> alerts = new ArrayList<>();
+        if (!patient.isFemale()) return alerts;
+
+        loadMenstrualCyclePort.findLatestByPatientId(patient.getPatientId())
+                .ifPresent(cycle -> {
+                    CyclePhase phase = cycle.calculateCurrentPhase(LocalDate.now());
+                    long daysUntilNext = java.time.temporal.ChronoUnit.DAYS.between(
+                            LocalDate.now(), cycle.predictNextCycleStart());
+
+                    // Alerta por fase con impacto en glucosa
+                    switch (phase) {
+                        case LUTEAL_LATE -> alerts.add(Alert.builder()
+                                .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
+                                .severity(Alert.Severity.WARNING)
+                                .title("Fase lútea tardía — Mayor resistencia a insulina")
+                                .message(cycle.getPhaseGlucoseGuidance())
+                                .build());
+                        case LUTEAL_EARLY -> alerts.add(Alert.builder()
+                                .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
+                                .severity(Alert.Severity.INFO)
+                                .title("Fase lútea — Monitoreo frecuente recomendado")
+                                .message(cycle.getPhaseGlucoseGuidance())
+                                .build());
+                        case OVULATION -> alerts.add(Alert.builder()
+                                .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
+                                .severity(Alert.Severity.INFO)
+                                .title("Período de ovulación")
+                                .message(cycle.getPhaseGlucoseGuidance())
+                                .build());
+                        default -> {}
+                    }
+
+                    // Predicción de próximo ciclo
+                    if (daysUntilNext == 3) {
+                        alerts.add(Alert.builder()
+                                .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
+                                .severity(Alert.Severity.INFO)
+                                .title("Tu período llega en 3 días")
+                                .message("Prepárate para posibles cambios en tu glucosa. " +
+                                        "La caída de hormonas puede causar variaciones importantes.")
+                                .build());
+                    } else if (daysUntilNext == 1) {
+                        alerts.add(Alert.builder()
+                                .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
+                                .severity(Alert.Severity.WARNING)
+                                .title("Tu período llega mañana")
+                                .message("Monitorea tu glucosa con mayor frecuencia hoy y mañana.")
+                                .build());
+                    } else if (daysUntilNext == 0) {
+                        alerts.add(Alert.builder()
+                                .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
+                                .severity(Alert.Severity.WARNING)
+                                .title("Tu período comienza hoy")
+                                .message("No olvides registrar el inicio de tu nuevo ciclo para mantener el seguimiento.")
+                                .build());
+                    }
+                });
 
         return alerts;
     }

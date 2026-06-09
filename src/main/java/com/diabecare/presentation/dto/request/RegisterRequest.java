@@ -24,5 +24,8 @@ public record RegisterRequest(
         String diagnosisDate,
 
         @NotBlank
-        String heightCm
+        String heightCm,
+
+        @NotBlank
+        String biologicalSex
 ) {}

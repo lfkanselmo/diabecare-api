@@ -5,7 +5,7 @@ import com.diabecare.infrastructure.persistence.entity.PatientEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(imports = {DiabetesType.class, ActivityLevel.class, GlucoseUnit.class})
+@Mapper(imports = {DiabetesType.class, ActivityLevel.class, GlucoseUnit.class, BiologicalSex.class})
 public interface PatientPersistenceMapper {
 
     @Mapping(target = "id", source = "patientId")
@@ -13,6 +13,7 @@ public interface PatientPersistenceMapper {
     @Mapping(target = "activityLevel", expression = "java(patient.getActivityLevel().name())")
     @Mapping(target = "preferredGlucoseUnit", expression = "java(patient.getPreferredGlucoseUnit().name())")
     @Mapping(target = "targetGlucoseCorrection", source = "targetGlucoseForCorrection")
+    @Mapping(target = "biologicalSex", expression = "java(patient.getBiologicalSex() != null ? patient.getBiologicalSex().name() : \"NOT_SPECIFIED\")")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     PatientEntity toEntity(Patient patient);
@@ -22,5 +23,6 @@ public interface PatientPersistenceMapper {
     @Mapping(target = "activityLevel", expression = "java(ActivityLevel.valueOf(entity.getActivityLevel()))")
     @Mapping(target = "preferredGlucoseUnit", expression = "java(GlucoseUnit.valueOf(entity.getPreferredGlucoseUnit()))")
     @Mapping(target = "targetGlucoseForCorrection", source = "targetGlucoseCorrection")
+    @Mapping(target = "biologicalSex", expression = "java(entity.getBiologicalSex() != null ? BiologicalSex.valueOf(entity.getBiologicalSex()) : BiologicalSex.NOT_SPECIFIED)")
     Patient toDomain(PatientEntity entity);
 }
