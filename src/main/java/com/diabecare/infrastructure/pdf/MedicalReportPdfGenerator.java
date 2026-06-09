@@ -1,5 +1,7 @@
 package com.diabecare.infrastructure.pdf;
 
+import com.diabecare.domain.model.ExerciseLog;
+import com.diabecare.domain.model.MenstrualCycle;
 import com.diabecare.domain.model.VitalSign;
 import com.diabecare.domain.service.ReportDataService;
 import com.itextpdf.kernel.colors.ColorConstants;
@@ -17,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 @Component
 public class MedicalReportPdfGenerator {
@@ -41,9 +44,16 @@ public class MedicalReportPdfGenerator {
         addHeader(doc, data, from, to);
         addPatientInfo(doc, data);
         addGlucoseSummary(doc, data);
+        addTirDetailed(doc, data);
+        addAverageByReadingType(doc, data);
+        addHypoglycemiaEvents(doc, data);
+        addAdherence(doc, data);
         addGlucoseHistory(doc, data);
+        addTopImpactMeals(doc, data);
+        addExerciseSummary(doc, data);
         addVitalSigns(doc, data);
         addMedications(doc, data);
+        addMenstrualCycle(doc, data);
         addFooter(doc);
 
         doc.close();
@@ -293,6 +303,276 @@ public class MedicalReportPdfGenerator {
             case "NORMAL"          -> SUCCESS;
             case "HIGH", "LOW"     -> WARNING;
             default                -> DANGER;
+        };
+    }
+
+    private void addTirDetailed(Document doc, ReportDataService data) {
+        if (data.getTirDetailed().isEmpty()) return;
+
+        doc.add(sectionTitle("Distribución del Tiempo en Rango (Consenso Internacional)"));
+
+        Table table = new Table(UnitValue.createPercentArray(new float[]{40, 20, 40}))
+                .setWidth(UnitValue.createPercentValue(100));
+
+        addTableHeader(table, "Rango", "Porcentaje", "Objetivo ADA");
+
+        Map<String, String[]> ranges = new java.util.LinkedHashMap<>();
+        ranges.put("veryLow",  new String[]{"Muy bajo (<54 mg/dL)",   "<1%"  });
+        ranges.put("low",      new String[]{"Bajo (54-70 mg/dL)",     "<4%"  });
+        ranges.put("inRange",  new String[]{"En rango (70-180 mg/dL)","≥70%" });
+        ranges.put("high",     new String[]{"Alto (180-250 mg/dL)",   "<25%" });
+        ranges.put("veryHigh", new String[]{"Muy alto (>250 mg/dL)",  "<5%"  });
+
+        Map<String, DeviceRgb> rangeColors = Map.of(
+                "veryLow",  DANGER,
+                "low",      new DeviceRgb(255, 152, 0),
+                "inRange",  SUCCESS,
+                "high",     new DeviceRgb(255, 152, 0),
+                "veryHigh", DANGER
+        );
+
+        data.getTirDetailed().forEach((key, value) -> {
+            if (ranges.containsKey(key)) {
+                String[] info = ranges.get(key);
+                DeviceRgb color = rangeColors.getOrDefault(key, SUCCESS);
+                table.addCell(bodyCell(info[0]));
+                table.addCell(new Cell()
+                        .add(new Paragraph(value + "%").setFontSize(10).setBold().setFontColor(color))
+                        .setBackgroundColor(LIGHT_GRAY).setPadding(4));
+                table.addCell(bodyCell(info[1]));
+            }
+        });
+
+        doc.add(table);
+        doc.add(new Paragraph("\n").setFontSize(4));
+    }
+
+    private void addAverageByReadingType(Document doc, ReportDataService data) {
+        if (data.getAverageByReadingType().isEmpty()) return;
+
+        doc.add(sectionTitle("Promedio de Glucosa por Período del Día"));
+
+        Table table = new Table(UnitValue.createPercentArray(new float[]{50, 50}))
+                .setWidth(UnitValue.createPercentValue(100));
+
+        addTableHeader(table, "Tipo de lectura", "Promedio (mg/dL)");
+
+        Map<String, String> typeLabels = Map.of(
+                "FASTING",   "Ayuno",
+                "PRE_MEAL",  "Preprandial",
+                "POST_MEAL", "Postprandial",
+                "BEDTIME",   "Antes de dormir",
+                "RANDOM",    "Aleatoria"
+        );
+
+        data.getAverageByReadingType().forEach((type, avg) -> {
+            table.addCell(bodyCell(typeLabels.getOrDefault(type, type)));
+            DeviceRgb color = avg.doubleValue() > 180 ? WARNING :
+                    avg.doubleValue() < 70  ? DANGER  : SUCCESS;
+            table.addCell(new Cell()
+                    .add(new Paragraph(avg + " mg/dL").setFontSize(10).setBold().setFontColor(color))
+                    .setBackgroundColor(LIGHT_GRAY).setPadding(4));
+        });
+
+        doc.add(table);
+        doc.add(new Paragraph("\n").setFontSize(4));
+    }
+
+    private void addHypoglycemiaEvents(Document doc, ReportDataService data) {
+        doc.add(sectionTitle("Episodios de Hipoglucemia (<70 mg/dL)"));
+
+        if (data.getHypoglycemiaEvents().isEmpty()) {
+            doc.add(new Paragraph("✓ Sin episodios de hipoglucemia en el período.")
+                    .setFontSize(10).setFontColor(SUCCESS).setMarginBottom(8));
+            return;
+        }
+
+        doc.add(new Paragraph("⚠ Se registraron " + data.getHypoglycemiaEvents().size() +
+                " episodios de hipoglucemia.")
+                .setFontSize(10).setFontColor(DANGER).setMarginBottom(6));
+
+        Table table = new Table(UnitValue.createPercentArray(new float[]{35, 20, 25, 20}))
+                .setWidth(UnitValue.createPercentValue(100));
+
+        addTableHeader(table, "Fecha y hora", "Valor", "Tipo", "Estado");
+
+        data.getHypoglycemiaEvents().stream().limit(10).forEach(r -> {
+            table.addCell(bodyCell(r.getMeasuredAt().format(DATE_FMT)));
+            table.addCell(new Cell()
+                    .add(new Paragraph(r.getValueInMgDl() + " mg/dL")
+                            .setFontSize(9).setBold().setFontColor(DANGER))
+                    .setBackgroundColor(LIGHT_GRAY).setPadding(4));
+            table.addCell(bodyCell(formatReadingType(r.getReadingType().name())));
+            table.addCell(bodyCell(formatStatus(r.getStatus().name())));
+        });
+
+        doc.add(table);
+        doc.add(new Paragraph("\n").setFontSize(4));
+    }
+
+    private void addAdherence(Document doc, ReportDataService data) {
+        doc.add(sectionTitle("Adherencia al Monitoreo"));
+
+        double adherence = data.getAdherencePercent();
+        DeviceRgb color  = adherence >= 80 ? SUCCESS : adherence >= 50 ? WARNING : DANGER;
+        String label     = adherence >= 80 ? "Buena adherencia" :
+                adherence >= 50 ? "Adherencia moderada" : "Baja adherencia";
+
+        Table table = new Table(UnitValue.createPercentArray(new float[]{33, 33, 33}))
+                .setWidth(UnitValue.createPercentValue(100));
+
+        addInfoCell(table, "Días con registro",
+                data.getGlucoseReadings().stream()
+                        .map(r -> r.getMeasuredAt().toLocalDate())
+                        .distinct().count() + " días");
+
+        addInfoCell(table, "Total de lecturas",
+                data.getGlucoseReadings().size() + " lecturas");
+
+        table.addCell(new Cell()
+                .add(new Paragraph("Adherencia").setFontSize(8).setFontColor(ColorConstants.GRAY))
+                .add(new Paragraph(String.format("%.1f%%", adherence))
+                        .setFontSize(14).setBold().setFontColor(color))
+                .add(new Paragraph(label).setFontSize(8).setFontColor(color))
+                .setBackgroundColor(LIGHT_GRAY).setPadding(6)
+                .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+
+        doc.add(table);
+        doc.add(new Paragraph("\n").setFontSize(4));
+    }
+
+    private void addTopImpactMeals(Document doc, ReportDataService data) {
+        if (data.getTopImpactMeals().isEmpty()) return;
+
+        doc.add(sectionTitle("Comidas con Mayor Impacto Calórico"));
+
+        Table table = new Table(UnitValue.createPercentArray(new float[]{30, 17, 17, 17, 19}))
+                .setWidth(UnitValue.createPercentValue(100));
+
+        addTableHeader(table, "Fecha", "Tipo", "Calorías", "Carbohidratos", "Proteínas");
+
+        data.getTopImpactMeals().forEach(m -> {
+            table.addCell(bodyCell(m.getConsumedAt().format(DATE_FMT)));
+            table.addCell(bodyCell(formatMealType(m.getMealType().name())));
+            table.addCell(bodyCell(m.getTotalCalories() + " kcal"));
+            table.addCell(bodyCell(m.getTotalCarbohydrates() + " g"));
+            table.addCell(bodyCell(m.getTotalProteins() + " g"));
+        });
+
+        doc.add(table);
+        doc.add(new Paragraph("\n").setFontSize(4));
+    }
+
+    private void addExerciseSummary(Document doc, ReportDataService data) {
+        if (data.getExerciseLogs().isEmpty()) return;
+
+        doc.add(sectionTitle("Actividad Física en el Período"));
+
+        long totalSessions = data.getExerciseLogs().size();
+        int  totalMinutes  = data.getExerciseLogs().stream()
+                .mapToInt(ExerciseLog::getDurationMinutes).sum();
+        double totalCalories = data.getExerciseLogs().stream()
+                .mapToDouble(e -> e.getCaloriesBurned() != null ?
+                        e.getCaloriesBurned().doubleValue() : 0)
+                .sum();
+
+        Table summary = new Table(UnitValue.createPercentArray(new float[]{33, 33, 33}))
+                .setWidth(UnitValue.createPercentValue(100));
+
+        addInfoCell(summary, "Sesiones totales", totalSessions + " sesiones");
+        addInfoCell(summary, "Tiempo total", totalMinutes + " minutos");
+        addInfoCell(summary, "Calorías quemadas", String.format("%.0f kcal", totalCalories));
+
+        doc.add(summary);
+        doc.add(new Paragraph("\n").setFontSize(4));
+
+        Table detail = new Table(UnitValue.createPercentArray(new float[]{30, 25, 20, 25}))
+                .setWidth(UnitValue.createPercentValue(100));
+
+        addTableHeader(detail, "Fecha", "Ejercicio", "Duración", "Intensidad");
+
+        data.getExerciseLogs().stream().limit(10).forEach(e -> {
+            detail.addCell(bodyCell(e.getPerformedAt().format(DATE_FMT)));
+            detail.addCell(bodyCell(formatExerciseType(e.getExerciseType().name())));
+            detail.addCell(bodyCell(e.getDurationMinutes() + " min"));
+            detail.addCell(bodyCell(formatIntensity(e.getIntensity().name())));
+        });
+
+        doc.add(detail);
+        doc.add(new Paragraph("\n").setFontSize(4));
+    }
+
+    private void addMenstrualCycle(Document doc, ReportDataService data) {
+        if (data.getLatestMenstrualCycle() == null) return;
+
+        doc.add(sectionTitle("Ciclo Menstrual"));
+
+        MenstrualCycle cycle = data.getLatestMenstrualCycle();
+        Table table = new Table(UnitValue.createPercentArray(new float[]{25, 25, 25, 25}))
+                .setWidth(UnitValue.createPercentValue(100));
+
+        addInfoCell(table, "Inicio del ciclo",
+                cycle.getCycleStartDate().format(DATE_ONLY));
+        addInfoCell(table, "Fase actual",
+                formatCyclePhase(cycle.calculateCurrentPhase(LocalDate.now()).name()));
+        addInfoCell(table, "Próximo ciclo",
+                cycle.predictNextCycleStart().format(DATE_ONLY));
+        addInfoCell(table, "Duración promedio",
+                (cycle.getCycleLengthDays() != null ? cycle.getCycleLengthDays() : 28) + " días");
+
+        doc.add(table);
+
+        doc.add(new Paragraph(cycle.getPhaseGlucoseGuidance())
+                .setFontSize(9).setFontColor(ColorConstants.DARK_GRAY)
+                .setBackgroundColor(LIGHT_GRAY)
+                .setPadding(8).setMarginTop(6).setMarginBottom(8));
+    }
+
+// ── Helpers adicionales ───────────────────────────────────────────────────
+
+    private String formatMealType(String type) {
+        return switch (type) {
+            case "BREAKFAST" -> "Desayuno";
+            case "LUNCH"     -> "Almuerzo";
+            case "DINNER"    -> "Cena";
+            case "SNACK"     -> "Merienda";
+            default          -> type;
+        };
+    }
+
+    private String formatExerciseType(String type) {
+        return switch (type) {
+            case "WALKING"         -> "Caminata";
+            case "RUNNING"         -> "Trote";
+            case "CYCLING"         -> "Ciclismo";
+            case "SWIMMING"        -> "Natación";
+            case "WEIGHT_TRAINING" -> "Pesas";
+            case "YOGA"            -> "Yoga";
+            case "FOOTBALL"        -> "Fútbol";
+            case "BASKETBALL"      -> "Baloncesto";
+            case "DANCING"         -> "Baile";
+            case "HIKING"          -> "Senderismo";
+            default                -> "Otro";
+        };
+    }
+
+    private String formatIntensity(String intensity) {
+        return switch (intensity) {
+            case "LOW"      -> "Baja";
+            case "MODERATE" -> "Moderada";
+            case "HIGH"     -> "Alta";
+            default         -> intensity;
+        };
+    }
+
+    private String formatCyclePhase(String phase) {
+        return switch (phase) {
+            case "MENSTRUATION"  -> "Menstruación";
+            case "FOLLICULAR"    -> "Fase folicular";
+            case "OVULATION"     -> "Ovulación";
+            case "LUTEAL_EARLY"  -> "Lútea temprana";
+            case "LUTEAL_LATE"   -> "Lútea tardía";
+            default              -> phase;
         };
     }
 }

@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -24,6 +25,8 @@ public class GenerateMedicalReportUseCaseImpl implements GenerateMedicalReportUs
     private final LoadMealEntryPort loadMealEntryPort;
     private final LoadVitalSignPort loadVitalSignPort;
     private final LoadMedicationPort loadMedicationPort;
+    private final LoadExerciseLogPort loadExerciseLogPort;
+    private final LoadMenstrualCyclePort loadMenstrualCyclePort;
     private final MedicalCalculatorService medicalCalculatorService;
     private final MedicalReportPdfGenerator pdfGenerator;
 
@@ -49,23 +52,45 @@ public class GenerateMedicalReportUseCaseImpl implements GenerateMedicalReportUs
         List<Medication> medications = loadMedicationPort
                 .findActiveByPatientId(command.patientId());
 
+        List<ExerciseLog> exercises = loadExerciseLogPort
+                .findByPatientIdAndDateRange(command.patientId(), from, to);
+
+        MenstrualCycle latestCycle = null;
+        if (patient.isFemale()) {
+            latestCycle = loadMenstrualCyclePort
+                    .findLatestByPatientId(command.patientId())
+                    .orElse(null);
+        }
+
+        BigDecimal avg = medicalCalculatorService.calculateAverage(readings);
+
+        // Top 5 comidas con mayor impacto (más calorías)
+        List<MealEntry> topMeals = meals.stream()
+                .sorted((a, b) -> b.getTotalCalories().compareTo(a.getTotalCalories()))
+                .limit(5)
+                .toList();
+
         ReportDataService reportData = ReportDataService.builder()
                 .patient(patient)
                 .glucoseReadings(readings)
                 .mealEntries(meals)
                 .vitalSigns(vitals)
                 .medications(medications)
-                .averageGlucose(medicalCalculatorService.calculateAverage(readings))
+                .exerciseLogs(exercises)
+                .latestMenstrualCycle(latestCycle)
+                .averageGlucose(avg)
                 .estimatedHba1c(readings.isEmpty() ? null :
-                        medicalCalculatorService.estimateHba1c(
-                                medicalCalculatorService.calculateAverage(readings)))
+                        medicalCalculatorService.estimateHba1c(avg))
                 .timeInRangePercent(medicalCalculatorService.calculateTimeInRange(
-                        readings, patient.getTargetGlucoseMin(),
-                        patient.getTargetGlucoseMax()))
+                        readings, patient.getTargetGlucoseMin(), patient.getTargetGlucoseMax()))
                 .coefficientOfVariation(readings.isEmpty() ? null :
                         medicalCalculatorService.calculateCoefficientOfVariation(
-                                medicalCalculatorService.calculateStandardDeviation(readings),
-                                medicalCalculatorService.calculateAverage(readings)))
+                                medicalCalculatorService.calculateStandardDeviation(readings), avg))
+                .tirDetailed(medicalCalculatorService.calculateTirDetailed(readings))
+                .averageByReadingType(medicalCalculatorService.calculateAverageByReadingType(readings))
+                .hypoglycemiaEvents(medicalCalculatorService.getHypoglycemiaEvents(readings))
+                .adherencePercent(medicalCalculatorService.calculateAdherencePercent(readings, from, to))
+                .topImpactMeals(topMeals)
                 .build();
 
         return pdfGenerator.generate(reportData, command.from(), command.to());

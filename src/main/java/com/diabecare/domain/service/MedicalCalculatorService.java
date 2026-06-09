@@ -7,7 +7,9 @@ import com.diabecare.domain.model.GlucoseStatus;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public class MedicalCalculatorService {
 
@@ -92,5 +94,76 @@ public class MedicalCalculatorService {
         };
 
         return (int) Math.round(tmb * factor);
+    }
+
+    public Map<String, BigDecimal> calculateTirDetailed(List<GlucoseReading> readings) {
+        if (readings.isEmpty()) return Map.of();
+
+        long total = readings.size();
+        long veryLow  = readings.stream().filter(r -> r.getValueInMgDl().doubleValue() < 54).count();
+        long low      = readings.stream().filter(r -> {
+            double v = r.getValueInMgDl().doubleValue();
+            return v >= 54 && v < 70;
+        }).count();
+        long inRange  = readings.stream().filter(r -> {
+            double v = r.getValueInMgDl().doubleValue();
+            return v >= 70 && v <= 180;
+        }).count();
+        long high     = readings.stream().filter(r -> {
+            double v = r.getValueInMgDl().doubleValue();
+            return v > 180 && v <= 250;
+        }).count();
+        long veryHigh = readings.stream().filter(r -> r.getValueInMgDl().doubleValue() > 250).count();
+
+        return Map.of(
+                "veryLow",  round((veryLow  * 100.0) / total),
+                "low",      round((low      * 100.0) / total),
+                "inRange",  round((inRange  * 100.0) / total),
+                "high",     round((high     * 100.0) / total),
+                "veryHigh", round((veryHigh * 100.0) / total)
+        );
+    }
+
+    public Map<String, BigDecimal> calculateAverageByReadingType(List<GlucoseReading> readings) {
+        if (readings.isEmpty()) return Map.of();
+
+        Map<String, BigDecimal> result = new java.util.LinkedHashMap<>();
+        for (var type : com.diabecare.domain.model.ReadingType.values()) {
+            readings.stream()
+                    .filter(r -> r.getReadingType() == type)
+                    .map(GlucoseReading::getValueInMgDl)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            var filtered = readings.stream()
+                    .filter(r -> r.getReadingType() == type)
+                    .toList();
+
+            if (!filtered.isEmpty()) {
+                result.put(type.name(), calculateAverage(filtered));
+            }
+        }
+        return result;
+    }
+
+    public List<GlucoseReading> getHypoglycemiaEvents(List<GlucoseReading> readings) {
+        return readings.stream()
+                .filter(r -> r.getValueInMgDl().doubleValue() < 70)
+                .sorted((a, b) -> a.getMeasuredAt().compareTo(b.getMeasuredAt()))
+                .toList();
+    }
+
+    public double calculateAdherencePercent(List<GlucoseReading> readings,
+                                            LocalDateTime from, LocalDateTime to) {
+        if (readings.isEmpty()) return 0.0;
+        long totalDays = java.time.temporal.ChronoUnit.DAYS.between(from.toLocalDate(), to.toLocalDate()) + 1;
+        long daysWithReadings = readings.stream()
+                .map(r -> r.getMeasuredAt().toLocalDate())
+                .distinct()
+                .count();
+        return Math.min(100.0, (daysWithReadings * 100.0) / totalDays);
+    }
+
+    private BigDecimal round(double value) {
+        return BigDecimal.valueOf(Math.round(value * 10.0) / 10.0);
     }
 }
