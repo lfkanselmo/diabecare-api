@@ -24,6 +24,7 @@ public interface MealEntryPersistenceMapper {
 
     @Mapping(target = "id", source = "mealItemId")
     @Mapping(target = "mealEntry", ignore = true)
+    @Mapping(target = "isNew", ignore = true)
     MealItemEntity toItemEntity(MealItem item);
 
     @Mapping(target = "mealItemId", source = "id")

@@ -45,6 +45,7 @@ public class MealItemEntity implements Persistable<UUID>  {
     private String foodCode;
 
     @Transient
+    @Builder.Default
     private boolean isNew = true;
 
     @Override

@@ -5,5 +5,9 @@ import com.diabecare.domain.model.Patient;
 import java.util.UUID;
 
 public interface GetPatientUseCase {
-    Patient getByUserId(UUID userId);
+
+    Result getById(UUID patientId);
+    Result getByUserId(UUID userId);
+
+    record Result(Patient patient) {}
 }

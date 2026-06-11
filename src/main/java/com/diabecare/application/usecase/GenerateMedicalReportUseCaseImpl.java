@@ -6,29 +6,26 @@ import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.*;
 import com.diabecare.domain.service.MedicalCalculatorService;
 import com.diabecare.domain.service.ReportDataService;
-import com.diabecare.infrastructure.pdf.MedicalReportPdfGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class GenerateMedicalReportUseCaseImpl implements GenerateMedicalReportUseCase {
 
-    private final LoadPatientPort loadPatientPort;
-    private final LoadGlucoseReadingPort loadGlucoseReadingPort;
-    private final LoadMealEntryPort loadMealEntryPort;
-    private final LoadVitalSignPort loadVitalSignPort;
-    private final LoadMedicationPort loadMedicationPort;
-    private final LoadExerciseLogPort loadExerciseLogPort;
-    private final LoadMenstrualCyclePort loadMenstrualCyclePort;
+    private final LoadPatientPort          loadPatientPort;
+    private final LoadGlucoseReadingPort   loadGlucoseReadingPort;
+    private final LoadMealEntryPort        loadMealEntryPort;
+    private final LoadVitalSignPort        loadVitalSignPort;
+    private final LoadMedicationPort       loadMedicationPort;
+    private final LoadExerciseLogPort      loadExerciseLogPort;
+    private final LoadMenstrualCyclePort   loadMenstrualCyclePort;
     private final MedicalCalculatorService medicalCalculatorService;
-    private final MedicalReportPdfGenerator pdfGenerator;
+    private final GenerateReportPort       generateReportPort;
 
     @Override
     public byte[] generate(Command command) {
@@ -64,7 +61,6 @@ public class GenerateMedicalReportUseCaseImpl implements GenerateMedicalReportUs
 
         BigDecimal avg = medicalCalculatorService.calculateAverage(readings);
 
-        // Top 5 comidas con mayor impacto (más calorías)
         List<MealEntry> topMeals = meals.stream()
                 .sorted((a, b) -> b.getTotalCalories().compareTo(a.getTotalCalories()))
                 .limit(5)
@@ -93,6 +89,6 @@ public class GenerateMedicalReportUseCaseImpl implements GenerateMedicalReportUs
                 .topImpactMeals(topMeals)
                 .build();
 
-        return pdfGenerator.generate(reportData, command.from(), command.to());
+        return generateReportPort.generate(reportData, command.from(), command.to());
     }
 }
