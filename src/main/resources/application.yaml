@@ -55,6 +55,10 @@ diabecare:
     streak-days: 7
     good-tir-threshold: 70.0
     min-readings-for-stats: 3
+  push:
+    vapid-public-key: ${VAPID_PUBLIC_KEY}
+    vapid-private-key: ${VAPID_PRIVATE_KEY}
+    vapid-subject: ${VAPID_SUBJECT:mailto:admin@diabecare.com}
 
 ---
 spring:
