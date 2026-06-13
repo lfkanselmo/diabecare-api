@@ -8,6 +8,7 @@ import com.diabecare.infrastructure.persistence.repository.PatientJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,5 +37,12 @@ public class PatientPersistenceAdapter implements SavePatientPort, LoadPatientPo
     @Override
     public boolean existsByUserId(UUID userId) {
         return repository.existsByUserId(userId);
+    }
+
+    @Override
+    public List<Patient> findAll() {
+        return repository.findAll().stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 }

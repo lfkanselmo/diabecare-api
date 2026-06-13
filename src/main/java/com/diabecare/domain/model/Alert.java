@@ -15,7 +15,8 @@ public class Alert {
         CALORIE_GOAL_EXCEEDED,
         POSITIVE_STREAK,
         HIGH_HBA1C_ESTIMATED,
-        NO_MEAL_RECORDED
+        NO_MEAL_RECORDED,
+        GLUCOSE_PATTERN_DETECTED
     }
 
     private AlertType type;

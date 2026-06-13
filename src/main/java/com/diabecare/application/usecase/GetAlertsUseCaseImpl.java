@@ -5,6 +5,7 @@ import com.diabecare.application.port.out.*;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.*;
 import com.diabecare.domain.service.MedicalCalculatorService;
+import com.diabecare.domain.service.PatternDetectorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,7 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
     private final LoadMenstrualCyclePort   loadMenstrualCyclePort;
     private final MedicalCalculatorService medicalCalculatorService;
     private final AlertConfigPort          alertConfig;
+    private final PatternDetectorService patternDetectorService;
 
     @Override
     public List<Alert> getAlerts(UUID patientId) {
@@ -36,6 +38,7 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
         alerts.addAll(checkGlucoseAlerts(patient, now));
         alerts.addAll(checkNutritionAlerts(patient, now));
         alerts.addAll(checkPositiveStreak(patient, now));
+        alerts.addAll(checkPatternAlerts(patient, now));
 
         if (patient.isFemale()) {
             alerts.addAll(checkMenstrualCycleAlert(patient));
@@ -203,5 +206,22 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
                 });
 
         return alerts;
+    }
+
+    private List<Alert> checkPatternAlerts(Patient patient, LocalDateTime now) {
+        List<GlucoseReading> readings = loadGlucoseReadingPort
+                .findByPatientIdAndDateRange(patient.getPatientId(), now.minusDays(14), now);
+
+        if (readings.size() < alertConfig.minReadingsForStats()) return List.of();
+
+        return List.of(
+                        patternDetectorService.detectHighFastingPattern(readings),
+                        patternDetectorService.detectHighPostMealPattern(readings),
+                        patternDetectorService.detectRecurrentHypoglycemia(readings),
+                        patternDetectorService.detectHighVariability(readings)
+                ).stream()
+                .filter(java.util.Optional::isPresent)
+                .map(java.util.Optional::get)
+                .toList();
     }
 }
