@@ -2,9 +2,11 @@ package com.diabecare.application.usecase;
 
 import com.diabecare.application.port.in.DeactivateMedicationUseCase;
 import com.diabecare.application.port.out.LoadMedicationPort;
+import com.diabecare.application.port.out.SaveAuditLogPort;
 import com.diabecare.application.port.out.SaveMedicationPort;
 import com.diabecare.domain.exception.InvalidMedicationException;
 import com.diabecare.domain.model.Medication;
+import com.diabecare.domain.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +20,8 @@ public class DeactivateMedicationUseCaseImpl implements DeactivateMedicationUseC
 
     private final LoadMedicationPort loadMedicationPort;
     private final SaveMedicationPort saveMedicationPort;
+    private final SaveAuditLogPort   saveAuditLogPort;
+    private final AuditService       auditService;
 
     @Override
     public void execute(UUID medicationId, UUID patientId) {
@@ -29,6 +33,11 @@ public class DeactivateMedicationUseCaseImpl implements DeactivateMedicationUseC
             throw new InvalidMedicationException(
                     "No tienes permisos para modificar este medicamento");
         }
+
+        saveAuditLogPort.save(auditService.buildDeleteLog(
+                patientId, "MEDICATION", medicationId
+        ));
+
         medication.deactivate();
         saveMedicationPort.save(medication);
     }

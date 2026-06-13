@@ -2,9 +2,11 @@ package com.diabecare.application.usecase;
 
 import com.diabecare.application.port.in.RegisterMedicationUseCase;
 import com.diabecare.application.port.out.LoadPatientPort;
+import com.diabecare.application.port.out.SaveAuditLogPort;
 import com.diabecare.application.port.out.SaveMedicationPort;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.Medication;
+import com.diabecare.domain.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class RegisterMedicationUseCaseImpl implements RegisterMedicationUseCase {
 
     private final SaveMedicationPort saveMedicationPort;
-    private final LoadPatientPort loadPatientPort;
+    private final LoadPatientPort    loadPatientPort;
+    private final SaveAuditLogPort   saveAuditLogPort;
+    private final AuditService       auditService;
 
     @Override
     public Medication execute(Command command) {
@@ -33,6 +37,13 @@ public class RegisterMedicationUseCaseImpl implements RegisterMedicationUseCase 
                 command.startDate(),
                 command.notes()
         );
-        return saveMedicationPort.save(medication);
+
+        Medication saved = saveMedicationPort.save(medication);
+
+        saveAuditLogPort.save(auditService.buildCreateLog(
+                command.patientId(), "MEDICATION", saved.getMedicationId()
+        ));
+
+        return saved;
     }
 }
