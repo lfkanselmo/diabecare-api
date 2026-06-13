@@ -32,6 +32,7 @@ public class GlucoseController {
     private final DeleteGlucoseReadingUseCase deleteGlucoseReadingUseCase;
     private final GlucoseReadingPresentationMapper readingMapper;
     private final GlucoseStatsPresentationMapper statsMapper;
+    private final ExportGlucoseDataUseCase exportGlucoseDataUseCase;
 
     @PostMapping("/{patientId}")
     public ResponseEntity<GlucoseReadingResponse> register(
@@ -92,5 +93,35 @@ public class GlucoseController {
             @PathVariable UUID readingId) {
         deleteGlucoseReadingUseCase.execute(readingId, patientId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{patientId}/export/csv")
+    public ResponseEntity<byte[]> exportCsv(
+            @PathVariable UUID patientId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+
+        String csv = exportGlucoseDataUseCase.exportAsCsv(patientId, from, to);
+        byte[] bytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"glucosa.csv\"")
+                .header("Content-Type", "text/csv; charset=UTF-8")
+                .body(bytes);
+    }
+
+    @GetMapping("/{patientId}/export/json")
+    public ResponseEntity<byte[]> exportJson(
+            @PathVariable UUID patientId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+
+        String json = exportGlucoseDataUseCase.exportAsJson(patientId, from, to);
+        byte[] bytes = json.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"glucosa.json\"")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .body(bytes);
     }
 }
