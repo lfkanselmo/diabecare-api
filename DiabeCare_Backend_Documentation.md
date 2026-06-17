@@ -1,14 +1,14 @@
 # DiabeCare — Backend Architecture & Technical Documentation
 
-> **Spring Boot | Arquitectura Hexagonal | REST API**
+> **Spring Boot 3.5 | Arquitectura Hexagonal | REST API**
 
 | Campo | Valor |
 |---|---|
-| Versión | 1.0.0 |
-| Tecnología | Java 17 + Spring Boot 3.x |
+| Versión | 2.0.0 |
+| Tecnología | Java 17 + Spring Boot 3.5.14 |
 | Arquitectura | Hexagonal + Clean Architecture |
-| Base de datos | PostgreSQL 15 |
-| Estado | Documento Base — Proyecto de Práctica |
+| Base de datos | PostgreSQL 15+ |
+| Documentación API | OpenAPI 3.0 / Swagger UI |
 
 ---
 
@@ -18,13 +18,18 @@
 2. [Arquitectura del Sistema](#2-arquitectura-del-sistema)
 3. [Modelo de Dominio](#3-modelo-de-dominio)
 4. [Cálculos Médicos](#4-cálculos-médicos)
-5. [API REST — Endpoints](#5-api-rest--endpoints)
-6. [Seguridad](#6-seguridad)
-7. [Estándares Técnicos y de Código](#7-estándares-técnicos-y-de-código)
-8. [Base de Datos](#8-base-de-datos)
-9. [Estrategia de Testing](#9-estrategia-de-testing)
-10. [Dependencias Principales](#10-dependencias-principales)
-11. [Configuración y Despliegue](#11-configuración-y-despliegue)
+5. [Servicios de Dominio](#5-servicios-de-dominio)
+6. [API REST — Endpoints](#6-api-rest--endpoints)
+7. [Seguridad](#7-seguridad)
+8. [Push Notifications](#8-push-notifications)
+9. [Tareas Programadas](#9-tareas-programadas)
+10. [Rate Limiting](#10-rate-limiting)
+11. [Auditoría](#11-auditoría)
+12. [Estándares Técnicos y de Código](#12-estándares-técnicos-y-de-código)
+13. [Base de Datos](#13-base-de-datos)
+14. [Estrategia de Testing](#14-estrategia-de-testing)
+15. [Dependencias Principales](#15-dependencias-principales)
+16. [Configuración y Despliegue](#16-configuración-y-despliegue)
 
 ---
 
@@ -32,487 +37,632 @@
 
 ### 1.1 Propósito
 
-DiabeCare es una aplicación web diseñada para ayudar a pacientes diabéticos a llevar un control riguroso de su salud. El sistema permite registrar mediciones clínicas, controlar la ingesta calórica, gestionar medicamentos y generar reportes para consultas médicas.
+DiabeCare es una aplicación web para pacientes diabéticos que permite registrar mediciones clínicas, controlar ingesta calórica, gestionar medicamentos, recibir alertas inteligentes, y generar reportes para consultas médicas.
 
 ### 1.2 Objetivos del Sistema
 
-- Registro y monitoreo de glucosa en sangre (ayuno, preprandial, postprandial, nocturna)
-- Conteo de calorías y macronutrientes con base de datos nutricional
-- Control de medicamentos e insulina con recordatorios
-- Registro de signos vitales: presión arterial, peso, IMC, HbA1c estimada
-- Generación de reportes y métricas para control médico
-- Alertas inteligentes por valores fuera de rango
+- Registro y monitoreo de glucosa con detección de patrones clínicos
+- Conteo de calorías y macronutrientes con 172 alimentos colombianos
+- Control de medicamentos con auditoría de cambios
+- Signos vitales: presión arterial, peso, IMC, HbA1c estimada
+- Alertas clínicas inteligentes (7 tipos + 4 patrones + ciclo menstrual)
+- Notificaciones push nativas (Web Push API)
+- Resumen semanal automático por paciente
+- Exportación de datos en CSV y JSON
+- Rate limiting por paciente para proteger integridad de datos
 
-### 1.3 Alcance Técnico
+### 1.3 Stack Técnico
 
 | Componente | Tecnología |
 |---|---|
-| Backend | Java 17 + Spring Boot 3.x |
-| Frontend | Angular 17+ (documento separado) |
-| Base de datos | PostgreSQL 15 (producción) + H2 (tests) |
-| Seguridad | Spring Security + JWT + OAuth2 |
-| Despliegue | Docker + Docker Compose |
-| Documentación API | OpenAPI 3.0 / Swagger UI |
+| Backend | Java 17 + Spring Boot 3.5.14 |
+| Frontend | Angular 21 (documento separado) |
+| Base de datos | PostgreSQL 15+ |
+| Seguridad | Spring Security 6 + JWT (jjwt 0.12.5) |
+| Cache | Caffeine |
+| Push | Web Push API + BouncyCastle VAPID |
+| Rate Limiting | Bucket4j 8.10.1 + Caffeine |
+| Documentación | OpenAPI 3.0 / Swagger UI |
 
 ---
 
 ## 2. Arquitectura del Sistema
 
-### 2.1 Patrón Arquitectural: Hexagonal + Clean Architecture
+### 2.1 Patrón: Hexagonal + Clean Architecture
 
-El backend de DiabeCare implementa **Arquitectura Hexagonal (Ports & Adapters)** combinada con los principios de **Clean Architecture** de Robert C. Martin. Esta elección garantiza:
+| Principio | Aplicación |
+|---|---|
+| Independencia del framework | El dominio no importa clases de Spring ni JPA |
+| Testabilidad | Cada capa se prueba de forma aislada con Mockito |
+| Flexibilidad | Cambio de infraestructura sin afectar lógica de negocio |
+| SRP | Cada use case tiene una única responsabilidad |
+| Métodos atómicos | Detectores de patrón, servicios de exportación y auditoría son métodos pequeños y focalizados |
 
-- **Independencia del framework**: el dominio no depende de Spring Boot
-- **Testabilidad**: cada capa puede probarse de forma aislada
-- **Flexibilidad**: cambio de infraestructura sin afectar la lógica de negocio
-- **Mantenibilidad**: separación clara de responsabilidades
+### 2.2 Capas
 
-### 2.2 Capas de la Arquitectura
-
-| Capa | Componente | Responsabilidad |
-|---|---|---|
-| **Domain** | Entities, Value Objects | Reglas de negocio puras, sin dependencias externas |
-| **Application** | Use Cases, Ports (interfaces) | Orquestación de flujos, contratos de entrada/salida |
-| **Infrastructure** | Repositories, Adapters, Config | Implementaciones técnicas (JPA, REST, messaging) |
-| **Presentation** | Controllers, DTOs, Mappers | Exposición de API REST, validación de entrada |
+| Capa | Responsabilidad |
+|---|---|
+| **Domain** | Entidades, Value Objects, Domain Services — sin dependencias externas |
+| **Application** | Orquestación de flujos, contratos de entrada/salida (ports) |
+| **Infrastructure** | JPA, seguridad, push, scheduler, rate limiting, PDF |
+| **Presentation** | Controllers REST, DTOs, validación de entrada, manejo de errores |
 
 ### 2.3 Estructura de Paquetes
 
 ```
 com.diabecare
 ├── domain/
-│   ├── model/              # Entidades y Value Objects
-│   ├── exception/          # Excepciones de dominio
-│   └── service/            # Domain Services
+│   ├── model/              # Patient, GlucoseReading, MealEntry, VitalSign,
+│   │                       # Medication, ExerciseLog, MenstrualCycle,
+│   │                       # Alert, AuditLog, WeeklySummaryData
+│   ├── exception/          # Excepciones de dominio + RateLimitExceededException
+│   └── service/            # MedicalCalculatorService, PatternDetectorService,
+│                           # WeeklySummaryService, GlucoseExportService,
+│                           # AuditService, RateLimitService
 ├── application/
-│   ├── port/
-│   │   ├── in/             # Puertos de entrada (Use Case interfaces)
-│   │   └── out/            # Puertos de salida (Repository interfaces)
-│   ├── usecase/            # Implementaciones de casos de uso
-│   └── dto/                # Objetos de transferencia (internos)
+│   ├── port/in/            # Interfaces de casos de uso
+│   ├── port/out/           # Puertos de salida (repositorios, notificaciones)
+│   └── usecase/            # Implementaciones (1 clase por operación)
 ├── infrastructure/
-│   ├── persistence/
-│   │   ├── entity/         # JPA Entities (@Entity)
-│   │   ├── repository/     # Spring Data JPA interfaces
-│   │   ├── adapter/        # Implementaciones de puertos de salida
-│   │   └── mapper/         # Domain <-> JPA Entity mappers
-│   ├── security/           # Spring Security, JWT, filtros
-│   ├── config/             # Beans de configuración Spring
-│   └── external/           # Clientes externos (APIs nutricionales)
+│   ├── persistence/        # JPA entities, repositories, adapters, mappers
+│   ├── security/           # JWT filter, UserDetailsServiceImpl
+│   ├── config/             # DiabeCareProperties, JwtProperties, RateLimitConfig
+│   ├── push/               # PushNotificationService, PushNotificationAdapter
+│   ├── pdf/                # PdfReportAdapter
+│   └── scheduler/          # WeeklySummaryScheduler
 └── presentation/
     ├── controller/         # REST Controllers
-    ├── dto/                # Request/Response DTOs
-    ├── mapper/             # Domain <-> DTO mappers
+    ├── dto/                # Request/Response records
+    ├── mapper/             # MapStruct mappers
     └── advice/             # GlobalExceptionHandler
 ```
+
+### 2.4 Reglas de Arquitectura (ArchUnit)
+
+Verificadas automáticamente en cada build:
+
+- El dominio **no puede** importar clases de Spring, JPA o cualquier framework
+- Los Use Cases solo pueden depender del dominio y de interfaces (puertos)
+- Los Controllers no pueden acceder directamente a repositorios
+- Las entidades JPA deben estar en `infrastructure.persistence.entity`
 
 ---
 
 ## 3. Modelo de Dominio
 
-### 3.1.1 Patient _(Aggregate Root)_
+### 3.1 Patient _(Aggregate Root)_
 
-| Campo | Tipo | Requerido | Descripción |
-|---|---|---|---|
-| `patientId` | UUID | Sí | Identificador único |
-| `userId` | UUID | Sí | Referencia al usuario |
-| `dateOfBirth` | LocalDate | Sí | Fecha de nacimiento |
-| `diabetesType` | Enum | Sí | `TIPO_1`, `TIPO_2`, `GESTACIONAL`, `LADA`, `MODY` |
-| `diagnosisDate` | LocalDate | Sí | Fecha de diagnóstico |
-| `height` | BigDecimal (cm) | Sí | Talla en centímetros |
-| `targetGlucoseMin` | BigDecimal | Sí | Rango objetivo mínimo mg/dL |
-| `targetGlucoseMax` | BigDecimal | Sí | Rango objetivo máximo mg/dL |
-| `dailyCalorieGoal` | Integer | No | Meta calórica diaria |
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `patientId` | UUID | Identificador único |
+| `userId` | UUID | Referencia al usuario |
+| `fullName` | String | Nombre completo |
+| `dateOfBirth` | LocalDate | Fecha de nacimiento |
+| `biologicalSex` | Enum | `MALE`, `FEMALE`, `NOT_SPECIFIED` |
+| `diabetesType` | Enum | `TYPE_1`, `TYPE_2`, `GESTATIONAL`, `LADA`, `MODY` |
+| `targetGlucoseMin` | BigDecimal | Rango objetivo mínimo mg/dL |
+| `targetGlucoseMax` | BigDecimal | Rango objetivo máximo mg/dL |
+| `dailyCalorieGoal` | Integer | Meta calórica diaria |
+| `insulinSensitivityFactor` | BigDecimal | Factor de sensibilidad a insulina |
+| `insulinToCarbRatio` | BigDecimal | Ratio insulina:carbohidratos |
+| `targetGlucoseCorrection` | BigDecimal | Objetivo de corrección |
 
-### 3.1.2 GlucoseReading
+### 3.2 GlucoseReading
 
-| Campo | Tipo | Requerido | Descripción |
-|---|---|---|---|
-| `readingId` | UUID | Sí | ID único |
-| `patientId` | UUID | Sí | Referencia al paciente |
-| `value` | BigDecimal | Sí | Valor en mg/dL o mmol/L |
-| `unit` | Enum | Sí | `MG_DL`, `MMOL_L` |
-| `readingType` | Enum | Sí | `FASTING`, `PRE_MEAL`, `POST_MEAL`, `BEDTIME`, `RANDOM` |
-| `measuredAt` | LocalDateTime | Sí | Fecha y hora de medición |
-| `notes` | String | No | Notas opcionales |
-| `deviceSource` | String | No | Fuente: glucómetro, CGM, manual |
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `readingId` | UUID | ID único |
+| `value` | BigDecimal | Valor en mg/dL o mmol/L |
+| `unit` | Enum | `MG_DL`, `MMOL_L` |
+| `readingType` | Enum | `FASTING`, `PRE_MEAL`, `POST_MEAL`, `BEDTIME`, `RANDOM` |
+| `status` | Enum | `CRITICALLY_LOW`, `LOW`, `NORMAL`, `HIGH`, `CRITICALLY_HIGH` |
+| `measuredAt` | LocalDateTime | Fecha y hora de medición |
 
-### 3.1.3 MealEntry _(Registro de Comidas)_
+### 3.3 Alert
 
-| Campo | Tipo | Requerido | Descripción |
-|---|---|---|---|
-| `mealId` | UUID | Sí | ID único |
-| `patientId` | UUID | Sí | Referencia al paciente |
-| `mealType` | Enum | Sí | `BREAKFAST`, `LUNCH`, `DINNER`, `SNACK` |
-| `consumedAt` | LocalDateTime | Sí | Fecha y hora del consumo |
-| `totalCalories` | BigDecimal | Calculado | Calculado de items |
-| `totalCarbs` | BigDecimal | Calculado | Carbohidratos totales (g) |
-| `totalProteins` | BigDecimal | No | Proteínas totales (g) |
-| `totalFats` | BigDecimal | No | Grasas totales (g) |
-| `items` | `List<MealItem>` | Sí | Alimentos individuales de la comida |
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `type` | Enum | `GLUCOSE_OUT_OF_RANGE`, `NO_GLUCOSE_RECORDED`, `HIGH_HBA1C_ESTIMATED`, `NO_MEAL_RECORDED`, `POSITIVE_STREAK`, `GLUCOSE_AVERAGE_HIGH`, `GLUCOSE_PATTERN_DETECTED` |
+| `severity` | Enum | `SUCCESS`, `INFO`, `WARNING`, `DANGER` |
+| `title` | String | Título de la alerta |
+| `message` | String | Mensaje descriptivo |
 
-### 3.1.4 VitalSign _(Signos Vitales)_
+### 3.4 AuditLog
 
-| Campo | Tipo | Requerido | Descripción |
-|---|---|---|---|
-| `vitalId` | UUID | Sí | ID único |
-| `patientId` | UUID | Sí | Referencia paciente |
-| `weight` | BigDecimal (kg) | No | Peso en kilogramos |
-| `bmi` | BigDecimal | Calculado | IMC calculado automáticamente |
-| `systolicBP` | Integer (mmHg) | No | Presión sistólica |
-| `diastolicBP` | Integer (mmHg) | No | Presión diastólica |
-| `heartRate` | Integer (bpm) | No | Frecuencia cardíaca |
-| `hba1c` | BigDecimal (%) | No | Hemoglobina glicosilada |
-| `measuredAt` | LocalDateTime | Sí | Fecha y hora |
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `entityType` | String | `PATIENT`, `MEDICATION` |
+| `action` | Enum | `CREATE`, `UPDATE`, `DELETE` |
+| `fieldName` | String | Campo modificado |
+| `oldValue` | String | Valor anterior |
+| `newValue` | String | Valor nuevo |
+| `performedAt` | LocalDateTime | Fecha y hora del cambio |
 
-### 3.1.5 Medication _(Medicamentos e Insulina)_
+### 3.5 WeeklySummaryData _(record)_
 
-| Campo | Tipo | Requerido | Descripción |
-|---|---|---|---|
-| `medicationId` | UUID | Sí | ID único |
-| `patientId` | UUID | Sí | Referencia paciente |
-| `name` | String | Sí | Nombre del medicamento |
-| `type` | Enum | Sí | `INSULIN_BASAL`, `INSULIN_BOLUS`, `ORAL`, `INJECTABLE` |
-| `dose` | BigDecimal | Sí | Dosis prescrita |
-| `doseUnit` | Enum | Sí | `MG`, `ML`, `UNITS` (insulina) |
-| `frequency` | Enum | Sí | `ONCE_DAILY`, `TWICE_DAILY`, `WITH_MEALS`, etc. |
-| `active` | Boolean | Sí | Medicamento activo |
+```java
+public record WeeklySummaryData(
+    UUID patientId, String patientName,
+    BigDecimal averageGlucose, BigDecimal estimatedHba1c,
+    BigDecimal timeInRangePercent,
+    long hypoEpisodes, long hyperEpisodes, int totalReadings
+) {}
+```
 
 ---
 
 ## 4. Cálculos Médicos
 
-El módulo de cálculos médicos (`MedicalCalculatorService`) encapsula todas las fórmulas clínicas utilizadas en el sistema.
+`MedicalCalculatorService` encapsula todas las fórmulas clínicas.
 
-### 4.1 Índice de Masa Corporal (IMC)
+### 4.1 IMC
 
 ```
 IMC = peso(kg) / altura(m)²
-
-Clasificación:
-  < 18.5        → Bajo peso
-  18.5 - 24.9   → Normal
-  25.0 - 29.9   → Sobrepeso
-  >= 30.0       → Obesidad
+< 18.5 → Bajo peso | 18.5–24.9 → Normal | 25–29.9 → Sobrepeso | ≥30 → Obesidad
 ```
 
-### 4.2 HbA1c Estimada (eHbA1c)
-
-Estimación basada en el promedio de glucosa de los últimos 90 días — **Fórmula ADAG**:
+### 4.2 HbA1c Estimada (Fórmula ADAG)
 
 ```
 eHbA1c (%) = (Glucosa promedio mg/dL + 46.7) / 28.7
-
-Interpretación:
-  < 5.7%        → Normal
-  5.7 - 6.4%    → Prediabetes
-  6.5 - 7.0%    → Control óptimo (diabético)
-  7.1 - 8.0%    → Control aceptable
-  > 8.0%        → Control deficiente
+< 5.7% → Normal | 5.7–6.4% → Prediabetes | 6.5–7.0% → Control óptimo
 ```
 
 ### 4.3 Tiempo en Rango (TIR)
 
 ```
-TIR = (lecturas dentro del rango objetivo / total de lecturas) * 100
-
-Rangos estándar recomendados (ADA):
-  Hiperglucemia severa:  > 250 mg/dL   → objetivo < 5%
-  Hiperglucemia:         > 180 mg/dL   → objetivo < 25%
-  En rango objetivo:   70 - 180 mg/dL  → objetivo > 70%
-  Hipoglucemia:          < 70 mg/dL    → objetivo < 4%
-  Hipoglucemia severa:   < 54 mg/dL    → objetivo < 1%
+TIR (%) = (lecturas en rango / total lecturas) × 100
+Rango objetivo: configurable por paciente (default 70–180 mg/dL)
 ```
 
-### 4.4 Requerimiento Calórico Diario (TMB)
-
-Ecuación de **Mifflin-St Jeor**:
+### 4.4 Coeficiente de Variación (CV)
 
 ```
-Hombres: TMB = (10 × peso_kg) + (6.25 × altura_cm) - (5 × edad) + 5
-Mujeres: TMB = (10 × peso_kg) + (6.25 × altura_cm) - (5 × edad) - 161
-
-Factor de actividad (TDEE = TMB × factor):
-  Sedentario:            1.2
-  Ligeramente activo:    1.375
-  Moderadamente activo:  1.55
-  Muy activo:            1.725
+CV (%) = (Desviación estándar / Promedio) × 100
+Objetivo: CV < 36% (alta variabilidad = mayor riesgo)
 ```
 
-### 4.5 Coeficiente de Variación de Glucosa (CV)
+### 4.5 Dosis de Insulina
 
 ```
-CV (%) = (Desviación estándar / Media de glucosa) * 100
-
-Interpretación:
-  CV < 36%   → Variabilidad glucémica aceptable
-  CV >= 36%  → Variabilidad glucémica elevada (mayor riesgo)
+Dosis corrección = (Glucosa actual - Objetivo) / Factor de sensibilidad
+Dosis comida     = Carbohidratos (g) / Ratio insulina:carbs
+Dosis total      = Dosis corrección + Dosis comida
 ```
 
 ---
 
-## 5. API REST — Endpoints
+## 5. Servicios de Dominio
 
-> URL base: `/api/v1`
+### 5.1 PatternDetectorService
 
-### 5.1 Autenticación — `/api/v1/auth`
+Detecta patrones clínicos en las lecturas de los últimos 14 días:
 
-| Método | Endpoint | Auth | Descripción |
-|---|---|---|---|
-| `POST` | `/auth/register` | No | Registro de usuario y perfil paciente |
-| `POST` | `/auth/login` | No | Login, retorna JWT token |
-| `POST` | `/auth/refresh` | JWT | Renovar access token |
-| `POST` | `/auth/logout` | JWT | Invalidar token |
-| `POST` | `/auth/forgot-password` | No | Solicitar reset de contraseña |
-
-### 5.2 Glucosa — `/api/v1/glucose`
-
-| Método | Endpoint | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/glucose` | JWT | Listar lecturas (paginado, filtros) |
-| `POST` | `/glucose` | JWT | Registrar nueva lectura |
-| `GET` | `/glucose/{id}` | JWT | Obtener lectura por ID |
-| `PUT` | `/glucose/{id}` | JWT | Actualizar lectura |
-| `DELETE` | `/glucose/{id}` | JWT | Eliminar lectura |
-| `GET` | `/glucose/stats/daily` | JWT | Estadísticas diarias |
-| `GET` | `/glucose/stats/monthly` | JWT | Estadísticas mensuales + TIR |
-| `GET` | `/glucose/stats/hba1c` | JWT | HbA1c estimada |
-
-### 5.3 Nutrición — `/api/v1/meals`
-
-| Método | Endpoint | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/meals` | JWT | Listar comidas del día |
-| `POST` | `/meals` | JWT | Registrar comida con alimentos |
-| `GET` | `/meals/{id}` | JWT | Detalle de comida |
-| `PUT` | `/meals/{id}` | JWT | Actualizar comida |
-| `DELETE` | `/meals/{id}` | JWT | Eliminar registro |
-| `GET` | `/meals/summary/daily` | JWT | Resumen calórico del día |
-| `GET` | `/foods/search` | JWT | Buscar alimentos (USDA + custom) |
-
-### 5.4 Signos Vitales — `/api/v1/vitals`
-
-| Método | Endpoint | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/vitals` | JWT | Historial de signos vitales |
-| `POST` | `/vitals` | JWT | Registrar signos vitales |
-| `GET` | `/vitals/latest` | JWT | Última medición |
-| `GET` | `/vitals/bmi/trend` | JWT | Tendencia de IMC |
-
-### 5.5 Medicamentos — `/api/v1/medications`
-
-| Método | Endpoint | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/medications` | JWT | Listar medicamentos activos |
-| `POST` | `/medications` | JWT | Registrar medicamento |
-| `PUT` | `/medications/{id}` | JWT | Actualizar medicamento |
-| `DELETE` | `/medications/{id}` | JWT | Desactivar medicamento |
-| `POST` | `/medications/{id}/log` | JWT | Registrar toma del medicamento |
-
-### 5.6 Reportes — `/api/v1/reports`
-
-| Método | Endpoint | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/reports/medical-summary` | JWT | Resumen para consulta médica |
-| `GET` | `/reports/glucose-pdf` | JWT | Reporte PDF de glucosa |
-| `GET` | `/reports/nutrition-pdf` | JWT | Reporte PDF nutricional |
-| `GET` | `/reports/dashboard` | JWT | Datos del dashboard principal |
-
----
-
-## 6. Seguridad
-
-### 6.1 Autenticación con JWT
-
-- **Access Token**: duración 15 minutos, firmado con RS256 (clave asimétrica)
-- **Refresh Token**: duración 7 días, almacenado en tabla `refresh_tokens` con rotación
-- **Blacklist de tokens**: mediante Redis o tabla DB con TTL
-- **Cabecera**: `Authorization: Bearer <token>`
-
-### 6.2 Roles y Permisos
-
-| Rol | Alcance |
-|---|---|
-| `ROLE_PATIENT` | Acceso exclusivo a sus propios datos |
-| `ROLE_ADMIN` | Gestión del sistema (futuro) |
-
-### 6.3 Reglas de Acceso a Datos
-
-- Todos los recursos están asociados a `patientId`
-- Validación a nivel de servicio: el `patientId` del token debe coincidir con el del recurso
-- Uso de `@PreAuthorize` con SpEL para validación declarativa
-- CORS configurado explícitamente: solo orígenes del frontend en whitelist
-
-### 6.4 Protección de Datos Sensibles
-
-- **Contraseñas**: BCrypt con strength factor 12
-- **Datos médicos**: cifrado AES-256 en columnas sensibles (futuro)
-- **HTTPS** obligatorio en producción (TLS 1.2+)
-- **Rate limiting** en endpoints de autenticación: 5 intentos por minuto por IP
-
----
-
-## 7. Estándares Técnicos y de Código
-
-### 7.1 Convenciones de Nomenclatura
-
-| Elemento | Convención | Ejemplo |
+| Método | Patrón | Umbral |
 |---|---|---|
-| Clases / Interfaces | PascalCase | `GlucoseReadingService`, `PatientRepository` |
-| Métodos / Variables | camelCase | `findByPatientId()`, `glucoseValue` |
-| Constantes | UPPER_SNAKE_CASE | `MAX_GLUCOSE_VALUE`, `TOKEN_EXPIRY_MS` |
-| Paquetes | lowercase | `com.diabecare.domain.model` |
-| Tablas BD | snake_case | `glucose_readings`, `meal_entries` |
-| Columnas BD | snake_case | `patient_id`, `measured_at`, `hba1c_value` |
-| DTOs Request | PascalCase + `Request` | `CreateGlucoseRequest`, `UpdateMealRequest` |
-| DTOs Response | PascalCase + `Response` | `GlucoseReadingResponse`, `PatientResponse` |
-| Endpoints REST | kebab-case | `/glucose-readings`, `/meal-entries` |
-| Excepciones dominio | PascalCase + `Exception` | `GlucoseNotFoundException`, `InvalidRangeException` |
+| `detectHighFastingPattern` | Hiperglucemia en ayuno | >60% de ayunos >130 mg/dL, mín 3 lecturas |
+| `detectHighPostMealPattern` | Picos postprandiales | >50% postprandiales >180 mg/dL, mín 3 lecturas |
+| `detectRecurrentHypoglycemia` | Hipoglucemia recurrente | ≥3 episodios <70 mg/dL |
+| `detectHighVariability` | Alta variabilidad | CV ≥36% con ≥7 lecturas |
 
-### 7.2 Principios SOLID Aplicados
+Cada método retorna `Optional<Alert>` — patrón limpio, testeable unitariamente.
 
-- **S — Single Responsibility**: Cada clase tiene una única razón de cambio. Los Use Cases son granulares (`RegisterGlucoseUseCase`, `GetGlucoseStatsUseCase`)
-- **O — Open/Closed**: Las entidades de dominio son inmutables. Se extiende comportamiento con nuevos use cases sin modificar existentes
-- **L — Liskov Substitution**: Los repositorios son interfaces; cualquier implementación debe cumplir el contrato del puerto
-- **I — Interface Segregation**: Puertos de entrada granulares por operación, no un repositorio genérico para todo
-- **D — Dependency Inversion**: Los Use Cases dependen de interfaces (puertos), nunca de implementaciones concretas de Spring Data
+### 5.2 WeeklySummaryService
 
-### 7.3 Patrones de Diseño Utilizados
+Construye el resumen semanal por paciente:
+- `buildSummary(patient, readings)` → `Optional<WeeklySummaryData>`
+- `buildPushTitle()` → String
+- `buildPushMessage(data)` → String formateado
 
-| Patrón | Tipo | Aplicación en DiabeCare |
-|---|---|---|
-| Repository | Arquitectural | Abstracción del acceso a datos via puertos de salida |
-| Use Case / Interactor | Arquitectural | Un use case por operación de negocio |
-| Factory Method | Creacional | `GlucoseReading.create()` para construcción con validación |
-| Builder | Creacional | Para construcción de reportes y DTOs complejos |
-| Strategy | Comportamiento | Algoritmos de cálculo de métricas intercambiables |
-| Observer / Events | Comportamiento | Spring Events para notificaciones de alertas |
-| Mapper (Adapter) | Estructural | MapStruct para conversión entre capas |
-| Specification | Comportamiento | Criterios de búsqueda composable (JPA Specifications) |
+### 5.3 GlucoseExportService
 
-### 7.4 Manejo de Errores
+Serializa lecturas de glucosa:
+- `toCsv(readings)` → String con BOM UTF-8 (compatible con Excel)
+- `toJson(readings)` → String JSON
 
-Estructura estándar de error response (`@RestControllerAdvice`):
+### 5.4 AuditService
+
+Construye entradas de auditoría:
+- `buildCreateLog(patientId, entityType, entityId)` → `AuditLog`
+- `buildUpdateLog(patientId, entityType, entityId, fieldName, oldValue, newValue)` → `AuditLog`
+- `buildDeleteLog(patientId, entityType, entityId)` → `AuditLog`
+
+### 5.5 RateLimitService
+
+Verifica límites por paciente y operación usando Bucket4j:
+- `checkLimit(patientId, operation, bucketSupplier)` — lanza `RateLimitExceededException` si se excede
+
+---
+
+## 6. API REST — Endpoints
+
+### Autenticación
+```
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+POST   /api/v1/auth/refresh
+```
+
+### Glucosa
+```
+POST   /api/v1/glucose/{patientId}
+GET    /api/v1/glucose/{patientId}/history?from=&to=
+GET    /api/v1/glucose/{patientId}/stats?from=&to=
+DELETE /api/v1/glucose/{patientId}/{readingId}
+GET    /api/v1/glucose/{patientId}/export/csv?from=&to=
+GET    /api/v1/glucose/{patientId}/export/json?from=&to=
+```
+
+### Nutrición
+```
+POST   /api/v1/nutrition/{patientId}/meals
+GET    /api/v1/nutrition/{patientId}/summary?date=
+GET    /api/v1/nutrition/{patientId}/history?from=&to=
+GET    /api/v1/foods/search?query=
+```
+
+### Signos vitales
+```
+POST   /api/v1/vitals/{patientId}
+GET    /api/v1/vitals/{patientId}/latest
+GET    /api/v1/vitals/{patientId}/history?from=&to=
+GET    /api/v1/vitals/{patientId}/hba1c-trend?months=
+```
+
+### Ejercicio
+```
+POST   /api/v1/exercise/{patientId}
+GET    /api/v1/exercise/{patientId}/history?from=&to=
+```
+
+### Medicamentos
+```
+POST   /api/v1/medications/{patientId}
+GET    /api/v1/medications/{patientId}
+DELETE /api/v1/medications/{patientId}/{medicationId}
+```
+
+### Calculadora de insulina
+```
+POST   /api/v1/insulin/{patientId}/calculate
+```
+
+### Alertas
+```
+GET    /api/v1/alerts/{patientId}
+```
+
+### Ciclo menstrual
+```
+POST   /api/v1/menstrual-cycle/{patientId}
+GET    /api/v1/menstrual-cycle/{patientId}/status
+```
+
+### Paciente
+```
+GET    /api/v1/patients/{patientId}
+PUT    /api/v1/patients/{patientId}
+```
+
+### Reportes
+```
+GET    /api/v1/reports/{patientId}?from=&to=
+```
+
+### Push notifications
+```
+GET    /api/v1/push/vapid-public-key
+POST   /api/v1/push/subscribe
+DELETE /api/v1/push/unsubscribe
+```
+
+### Auditoría
+```
+GET    /api/v1/audit/{patientId}
+GET    /api/v1/audit/{patientId}/{entityType}
+```
+
+### Metadatos
+```
+GET    /api/v1/metadata/reading-types
+GET    /api/v1/metadata/glucose-units
+GET    /api/v1/metadata/meal-types
+GET    /api/v1/metadata/exercise-types
+GET    /api/v1/metadata/exercise-intensities
+GET    /api/v1/metadata/medication-types
+GET    /api/v1/metadata/medication-frequencies
+GET    /api/v1/metadata/dose-units
+GET    /api/v1/metadata/activity-levels
+GET    /api/v1/metadata/diabetes-types
+```
+
+---
+
+## 7. Seguridad
+
+### 7.1 JWT
+
+- Access token: 15 minutos (`JWT_ACCESS_EXPIRY_MS=900000`)
+- Refresh token: 7 días (`JWT_REFRESH_EXPIRY_MS=604800000`)
+- Algoritmo: HMAC-SHA256
+- Cabecera: `Authorization: Bearer <token>`
+
+### 7.2 Endpoints públicos
+
+```java
+private static final String[] PUBLIC_ENDPOINTS = {
+    "/api/v1/auth/**",
+    "/swagger-ui/**", "/v3/api-docs/**",
+    "/actuator/health"
+};
+```
+
+Todos los demás requieren JWT válido.
+
+### 7.3 Protección de datos
+
+- Contraseñas: BCrypt con strength factor configurable (`BCRYPT_STRENGTH=12`)
+- CORS: orígenes configurables via `CORS_ALLOWED_ORIGINS`
+- Sesión: `STATELESS` — sin cookies ni sesiones del servidor
+
+### 7.4 Manejo de errores
 
 ```json
 {
-  "timestamp": "2024-01-15T10:30:00Z",
-  "status": 404,
-  "error": "NOT_FOUND",
-  "code": "GLUCOSE_READING_NOT_FOUND",
-  "message": "No se encontró la lectura de glucosa con id: abc-123",
-  "path": "/api/v1/glucose/abc-123"
+  "timestamp": "2026-06-13T12:00:00",
+  "status": 429,
+  "error": "Too Many Requests",
+  "code": "RATE_LIMIT_EXCEEDED",
+  "message": "Límite de registros excedido para GLUCOSE. Intenta de nuevo más tarde.",
+  "path": "/api/v1/glucose/..."
 }
 ```
 
-### 7.5 Validaciones
-
-- Jakarta Bean Validation (`@Valid`) en todos los DTOs de request
-- Validaciones de dominio en los constructores/factory methods de entidades
-- Rangos médicos validados: glucosa 20–600 mg/dL, presión 50–250 mmHg, peso 20–500 kg
-- Mensajes de validación en español para el usuario final
+Códigos de error manejados: `PATIENT_NOT_FOUND`, `GLUCOSE_READING_NOT_FOUND`, `DOMAIN_VALIDATION_ERROR`, `VALIDATION_ERROR`, `RATE_LIMIT_EXCEEDED`, `INTERNAL_ERROR`.
 
 ---
 
-## 8. Base de Datos
+## 8. Push Notifications
 
-### 8.1 Estrategia de Migración
+### 8.1 Flujo
 
-- **Flyway** para versionado de esquema: `V1__create_users.sql`, `V2__create_patients.sql`, etc.
-- Prohibido usar Hibernate DDL auto en producción (`spring.jpa.hibernate.ddl-auto=validate`)
-- Todas las tablas incluyen: `created_at`, `updated_at`, `created_by`, `version` (optimistic locking)
+1. Frontend solicita clave pública VAPID (`GET /api/v1/push/vapid-public-key`)
+2. Frontend suscribe el navegador al `PushManager` con la clave pública
+3. Frontend envía `{ endpoint, p256dh, auth }` al backend (`POST /api/v1/push/subscribe`)
+4. Backend guarda la suscripción en `push_subscriptions` asociada al `patient_id`
+5. Backend envía notificaciones con `PushNotificationService` usando la librería `web-push`
 
-### 8.2 Tablas Principales
+### 8.2 Generación de claves VAPID
+
+Algoritmo: EC prime256v1 (BouncyCastle). Las claves se configuran via variables de entorno `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
+
+### 8.3 Auto-limpieza
+
+Al recibir respuesta HTTP 410 (Gone) al enviar una notificación, la suscripción se elimina automáticamente de la base de datos.
+
+---
+
+## 9. Tareas Programadas
+
+### 9.1 WeeklySummaryScheduler
+
+```java
+@Scheduled(cron = "0 0 8 * * MON", zone = "America/Bogota")
+public void sendWeeklySummaries()
+```
+
+Ejecuta todos los lunes a las 8am hora de Bogotá. Flujo:
+
+```
+WeeklySummaryScheduler
+  → SendWeeklySummaryUseCaseImpl.sendToAllPatients()
+      → LoadPatientPort.findAll()
+      → LoadGlucoseReadingPort.findByPatientIdAndDateRange() (últimos 7 días)
+      → WeeklySummaryService.buildSummary()
+      → NotifyPatientPort.notify() → PushNotificationAdapter → PushNotificationService
+```
+
+El scheduler solo dispara — no orquesta. El caso de uso orquesta. El servicio de dominio calcula. El adaptador notifica. SRP respetado en cada capa.
+
+---
+
+## 10. Rate Limiting
+
+Implementado con **Bucket4j** + **Caffeine Cache**. Un bucket por paciente+operación, almacenado en memoria con expiración de 1 hora.
+
+| Operación | Límite | Período |
+|---|---|---|
+| Registro de glucosa | 20 | 1 hora |
+| Registro de comidas | 15 | 1 hora |
+| Registro de ejercicio | 10 | 1 hora |
+
+Al exceder el límite: `HTTP 429 Too Many Requests` con código `RATE_LIMIT_EXCEEDED`.
+
+---
+
+## 11. Auditoría
+
+Registra cambios en perfil del paciente y medicamentos en la tabla `audit_log`.
+
+**Cambios auditados en paciente:**
+- `targetGlucoseRange` (rango objetivo de glucosa)
+- `dailyCalorieGoal` (meta calórica)
+- `activityLevel` (nivel de actividad)
+- `preferredGlucoseUnit` (unidad preferida)
+
+**Cambios auditados en medicamentos:**
+- CREATE al registrar un medicamento
+- DELETE al desactivar un medicamento
+
+Solo se registra cuando el valor realmente cambia (comparación `oldValue != newValue`).
+
+---
+
+## 12. Estándares Técnicos y de Código
+
+### 12.1 Convenciones de Nomenclatura
+
+| Elemento | Convención | Ejemplo |
+|---|---|---|
+| Clases / Interfaces | PascalCase | `GlucoseReadingService` |
+| Métodos / Variables | camelCase | `findByPatientId()` |
+| Constantes | UPPER_SNAKE_CASE | `MAX_GLUCOSE_VALUE` |
+| Paquetes | lowercase | `com.diabecare.domain.model` |
+| Tablas BD | snake_case | `glucose_readings` |
+| DTOs Request | PascalCase + `Request` | `RegisterGlucoseRequest` |
+| DTOs Response | PascalCase + `Response` | `GlucoseReadingResponse` |
+| Puertos entrada | PascalCase + `UseCase` | `RegisterGlucoseReadingUseCase` |
+| Puertos salida | PascalCase + `Port` | `LoadPatientPort`, `SaveAuditLogPort` |
+
+### 12.2 Principios SOLID
+
+- **S** — Un use case por operación. Un método por responsabilidad en los domain services
+- **O** — Nuevas funcionalidades = nuevos use cases, no modificar existentes
+- **L** — Los puertos son contratos; cualquier implementación debe cumplirlos
+- **I** — Puertos granulares: `LoadPatientPort`, `SavePatientPort` separados
+- **D** — Use Cases dependen de interfaces, nunca de implementaciones concretas
+
+### 12.3 Reglas de código
+
+- Records Java para DTOs inmutables (`request/response records`)
+- `@Builder` + `@Getter` en entidades de dominio (nunca setters públicos)
+- Factory methods con validación: `GlucoseReading.create(...)`, `Patient.create(...)`
+- Métodos privados atómicos en use cases complejos (e.g. `auditGlucoseTarget`, `auditActivityLevel`)
+- `Optional<T>` para retornos que pueden ser vacíos (detectores de patrón)
+- `List.of()` para colecciones inmutables vacías
+
+---
+
+## 13. Base de Datos
+
+### 13.1 Migraciones Flyway
+
+| Versión | Archivo | Descripción |
+|---|---|---|
+| V1 | `V1__create_initial_schema.sql` | Tablas base |
+| V2 | `V2__remove_version_columns.sql` | Limpieza |
+| V3 | `V3__update_foods_table.sql` | Actualización foods |
+| V4 | `V4__seed_foods.sql` | 172 alimentos colombianos |
+| V5 | `V5__add_insulin_profile.sql` | ISF, ratio, objetivo corrección |
+| V6 | `V6__create_exercise_table.sql` | exercise_logs |
+| V7 | `V7__add_menstrual_cycle.sql` | biological_sex, menstrual_cycles |
+| V8 | `V8__push_subscriptions.sql` | push_subscriptions |
+| V9 | `V9__audit_log.sql` | audit_log |
+
+### 13.2 Tablas Principales
 
 | Tabla | Descripción |
 |---|---|
 | `users` | Credenciales y datos de acceso |
 | `patients` | Perfil médico del paciente |
-| `glucose_readings` | Lecturas de glucosa en sangre |
-| `meal_entries` | Registros de comidas |
-| `meal_items` | Alimentos individuales de cada comida |
-| `foods` | Base de datos de alimentos con información nutricional |
-| `vital_signs` | Signos vitales: peso, presión, FC |
-| `medications` | Medicamentos activos del paciente |
-| `medication_logs` | Historial de tomas de medicamentos |
-| `alerts` | Alertas generadas por valores fuera de rango |
-| `refresh_tokens` | Gestión de JWT refresh tokens |
+| `glucose_readings` | Lecturas de glucosa |
+| `meal_entries` + `meal_items` | Comidas y alimentos individuales |
+| `foods` | 172 alimentos colombianos con macros |
+| `vital_signs` | Peso, presión, FC, HbA1c medida |
+| `medications` | Medicamentos activos |
+| `exercise_logs` | Registros de actividad física |
+| `menstrual_cycles` | Ciclos menstruales con síntomas |
+| `push_subscriptions` | Suscripciones Web Push por paciente |
+| `audit_log` | Historial de cambios auditables |
 
-### 8.3 Índices de Rendimiento
+### 13.3 Índices de Rendimiento
 
-- `glucose_readings`: índice compuesto `(patient_id, measured_at DESC)` — consulta más frecuente
-- `meal_entries`: índice compuesto `(patient_id, consumed_at DESC)`
-- `vital_signs`: índice compuesto `(patient_id, measured_at DESC)`
-- `foods`: índice de texto completo en columna `name` para búsqueda por nombre
-
----
-
-## 9. Estrategia de Testing
-
-### 9.1 Pirámide de Tests
-
-| Nivel | Herramienta | Cobertura objetivo | Qué prueba |
-|---|---|---|---|
-| Unit Tests | JUnit 5 + Mockito | > 80% | Use cases, Domain services, Calculators |
-| Integration Tests | @SpringBootTest + Testcontainers | Flujos críticos | Repositorios con PostgreSQL real |
-| API Tests | MockMvc / RestAssured | Todos los endpoints | Controllers, validaciones, auth |
-| Architecture Tests | ArchUnit | Reglas de arquitectura | Dependencias entre capas |
-
-### 9.2 Reglas ArchUnit
-
-- El dominio **no puede** importar clases de Spring, JPA o cualquier framework
-- Los Use Cases solo pueden depender del dominio y de interfaces (puertos)
-- Los Controllers no pueden acceder directamente a repositorios
-- Las entidades JPA deben estar en el paquete `infrastructure.persistence.entity`
+- `glucose_readings(patient_id, measured_at DESC)` — consulta más frecuente
+- `meal_entries(patient_id, consumed_at DESC)`
+- `vital_signs(patient_id, measured_at DESC)`
+- `push_subscriptions(patient_id)`
+- `audit_log(patient_id)`, `audit_log(entity_type, entity_id)`, `audit_log(performed_at DESC)`
+- `foods` — índice de texto completo en `name`
 
 ---
 
-## 10. Dependencias Principales
+## 14. Estrategia de Testing
 
-```xml
-<!-- pom.xml — dependencias clave -->
-```
+### 14.1 Pirámide de Tests
+
+| Nivel | Herramienta | Qué prueba |
+|---|---|---|
+| Unit Tests | JUnit 5 + Mockito | Use cases, Domain services, Calculators, PatternDetector |
+| Architecture Tests | ArchUnit | Dependencias entre capas |
+| Smoke Test | @SpringBootTest | Arranque del contexto completo |
+
+### 14.2 Suites actuales (31 tests — 100% passing)
+
+| Suite | Tests | Descripción |
+|---|---|---|
+| `MedicalCalculatorServiceTest` | 14 | IMC, HbA1c, TIR, CV, promedio, SD |
+| `RegisterGlucoseReadingUseCaseTest` | 5 | Registro exitoso, paciente no encontrado, validaciones |
+| `GetAlertsUseCaseTest` | 4 | Alertas de glucosa, nutrición, racha positiva |
+| `ArchitectureTest` | 7 | Reglas de dependencias entre capas |
+| `DiabecareApiApplicationTests` | 1 | Smoke test de arranque |
+
+### 14.3 Reglas ArchUnit verificadas
+
+- Dominio no importa Spring, JPA, ni infraestructura
+- Use Cases solo dependen de dominio e interfaces
+- Controllers no acceden a repositorios directamente
+- Entidades JPA solo en `infrastructure.persistence.entity`
+
+---
+
+## 15. Dependencias Principales
 
 | Dependencia | Versión | Propósito |
 |---|---|---|
-| `spring-boot-starter-web` | 3.x | REST API + Tomcat embebido |
-| `spring-boot-starter-security` | 3.x | Autenticación y autorización |
-| `spring-boot-starter-data-jpa` | 3.x | Persistencia con Hibernate |
-| `spring-boot-starter-validation` | 3.x | Bean Validation |
-| `jjwt-api` + `jjwt-impl` | 0.12.x | Generación y validación JWT |
-| `postgresql` | 42.x | Driver JDBC PostgreSQL |
-| `flyway-core` | 9.x | Migraciones de base de datos |
-| `mapstruct` | 1.5.x | Mapeo entre capas |
-| `lombok` | 1.18.x | Reducción de boilerplate |
-| `springdoc-openapi-starter` | 2.x | Documentación Swagger UI |
-| `testcontainers-postgresql` | 1.19.x | Tests de integración con BD real |
-| `archunit-junit5` | 1.x | Tests de arquitectura |
+| `spring-boot-starter-web` | 3.5.14 | REST API |
+| `spring-boot-starter-security` | 3.5.14 | Autenticación |
+| `spring-boot-starter-data-jpa` | 3.5.14 | Persistencia |
+| `spring-boot-starter-validation` | 3.5.14 | Bean Validation |
+| `spring-boot-starter-cache` | 3.5.14 | Abstracción de caché |
+| `jjwt-api` + `jjwt-impl` | 0.12.5 | JWT |
+| `postgresql` | 42.7.10 | Driver JDBC |
+| `flyway-core` | 11.7.2 | Migraciones |
+| `mapstruct` | 1.5.5 | Mapeo entre capas |
+| `lombok` | 1.18.30 | Boilerplate |
+| `springdoc-openapi-starter` | 2.8.9 | Swagger UI |
+| `itext` | 8.0.4 | Generación PDF |
+| `caffeine` | 3.2.3 | Cache en memoria |
+| `web-push` | 5.1.1 | Notificaciones push |
+| `bcprov-jdk15on` | 1.70 | BouncyCastle (VAPID) |
+| `bucket4j-core` | 8.10.1 | Rate limiting |
+| `archunit-junit5` | 1.3.0 | Tests de arquitectura |
 
 ---
 
-## 11. Configuración y Despliegue
+## 16. Configuración y Despliegue
 
-### 11.1 Perfiles de Spring
+### 16.1 Perfiles de Spring
 
 | Perfil | Configuración |
 |---|---|
-| `dev` | H2 en memoria, logs DEBUG, Swagger habilitado, sin HTTPS |
-| `test` | Testcontainers, datos de prueba con `@Sql` |
-| `prod` | PostgreSQL, logs INFO/WARN, Swagger deshabilitado, HTTPS obligatorio |
+| `dev` | PostgreSQL local, logs DEBUG, Swagger habilitado |
+| `prod` | PostgreSQL, logs INFO/WARN, Swagger deshabilitado |
 
-### 11.2 Variables de Entorno Requeridas (Producción)
+### 16.2 Variables de Entorno Requeridas
 
 ```env
+# Base de datos
 DB_URL=jdbc:postgresql://localhost:5432/diabecare
 DB_USERNAME=diabecare_user
 DB_PASSWORD=<secret>
-JWT_SECRET_KEY=<base64-encoded-rsa-private-key>
+
+# JWT
+JWT_SECRET_KEY=<base64-min-256-bits>
 JWT_ACCESS_EXPIRY_MS=900000
 JWT_REFRESH_EXPIRY_MS=604800000
+
+# Seguridad
 CORS_ALLOWED_ORIGINS=https://app.diabecare.com
+BCRYPT_STRENGTH=12
+
+# Web Push (VAPID)
+VAPID_PUBLIC_KEY=<base64-ec-public-key>
+VAPID_PRIVATE_KEY=<base64-ec-private-key>
+VAPID_SUBJECT=mailto:admin@diabecare.com
 ```
 
-### 11.3 Docker Compose (Desarrollo)
+### 16.3 Docker Compose (Desarrollo)
 
 ```yaml
 services:
@@ -520,7 +670,14 @@ services:
     build: .
     ports: ['8080:8080']
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://postgres:5432/diabecare
+      DB_USERNAME: diabecare_user
+      DB_PASSWORD: dev_password
+      JWT_SECRET_KEY: dev-secret-key-minimo-32-chars
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: mailto:admin@diabecare.com
     depends_on: [postgres]
 
   postgres:
@@ -535,4 +692,4 @@ services:
 
 ---
 
-*DiabeCare Backend Documentation v1.0*
+*DiabeCare Backend Documentation v2.0*
