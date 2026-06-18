@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Slf4j
@@ -25,15 +26,10 @@ public class JwtService {
 
     private final JwtProperties jwtProperties;
 
-    public String generateAccessToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails,
-                jwtProperties.getAccessTokenExpiryMs());
-    }
-
-    public String generateAccessToken(Map<String, Object> extraClaims,
-                                      UserDetails userDetails) {
-        return generateToken(extraClaims, userDetails,
-                jwtProperties.getAccessTokenExpiryMs());
+    public String generateAccessToken(UserDetails userDetails, UUID userId) {
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("userId", userId.toString());
+        return generateToken(extraClaims, userDetails, jwtProperties.getAccessTokenExpiryMs());
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {

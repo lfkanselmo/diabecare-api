@@ -35,6 +35,12 @@ public class UserEntity {
     @Column(nullable = false)
     private boolean enabled;
 
+    @Column(name = "suspended_at")
+    private LocalDateTime suspendedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -42,4 +48,12 @@ public class UserEntity {
     @LastModifiedDate
     @Column(nullable = false)
     private LocalDateTime updatedAt;
+
+    public boolean isSuspended() {
+        return suspendedAt != null;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
 }

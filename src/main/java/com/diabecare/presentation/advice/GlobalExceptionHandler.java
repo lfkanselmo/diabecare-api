@@ -63,6 +63,22 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMIT_EXCEEDED", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
+    public ResponseEntity<ApiError> handleDisabled(
+            org.springframework.security.authentication.DisabledException ex,
+            HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, "ACCOUNT_SUSPENDED",
+                "Tu cuenta está suspendida. Contacta soporte para reactivarla.", request);
+    }
+
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ResponseEntity<ApiError> handleBadCredentials(
+            org.springframework.security.authentication.BadCredentialsException ex,
+            HttpServletRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS",
+                "Correo o contraseña incorrectos.", request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(
             Exception ex, HttpServletRequest request) {
