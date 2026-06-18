@@ -6,7 +6,6 @@ import com.diabecare.application.port.out.SaveMealEntryPort;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.MealEntry;
 import com.diabecare.domain.service.RateLimitService;
-import com.diabecare.infrastructure.config.RateLimitConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +21,7 @@ public class RegisterMealEntryUseCaseImpl implements RegisterMealEntryUseCase {
 
     @Override
     public MealEntry execute(Command command) {
-        rateLimitService.checkLimit(
-                command.patientId(),
-                "MEAL",
-                RateLimitConfig::createMealBucket
-        );
+        rateLimitService.checkMealLimit(command.patientId());
 
         loadPatientPort.findById(command.patientId())
                 .orElseThrow(() -> new PatientNotFoundException(

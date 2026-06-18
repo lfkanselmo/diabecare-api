@@ -6,7 +6,6 @@ import com.diabecare.application.port.out.SaveExerciseLogPort;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.ExerciseLog;
 import com.diabecare.domain.service.RateLimitService;
-import com.diabecare.infrastructure.config.RateLimitConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +21,7 @@ public class RegisterExerciseUseCaseImpl implements RegisterExerciseUseCase {
 
     @Override
     public ExerciseLog execute(Command command) {
-        rateLimitService.checkLimit(
-                command.patientId(),
-                "EXERCISE",
-                RateLimitConfig::createExerciseBucket
-        );
+        rateLimitService.checkExerciseLimit(command.patientId());
 
         loadPatientPort.findById(command.patientId())
                 .orElseThrow(() -> new PatientNotFoundException(

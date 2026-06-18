@@ -25,7 +25,8 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
     private final LoadMenstrualCyclePort   loadMenstrualCyclePort;
     private final MedicalCalculatorService medicalCalculatorService;
     private final AlertConfigPort          alertConfig;
-    private final PatternDetectorService patternDetectorService;
+    private final PatternDetectorService   patternDetectorService;
+    private final SystemConfigPort         systemConfig;
 
     @Override
     public List<Alert> getAlerts(UUID patientId) {
@@ -73,14 +74,16 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
                     .type(Alert.AlertType.GLUCOSE_OUT_OF_RANGE)
                     .severity(Alert.Severity.DANGER)
                     .title("⚠ Hipoglucemia detectada")
-                    .message(String.format("Tu última lectura fue %.0f mg/dL. Consume carbohidratos de acción rápida.", value))
+                    .message(String.format(
+                            "Tu última lectura fue %.0f mg/dL. Consume carbohidratos de acción rápida.", value))
                     .build());
         } else if (value > patient.getTargetGlucoseMax().doubleValue()) {
             alerts.add(Alert.builder()
                     .type(Alert.AlertType.GLUCOSE_OUT_OF_RANGE)
                     .severity(Alert.Severity.WARNING)
                     .title("Glucosa elevada")
-                    .message(String.format("Tu última lectura fue %.0f mg/dL, por encima de tu objetivo de %s mg/dL.",
+                    .message(String.format(
+                            "Tu última lectura fue %.0f mg/dL, por encima de tu objetivo de %s mg/dL.",
                             value, patient.getTargetGlucoseMax()))
                     .build());
         }
@@ -90,15 +93,17 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
                 .findByPatientIdAndDateRange(patient.getPatientId(), weekAgo, now);
 
         if (weekReadings.size() >= alertConfig.minReadingsForStats()) {
-            BigDecimal avg = medicalCalculatorService.calculateAverage(weekReadings);
+            BigDecimal avg   = medicalCalculatorService.calculateAverage(weekReadings);
             BigDecimal hba1c = medicalCalculatorService.estimateHba1c(avg);
+            double hba1cThreshold = systemConfig.getDecimal("alert.hba1c_threshold");
 
-            if (hba1c.doubleValue() > 8.0) {
+            if (hba1c.doubleValue() > hba1cThreshold) {
                 alerts.add(Alert.builder()
                         .type(Alert.AlertType.HIGH_HBA1C_ESTIMATED)
                         .severity(Alert.Severity.WARNING)
                         .title("HbA1c estimada elevada")
-                        .message(String.format("Tu HbA1c estimada es %.1f%%. Considera consultar a tu médico.",
+                        .message(String.format(
+                                "Tu HbA1c estimada es %.1f%%. Considera consultar a tu médico.",
                                 hba1c.doubleValue()))
                         .build());
             }
@@ -142,7 +147,8 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
                     .type(Alert.AlertType.POSITIVE_STREAK)
                     .severity(Alert.Severity.SUCCESS)
                     .title("¡Excelente control glucémico!")
-                    .message(String.format("Tu tiempo en rango de los últimos %d días es %.0f%%. ¡Sigue así!",
+                    .message(String.format(
+                            "Tu tiempo en rango de los últimos %d días es %.0f%%. ¡Sigue así!",
                             alertConfig.streakDays(), tir.doubleValue()))
                     .build());
         }
@@ -209,8 +215,10 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
     }
 
     private List<Alert> checkPatternAlerts(Patient patient, LocalDateTime now) {
+        int daysWindow = systemConfig.getInt("pattern.days_window");
+
         List<GlucoseReading> readings = loadGlucoseReadingPort
-                .findByPatientIdAndDateRange(patient.getPatientId(), now.minusDays(14), now);
+                .findByPatientIdAndDateRange(patient.getPatientId(), now.minusDays(daysWindow), now);
 
         if (readings.size() < alertConfig.minReadingsForStats()) return List.of();
 

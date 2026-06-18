@@ -1,9 +1,11 @@
 package com.diabecare.infrastructure.config;
 
+import com.diabecare.application.port.out.SystemConfigPort;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,7 +14,10 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
+@RequiredArgsConstructor
 public class RateLimitConfig {
+
+    private final SystemConfigPort systemConfig;
 
     @Bean
     public Cache<UUID, Bucket> rateLimitCache() {
@@ -22,29 +27,11 @@ public class RateLimitConfig {
                 .build();
     }
 
-    public static Bucket createGlucoseBucket() {
+    private Bucket buildBucket(int limit) {
         return Bucket.builder()
                 .addLimit(Bandwidth.builder()
-                        .capacity(20)
-                        .refillGreedy(20, Duration.ofHours(1))
-                        .build())
-                .build();
-    }
-
-    public static Bucket createMealBucket() {
-        return Bucket.builder()
-                .addLimit(Bandwidth.builder()
-                        .capacity(15)
-                        .refillGreedy(15, Duration.ofHours(1))
-                        .build())
-                .build();
-    }
-
-    public static Bucket createExerciseBucket() {
-        return Bucket.builder()
-                .addLimit(Bandwidth.builder()
-                        .capacity(10)
-                        .refillGreedy(10, Duration.ofHours(1))
+                        .capacity(limit)
+                        .refillGreedy(limit, Duration.ofHours(1))
                         .build())
                 .build();
     }

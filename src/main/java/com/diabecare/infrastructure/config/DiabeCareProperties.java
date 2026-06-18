@@ -4,20 +4,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "diabecare")
 public record DiabeCareProperties(
-        Clinical clinical,
         Security security,
-        Push push
+        Push     push
 ) {
-    public record Clinical(
-            int hoursWithoutGlucoseAlert,
-            int streakDays,
-            double goodTirThreshold,
-            int minReadingsForStats
-    ) {}
-
     public record Security(
             String[] corsAllowedOrigins,
-            int bcryptStrength
+            int      bcryptStrength
     ) {}
 
     public record Push(

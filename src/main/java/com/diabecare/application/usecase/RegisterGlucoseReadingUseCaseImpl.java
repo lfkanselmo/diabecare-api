@@ -6,7 +6,6 @@ import com.diabecare.application.port.out.SaveGlucoseReadingPort;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.GlucoseReading;
 import com.diabecare.domain.service.RateLimitService;
-import com.diabecare.infrastructure.config.RateLimitConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +21,7 @@ public class RegisterGlucoseReadingUseCaseImpl implements RegisterGlucoseReading
 
     @Override
     public GlucoseReading execute(Command command) {
-        rateLimitService.checkLimit(
-                command.patientId(),
-                "GLUCOSE",
-                RateLimitConfig::createGlucoseBucket
-        );
+        rateLimitService.checkGlucoseLimit(command.patientId());
 
         loadPatientPort.findById(command.patientId())
                 .orElseThrow(() -> new PatientNotFoundException(
