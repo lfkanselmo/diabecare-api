@@ -27,6 +27,7 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
     private final AlertConfigPort          alertConfig;
     private final PatternDetectorService   patternDetectorService;
     private final SystemConfigPort         systemConfig;
+    private final MessageResolverPort      messages;
 
     @Override
     public List<Alert> getAlerts(UUID patientId) {
@@ -59,9 +60,9 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
             alerts.add(Alert.builder()
                     .type(Alert.AlertType.NO_GLUCOSE_RECORDED)
                     .severity(Alert.Severity.WARNING)
-                    .title("Sin registro de glucosa")
-                    .message("No has registrado tu glucosa en las últimas " +
-                            alertConfig.hoursWithoutGlucoseAlert() + " horas.")
+                    .title(messages.resolve("alert.no-glucose.title"))
+                    .message(messages.resolve("alert.no-glucose.message",
+                            alertConfig.hoursWithoutGlucoseAlert()))
                     .build());
             return alerts;
         }
@@ -73,17 +74,15 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
             alerts.add(Alert.builder()
                     .type(Alert.AlertType.GLUCOSE_OUT_OF_RANGE)
                     .severity(Alert.Severity.DANGER)
-                    .title("⚠ Hipoglucemia detectada")
-                    .message(String.format(
-                            "Tu última lectura fue %.0f mg/dL. Consume carbohidratos de acción rápida.", value))
+                    .title(messages.resolve("alert.hypo.title"))
+                    .message(messages.resolve("alert.hypo.message", value))
                     .build());
         } else if (value > patient.getTargetGlucoseMax().doubleValue()) {
             alerts.add(Alert.builder()
                     .type(Alert.AlertType.GLUCOSE_OUT_OF_RANGE)
                     .severity(Alert.Severity.WARNING)
-                    .title("Glucosa elevada")
-                    .message(String.format(
-                            "Tu última lectura fue %.0f mg/dL, por encima de tu objetivo de %s mg/dL.",
+                    .title(messages.resolve("alert.high.title"))
+                    .message(messages.resolve("alert.high.message",
                             value, patient.getTargetGlucoseMax()))
                     .build());
         }
@@ -101,10 +100,8 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
                 alerts.add(Alert.builder()
                         .type(Alert.AlertType.HIGH_HBA1C_ESTIMATED)
                         .severity(Alert.Severity.WARNING)
-                        .title("HbA1c estimada elevada")
-                        .message(String.format(
-                                "Tu HbA1c estimada es %.1f%%. Considera consultar a tu médico.",
-                                hba1c.doubleValue()))
+                        .title(messages.resolve("alert.hba1c-high.title"))
+                        .message(messages.resolve("alert.hba1c-high.message", hba1c.doubleValue()))
                         .build());
             }
         }
@@ -122,8 +119,8 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
             alerts.add(Alert.builder()
                     .type(Alert.AlertType.NO_MEAL_RECORDED)
                     .severity(Alert.Severity.INFO)
-                    .title("Sin comidas registradas hoy")
-                    .message("No has registrado ninguna comida hoy. El seguimiento nutricional mejora el control glucémico.")
+                    .title(messages.resolve("alert.no-meal.title"))
+                    .message(messages.resolve("alert.no-meal.message"))
                     .build());
         }
 
@@ -146,9 +143,8 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
             alerts.add(Alert.builder()
                     .type(Alert.AlertType.POSITIVE_STREAK)
                     .severity(Alert.Severity.SUCCESS)
-                    .title("¡Excelente control glucémico!")
-                    .message(String.format(
-                            "Tu tiempo en rango de los últimos %d días es %.0f%%. ¡Sigue así!",
+                    .title(messages.resolve("alert.positive-streak.title"))
+                    .message(messages.resolve("alert.positive-streak.message",
                             alertConfig.streakDays(), tir.doubleValue()))
                     .build());
         }
@@ -169,19 +165,19 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
                         case LUTEAL_LATE -> alerts.add(Alert.builder()
                                 .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
                                 .severity(Alert.Severity.WARNING)
-                                .title("⚡ Fase lútea tardía — Mayor resistencia a insulina")
+                                .title(messages.resolve("alert.cycle.luteal-late.title"))
                                 .message(cycle.getPhaseGlucoseGuidance())
                                 .build());
                         case LUTEAL_EARLY -> alerts.add(Alert.builder()
                                 .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
                                 .severity(Alert.Severity.INFO)
-                                .title("🌙 Fase lútea — Monitoreo frecuente recomendado")
+                                .title(messages.resolve("alert.cycle.luteal-early.title"))
                                 .message(cycle.getPhaseGlucoseGuidance())
                                 .build());
                         case OVULATION -> alerts.add(Alert.builder()
                                 .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
                                 .severity(Alert.Severity.INFO)
-                                .title("✨ Período de ovulación")
+                                .title(messages.resolve("alert.cycle.ovulation.title"))
                                 .message(cycle.getPhaseGlucoseGuidance())
                                 .build());
                         default -> {}
@@ -191,22 +187,22 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
                         alerts.add(Alert.builder()
                                 .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
                                 .severity(Alert.Severity.INFO)
-                                .title("🩸 Tu período llega en 3 días")
-                                .message("Prepárate para posibles cambios en tu glucosa.")
+                                .title(messages.resolve("alert.cycle.period-3days.title"))
+                                .message(messages.resolve("alert.cycle.period-3days.message"))
                                 .build());
                     } else if (daysUntilNext == 1) {
                         alerts.add(Alert.builder()
                                 .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
                                 .severity(Alert.Severity.WARNING)
-                                .title("🩸 Tu período llega mañana")
-                                .message("Monitorea tu glucosa con mayor frecuencia hoy y mañana.")
+                                .title(messages.resolve("alert.cycle.period-tomorrow.title"))
+                                .message(messages.resolve("alert.cycle.period-tomorrow.message"))
                                 .build());
                     } else if (daysUntilNext == 0) {
                         alerts.add(Alert.builder()
                                 .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
                                 .severity(Alert.Severity.WARNING)
-                                .title("🩸 Tu período comienza hoy")
-                                .message("No olvides registrar el inicio de tu nuevo ciclo.")
+                                .title(messages.resolve("alert.cycle.period-today.title"))
+                                .message(messages.resolve("alert.cycle.period-today.message"))
                                 .build());
                     }
                 });

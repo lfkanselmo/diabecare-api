@@ -1,5 +1,6 @@
 package com.diabecare.domain.service;
 
+import com.diabecare.application.port.out.MessageResolverPort;
 import com.diabecare.domain.model.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import java.util.Optional;
 public class WeeklySummaryService {
 
     private final MedicalCalculatorService calculator;
+    private final MessageResolverPort      messages;
 
     public Optional<WeeklySummaryData> buildSummary(Patient patient, List<GlucoseReading> readings) {
         if (readings.isEmpty()) return Optional.empty();
@@ -39,12 +41,11 @@ public class WeeklySummaryService {
     }
 
     public String buildPushTitle() {
-        return "📊 Tu resumen semanal — DiabeCare";
+        return messages.resolve("weekly-summary.push.title");
     }
 
     public String buildPushMessage(WeeklySummaryData data) {
-        return String.format(
-                "Promedio: %.0f mg/dL · TIR: %.0f%% · HbA1c est: %.1f%% · Hipos: %d · Hipers: %d",
+        return messages.resolve("weekly-summary.push.message",
                 data.averageGlucose(),
                 data.timeInRangePercent(),
                 data.estimatedHba1c(),

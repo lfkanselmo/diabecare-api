@@ -1,5 +1,6 @@
 package com.diabecare.domain.service;
 
+import com.diabecare.application.port.out.MessageResolverPort;
 import com.diabecare.application.port.out.SystemConfigPort;
 import com.diabecare.domain.model.*;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ public class PatternDetectorService {
 
     private final MedicalCalculatorService calculator;
     private final SystemConfigPort         systemConfig;
+    private final MessageResolverPort      messages;
 
     public Optional<Alert> detectHighFastingPattern(List<GlucoseReading> readings) {
         int    threshold = systemConfig.getInt("pattern.fasting_threshold_mgdl");
@@ -36,10 +38,8 @@ public class PatternDetectorService {
         return Optional.of(Alert.builder()
                 .type(Alert.AlertType.GLUCOSE_PATTERN_DETECTED)
                 .severity(Alert.Severity.WARNING)
-                .title("Patrón: glucosa alta en ayuno")
-                .message(String.format(
-                        "%d de tus últimas %d lecturas de ayuno superaron %d mg/dL. " +
-                                "Considera ajustar tu insulina basal o consultar a tu médico.",
+                .title(messages.resolve("alert.pattern.fasting-high.title"))
+                .message(messages.resolve("alert.pattern.fasting-high.message",
                         highCount, fasting.size(), threshold))
                 .build());
     }
@@ -64,10 +64,8 @@ public class PatternDetectorService {
         return Optional.of(Alert.builder()
                 .type(Alert.AlertType.GLUCOSE_PATTERN_DETECTED)
                 .severity(Alert.Severity.WARNING)
-                .title("Patrón: picos postprandiales frecuentes")
-                .message(String.format(
-                        "%d de tus últimas %d lecturas postprandiales superaron %d mg/dL. " +
-                                "Revisa el tamaño de tus porciones o ajusta la insulina bolo.",
+                .title(messages.resolve("alert.pattern.postmeal-high.title"))
+                .message(messages.resolve("alert.pattern.postmeal-high.message",
                         highCount, postMeal.size(), threshold))
                 .build());
     }
@@ -85,10 +83,8 @@ public class PatternDetectorService {
         return Optional.of(Alert.builder()
                 .type(Alert.AlertType.GLUCOSE_PATTERN_DETECTED)
                 .severity(Alert.Severity.DANGER)
-                .title("Patrón: hipoglucemias frecuentes")
-                .message(String.format(
-                        "Has tenido %d episodios de hipoglucemia en los últimos %d días. " +
-                                "Consulta a tu médico para revisar tu esquema de insulina.",
+                .title(messages.resolve("alert.pattern.hypo-recurrent.title"))
+                .message(messages.resolve("alert.pattern.hypo-recurrent.message",
                         hypoCount, daysWindow))
                 .build());
     }
@@ -108,10 +104,8 @@ public class PatternDetectorService {
         return Optional.of(Alert.builder()
                 .type(Alert.AlertType.GLUCOSE_PATTERN_DETECTED)
                 .severity(Alert.Severity.WARNING)
-                .title("Patrón: alta variabilidad glucémica")
-                .message(String.format(
-                        "Tu coeficiente de variación es %.0f%% (objetivo: <%.0f%%). " +
-                                "Una alta variabilidad aumenta el riesgo de complicaciones.",
+                .title(messages.resolve("alert.pattern.high-variability.title"))
+                .message(messages.resolve("alert.pattern.high-variability.message",
                         cv.doubleValue(), cvThreshold))
                 .build());
     }
