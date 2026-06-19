@@ -38,6 +38,8 @@ GRANT ALL PRIVILEGES ON DATABASE diabecare_dev TO diabecare_user;
 | `VAPID_PRIVATE_KEY` | `<base64>` | Clave privada VAPID para push |
 | `VAPID_SUBJECT` | `mailto:admin@diabecare.com` | Sujeto VAPID |
 
+> **Nota**: los parámetros clínicos (umbrales de alertas, patrones, rate limiting) ya **no** se configuran por variables de entorno ni `application.yml`. Viven en la tabla `system_config` y se gestionan vía API (`GET/POST /api/v1/system-config`) o directamente en BD — ver sección 9.
+
 ### 3. Configurar en IntelliJ
 
 1. **Run** → **Edit Configurations** → `DiabeCareApiApplication`
@@ -48,8 +50,6 @@ DB_URL=jdbc:postgresql://localhost:5432/diabecare_dev;DB_USERNAME=diabecare_user
 3. **VM options**: `-Xms512m -Xmx1024m`
 
 ### 4. Generar claves VAPID
-
-Ejecuta esta clase temporal una sola vez para generar las claves VAPID:
 
 ```java
 Security.addProvider(new BouncyCastleProvider());
@@ -65,24 +65,18 @@ System.out.println("Private: " + Base64.toBase64String(keyPair.getPrivate().getE
 ## Ejecución
 
 ```bash
-# Compilar
 mvn clean compile
-
-# Ejecutar en perfil de desarrollo
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-El servidor arranca en `http://localhost:8080`. Las migraciones Flyway se ejecutan automáticamente, incluyendo el seed de 172 alimentos colombianos.
+El servidor arranca en `http://localhost:8080`. Las migraciones Flyway se ejecutan automáticamente, incluyendo el seed de 172 alimentos colombianos y los 16 parámetros iniciales de `system_config`.
 
 ---
 
 ## Tests
 
 ```bash
-# Todos los tests
 mvn test
-
-# Suite específica
 mvn test -Dtest=MedicalCalculatorServiceTest
 ```
 
@@ -114,28 +108,29 @@ Arquitectura **Hexagonal (Ports & Adapters)**:
 ```
 com.diabecare
 ├── domain/
-│   ├── model/              # Entidades de dominio
+│   ├── model/              # Entidades de dominio (incluye User, SystemConfig, AuditLog)
 │   ├── exception/          # Excepciones de dominio
 │   └── service/            # Domain Services (MedicalCalculatorService,
-│                           #   PatternDetectorService, WeeklySummaryService,
-│                           #   GlucoseExportService, AuditService,
-│                           #   RateLimitService)
+│                            #   PatternDetectorService, WeeklySummaryService,
+│                            #   GlucoseExportService, AuditService,
+│                            #   RateLimitService)
 ├── application/
-│   ├── port/in/            # Casos de uso (interfaces)
-│   ├── port/out/           # Puertos de salida (interfaces)
-│   └── usecase/            # Implementaciones de casos de uso
+│   ├── port/in/             # Casos de uso (interfaces) — incluye LoginUseCase,
+│   │                        #   RegisterUseCase, SuspendAccountUseCase, DeleteAccountUseCase
+│   ├── port/out/            # Puertos de salida — incluye AuthenticateUserPort,
+│   │                        #   GenerateTokenPort, MessageResolverPort, SystemConfigPort
+│   └── usecase/              # Implementaciones de casos de uso
 ├── infrastructure/
-│   ├── persistence/        # JPA, repositorios, adaptadores, mappers
-│   ├── security/           # JWT, filtros
-│   ├── config/             # Configuración Spring (RateLimitConfig, etc.)
-│   ├── push/               # PushNotificationService, PushNotificationAdapter
-│   ├── pdf/                # Generador de reportes PDF
-│   └── scheduler/          # WeeklySummaryScheduler
+│   ├── persistence/         # JPA, repositorios, adaptadores, mappers
+│   ├── security/             # JWT, filtros, AuthenticateUserAdapter, GenerateTokenAdapter
+│   ├── config/                # RateLimitConfig, MessageSourceConfig, MessageResolverAdapter
+│   ├── push/                 # PushNotificationService, PushNotificationAdapter
+│   ├── pdf/                   # Generador de reportes PDF
+│   └── scheduler/             # WeeklySummaryScheduler
 └── presentation/
-    ├── controller/         # Controllers REST
-    ├── dto/                # Requests y responses
-    ├── mapper/             # Domain <-> DTO mappers
-    └── advice/             # GlobalExceptionHandler
+    ├── controller/           # Controllers REST — incluye AccountController, SystemConfigController
+    ├── dto/                   # Requests y responses
+    └── advice/                # GlobalExceptionHandler (incluye ACCOUNT_SUSPENDED, INVALID_CREDENTIALS)
 ```
 
 Las reglas de arquitectura se verifican automáticamente con **ArchUnit**.
@@ -151,14 +146,17 @@ Las reglas de arquitectura se verifican automáticamente con **ArchUnit**.
 | Medicamentos | CRUD medicamentos, auditoría de cambios |
 | Signos vitales | Peso, presión, HbA1c medida, tendencia |
 | Ejercicio | Registro de actividad física por tipo e intensidad |
-| Alertas | 7 tipos + 4 alertas de patrón + alertas de ciclo menstrual |
+| Alertas | 7 tipos + 4 alertas de patrón + alertas de ciclo menstrual, mensajes vía `MessageResolverPort` |
 | Ciclo menstrual | 5 fases con correlación glucémica y predicción |
 | Calculadora insulina | Dosis de corrección y dosis para comida |
 | Reportes | PDF con secciones clínicas para el médico |
 | Push notifications | Web Push API con claves VAPID, suscripciones por paciente |
 | Resumen semanal | Job automático lunes 8am (America/Bogota) via `@Scheduled` |
 | Auditoría | Registro de cambios en perfil y medicamentos |
-| Rate limiting | Bucket4j + Caffeine: 20 glucosas, 15 comidas, 10 ejercicios por hora |
+| Rate limiting | Bucket4j + Caffeine, límites configurables en `system_config` |
+| **Configuración del sistema** | `system_config`: 16 parámetros clínicos/operacionales en BD, recargables sin redeploy |
+| **Gestión de cuenta** | Suspender (`enabled=false`) y eliminar (anonimiza email) la propia cuenta |
+| **Autenticación** | `LoginUseCase`/`RegisterUseCase` orquestan; JWT incluye claim `userId` |
 
 ---
 
@@ -175,6 +173,40 @@ Las reglas de arquitectura se verifican automáticamente con **ArchUnit**.
 | V7 | biological_sex + menstrual_cycles |
 | V8 | push_subscriptions |
 | V9 | audit_log |
+| V10 | system_config (16 parámetros) |
+| V11 | users: suspended_at, deleted_at |
+
+---
+
+## Configuración del sistema (`system_config`)
+
+Tabla en BD con caché en memoria, cargada al arrancar y recargable sin redeploy.
+
+```
+GET  /api/v1/system-config           # Lista todos los parámetros
+POST /api/v1/system-config/reload    # Recarga la caché desde BD
+```
+
+**Categorías:** `ALERTS`, `PATTERNS`, `RATE_LIMIT`. Ver detalle completo en `DIABECARE.md` sección "Parametrización".
+
+---
+
+## Gestión de cuenta
+
+```
+PATCH  /api/v1/account/{userId}/suspend   # Suspende (enabled=false, suspended_at)
+DELETE /api/v1/account/{userId}           # Elimina (anonimiza email, deleted_at)
+```
+
+Al intentar iniciar sesión con una cuenta suspendida: `403 ACCOUNT_SUSPENDED`. Credenciales incorrectas: `401 INVALID_CREDENTIALS`.
+
+---
+
+## Internacionalización (preparación, no implementada)
+
+Los mensajes de alertas, patrones y resumen semanal NO están hardcodeados — viven en `src/main/resources/messages.properties` y se resuelven vía `MessageResolverPort` (puerto de dominio) → `MessageResolverAdapter` (usa `ResourceBundleMessageSource` de Spring).
+
+**Estado actual**: solo existe `messages.properties` (español). No hay selector de idioma ni `LocaleResolver` configurado — la app es monolingüe por decisión consciente (ver `DIABECARE.md`). Esta preparación permite agregar un segundo idioma en el futuro sin tocar lógica de negocio.
 
 ---
 
