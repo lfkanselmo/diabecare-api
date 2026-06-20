@@ -2,6 +2,7 @@ package com.diabecare.application.usecase;
 
 import com.diabecare.application.port.in.SuspendAccountUseCase;
 import com.diabecare.application.port.out.LoadUserPort;
+import com.diabecare.application.port.out.RefreshTokenPort;
 import com.diabecare.application.port.out.SaveUserPort;
 import com.diabecare.domain.exception.InvalidPatientDataException;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ public class SuspendAccountUseCaseImpl implements SuspendAccountUseCase {
 
     private final LoadUserPort loadUserPort;
     private final SaveUserPort saveUserPort;
+    private final RefreshTokenPort refreshTokenPort;
 
     @Override
     public void execute(UUID userId) {
@@ -31,5 +33,6 @@ public class SuspendAccountUseCaseImpl implements SuspendAccountUseCase {
                 "La cuenta ya está suspendida");
 
         saveUserPort.suspend(user);
+        refreshTokenPort.revokeAllForUser(userId);
     }
 }

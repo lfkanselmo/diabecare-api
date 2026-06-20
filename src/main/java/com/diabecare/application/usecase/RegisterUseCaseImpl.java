@@ -4,6 +4,7 @@ import com.diabecare.application.port.in.RegisterPatientUseCase;
 import com.diabecare.application.port.in.RegisterUseCase;
 import com.diabecare.application.port.in.RegisterUserUseCase;
 import com.diabecare.application.port.out.GenerateTokenPort;
+import com.diabecare.application.port.out.RefreshTokenPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ public class RegisterUseCaseImpl implements RegisterUseCase {
     private final RegisterUserUseCase    registerUserUseCase;
     private final RegisterPatientUseCase registerPatientUseCase;
     private final GenerateTokenPort      generateTokenPort;
+    private final RefreshTokenPort       refreshTokenPort;
 
     @Override
     public Result execute(Command command) {
@@ -34,10 +36,13 @@ public class RegisterUseCaseImpl implements RegisterUseCase {
                 ));
 
         String token = generateTokenPort.generateToken(command.email(), user.id());
+        var refreshToken = refreshTokenPort.issue(user.id(), command.deviceLabel());
 
         return new Result(
                 token,
                 generateTokenPort.getExpiresIn(),
+                refreshToken.rawToken(),
+                refreshToken.expiresInMs(),
                 patient.getPatientId().toString(),
                 user.id().toString()
         );

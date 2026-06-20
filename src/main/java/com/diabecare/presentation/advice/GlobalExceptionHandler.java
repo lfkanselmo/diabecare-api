@@ -63,6 +63,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMIT_EXCEEDED", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<ApiError> handleInvalidRefreshToken(
+            InvalidRefreshTokenException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", ex.getMessage(), request);
+    }
+
     @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
     public ResponseEntity<ApiError> handleDisabled(
             org.springframework.security.authentication.DisabledException ex,

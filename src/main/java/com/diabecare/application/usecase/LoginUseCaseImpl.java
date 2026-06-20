@@ -5,10 +5,13 @@ import com.diabecare.application.port.out.AuthenticateUserPort;
 import com.diabecare.application.port.out.GenerateTokenPort;
 import com.diabecare.application.port.out.LoadPatientPort;
 import com.diabecare.application.port.out.LoadUserPort;
+import com.diabecare.application.port.out.RefreshTokenPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class LoginUseCaseImpl implements LoginUseCase {
 
@@ -16,6 +19,7 @@ public class LoginUseCaseImpl implements LoginUseCase {
     private final LoadUserPort         loadUserPort;
     private final LoadPatientPort      loadPatientPort;
     private final GenerateTokenPort    generateTokenPort;
+    private final RefreshTokenPort     refreshTokenPort;
 
     @Override
     public Result execute(Command command) {
@@ -28,10 +32,13 @@ public class LoginUseCaseImpl implements LoginUseCase {
                 .orElseThrow(() -> new RuntimeException("Perfil no encontrado"));
 
         String token = generateTokenPort.generateToken(command.email(), userId);
+        var refreshToken = refreshTokenPort.issue(userId, command.deviceLabel());
 
         return new Result(
                 token,
                 generateTokenPort.getExpiresIn(),
+                refreshToken.rawToken(),
+                refreshToken.expiresInMs(),
                 patient.getPatientId().toString(),
                 userId.toString()
         );

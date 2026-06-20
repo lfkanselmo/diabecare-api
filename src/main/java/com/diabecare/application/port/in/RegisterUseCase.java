@@ -16,12 +16,15 @@ public interface RegisterUseCase {
             DiabetesType diabetesType,
             LocalDate    diagnosisDate,
             BigDecimal   heightCm,
-            BiologicalSex biologicalSex
+            BiologicalSex biologicalSex,
+            String       deviceLabel
     ) {}
 
     record Result(
             String token,
             long   expiresIn,
+            String refreshToken,
+            long   refreshExpiresIn,
             String patientId,
             String userId
     ) {}

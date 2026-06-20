@@ -1,16 +1,27 @@
 package com.diabecare.presentation.controller;
 
-import com.diabecare.application.port.in.LoginUseCase;
-import com.diabecare.application.port.in.RegisterUseCase;
+import com.diabecare.application.port.in.GetActiveSessionsUseCase;
 import com.diabecare.application.port.in.GetPatientUseCase;
+import com.diabecare.application.port.in.LoginUseCase;
+import com.diabecare.application.port.in.LogoutAllSessionsUseCase;
+import com.diabecare.application.port.in.LogoutCurrentSessionUseCase;
+import com.diabecare.application.port.in.RefreshAccessTokenUseCase;
+import com.diabecare.application.port.in.RegisterUseCase;
 import com.diabecare.domain.model.BiologicalSex;
 import com.diabecare.domain.model.DiabetesType;
 import com.diabecare.presentation.dto.request.LoginRequest;
+import com.diabecare.presentation.dto.request.LogoutCurrentSessionRequest;
+import com.diabecare.presentation.dto.request.LogoutRequest;
+import com.diabecare.presentation.dto.request.RefreshTokenRequest;
 import com.diabecare.presentation.dto.request.RegisterRequest;
+import com.diabecare.presentation.dto.response.ActiveSessionResponse;
 import com.diabecare.presentation.dto.response.AuthResponse;
+import com.diabecare.presentation.dto.response.RefreshTokenResponse;
 import com.diabecare.presentation.mapper.PatientPresentationMapper;
+import com.diabecare.presentation.util.DeviceLabelResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -27,15 +39,22 @@ import java.util.UUID;
 @Tag(name = "Autenticación")
 public class AuthController {
 
-    private final LoginUseCase           loginUseCase;
-    private final RegisterUseCase        registerUseCase;
-    private final GetPatientUseCase      getPatientUseCase;
-    private final PatientPresentationMapper patientMapper;
+    private static final String USER_AGENT_HEADER = "User-Agent";
+
+    private final LoginUseCase                loginUseCase;
+    private final RegisterUseCase             registerUseCase;
+    private final RefreshAccessTokenUseCase   refreshAccessTokenUseCase;
+    private final LogoutCurrentSessionUseCase logoutCurrentSessionUseCase;
+    private final LogoutAllSessionsUseCase    logoutAllSessionsUseCase;
+    private final GetActiveSessionsUseCase    getActiveSessionsUseCase;
+    private final GetPatientUseCase           getPatientUseCase;
+    private final PatientPresentationMapper   patientMapper;
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Registrar nuevo usuario y paciente")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request,
+                                                 HttpServletRequest httpRequest) {
         RegisterUseCase.Result result = registerUseCase.execute(
                 new RegisterUseCase.Command(
                         request.email(),
@@ -45,7 +64,8 @@ public class AuthController {
                         DiabetesType.valueOf(request.diabetesType()),
                         LocalDate.parse(request.diagnosisDate()),
                         request.heightCm() != null ? new BigDecimal(request.heightCm()) : null,
-                        BiologicalSex.valueOf(request.biologicalSex())
+                        BiologicalSex.valueOf(request.biologicalSex()),
+                        deviceLabel(httpRequest)
                 ));
 
         var patient = getPatientUseCase.getByUserId(UUID.fromString(result.userId()));
@@ -54,22 +74,69 @@ public class AuthController {
                 .body(AuthResponse.of(
                         result.token(),
                         result.expiresIn(),
+                        result.refreshToken(),
+                        result.refreshExpiresIn(),
                         patientMapper.toResponse(patient.patient())
                 ));
     }
 
     @PostMapping("/login")
     @Operation(summary = "Iniciar sesión")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request,
+                                              HttpServletRequest httpRequest) {
         LoginUseCase.Result result = loginUseCase.execute(
-                new LoginUseCase.Command(request.email(), request.password()));
+                new LoginUseCase.Command(request.email(), request.password(), deviceLabel(httpRequest)));
 
         var patient = getPatientUseCase.getByUserId(UUID.fromString(result.userId()));
 
         return ResponseEntity.ok(AuthResponse.of(
                 result.token(),
                 result.expiresIn(),
+                result.refreshToken(),
+                result.refreshExpiresIn(),
                 patientMapper.toResponse(patient.patient())
         ));
+    }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "Obtener un nuevo access token a partir de un refresh token vigente")
+    public ResponseEntity<RefreshTokenResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        RefreshAccessTokenUseCase.Result result = refreshAccessTokenUseCase.execute(
+                new RefreshAccessTokenUseCase.Command(request.refreshToken()));
+
+        return ResponseEntity.ok(RefreshTokenResponse.of(
+                result.accessToken(),
+                result.accessTokenExpiresIn(),
+                result.refreshToken(),
+                result.refreshTokenExpiresIn()
+        ));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Cerrar sesión solo en el dispositivo actual")
+    public ResponseEntity<Void> logout(@Valid @RequestBody LogoutCurrentSessionRequest request) {
+        logoutCurrentSessionUseCase.execute(new LogoutCurrentSessionUseCase.Command(request.refreshToken()));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/logout-all")
+    @Operation(summary = "Cerrar sesión en todos los dispositivos")
+    public ResponseEntity<Void> logoutAll(@Valid @RequestBody LogoutRequest request) {
+        logoutAllSessionsUseCase.execute(new LogoutAllSessionsUseCase.Command(request.userId()));
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/sessions/{userId}")
+    @Operation(summary = "Listar las sesiones (dispositivos) activas del usuario")
+    public ResponseEntity<List<ActiveSessionResponse>> getActiveSessions(@PathVariable UUID userId) {
+        var sessions = getActiveSessionsUseCase.execute(userId).stream()
+                .map(s -> new ActiveSessionResponse(s.id(), s.deviceLabel(), s.lastUsedAt(), s.createdAt()))
+                .toList();
+
+        return ResponseEntity.ok(sessions);
+    }
+
+    private String deviceLabel(HttpServletRequest request) {
+        return DeviceLabelResolver.resolve(request.getHeader(USER_AGENT_HEADER));
     }
 }
