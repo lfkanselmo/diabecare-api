@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 3.0.0 |
+| Versión | 4.0.0 |
 | Tecnología | Java 17 + Spring Boot 3.5.14 |
 | Arquitectura | Hexagonal + Clean Architecture |
 | Base de datos | PostgreSQL 15+ |
@@ -27,12 +27,14 @@
 11. [Auditoría](#11-auditoría)
 12. [Configuración Parametrizable (`system_config`)](#12-configuración-parametrizable-system_config)
 13. [Gestión de Cuenta](#13-gestión-de-cuenta)
-14. [Internacionalización (Preparación)](#14-internacionalización-preparación)
-15. [Estándares Técnicos y de Código](#15-estándares-técnicos-y-de-código)
-16. [Base de Datos](#16-base-de-datos)
-17. [Estrategia de Testing](#17-estrategia-de-testing)
-18. [Dependencias Principales](#18-dependencias-principales)
-19. [Configuración y Despliegue](#19-configuración-y-despliegue)
+14. [Catálogo de Alimentos (Expansión)](#14-catálogo-de-alimentos-expansión)
+15. [Internacionalización (Preparación)](#15-internacionalización-preparación)
+16. [Estándares Técnicos y de Código](#16-estándares-técnicos-y-de-código)
+17. [Base de Datos](#17-base-de-datos)
+18. [Estrategia de Testing](#18-estrategia-de-testing)
+19. [Dependencias Principales](#19-dependencias-principales)
+20. [Configuración y Despliegue](#20-configuración-y-despliegue)
+
 
 ---
 
@@ -45,7 +47,7 @@ DiabeCare es una aplicación web para pacientes diabéticos que permite registra
 ### 1.2 Objetivos del Sistema
 
 - Registro y monitoreo de glucosa con detección de patrones clínicos
-- Conteo de calorías y macronutrientes con 172 alimentos colombianos
+- Conteo de calorías y macronutrientes con 635 alimentos (colombianos, latinoamericanos e internacionales)
 - Control de medicamentos con auditoría de cambios
 - Signos vitales: presión arterial, peso, IMC, HbA1c estimada
 - Alertas clínicas inteligentes (7 tipos + 4 patrones + ciclo menstrual)
@@ -55,6 +57,7 @@ DiabeCare es una aplicación web para pacientes diabéticos que permite registra
 - Rate limiting por paciente para proteger integridad de datos
 - Parámetros clínicos y operacionales configurables sin redeploy
 - Gestión de cuenta (suspensión/eliminación) por el propio usuario
+- Sesiones multi-dispositivo con refresh tokens revocables: cierre de sesión individual o de todos los dispositivos, listado de sesiones activas
 
 ### 1.3 Stack Técnico
 
@@ -101,24 +104,30 @@ com.diabecare
 │   ├── model/              # Patient, GlucoseReading, MealEntry, VitalSign,
 │   │                       # Medication, ExerciseLog, MenstrualCycle,
 │   │                       # Alert, AuditLog, WeeklySummaryData,
-│   │                       # User, SystemConfig
-│   ├── exception/          # Excepciones de dominio + RateLimitExceededException
+│   │                       # User, SystemConfig, RefreshToken
+│   ├── exception/          # Excepciones de dominio + RateLimitExceededException,
+│   │                       # InvalidRefreshTokenException
 │   └── service/             # MedicalCalculatorService, PatternDetectorService,
 │                            # WeeklySummaryService, GlucoseExportService,
 │                            # AuditService, RateLimitService
 ├── application/
-│   ├── port/in/             # LoginUseCase, RegisterUseCase, SuspendAccountUseCase,
+│   ├── port/in/             # LoginUseCase, RegisterUseCase, RefreshAccessTokenUseCase,
+│   │                        # LogoutCurrentSessionUseCase, LogoutAllSessionsUseCase,
+│   │                        # GetActiveSessionsUseCase, SuspendAccountUseCase,
 │   │                        # DeleteAccountUseCase, GetSystemConfigUseCase, + casos
 │   │                        # de uso existentes (glucosa, comidas, etc.)
 │   ├── port/out/             # LoadPatientPort, SaveAuditLogPort, NotifyPatientPort,
-│   │                         # AuthenticateUserPort, GenerateTokenPort,
+│   │                         # AuthenticateUserPort, GenerateTokenPort, RefreshTokenPort,
 │   │                         # MessageResolverPort, SystemConfigPort, LoadUserPort,
 │   │                         # SaveUserPort
 │   └── usecase/               # Implementaciones (1 clase por operación)
 ├── infrastructure/
 │   ├── persistence/          # JPA entities, repositories, adapters, mappers
+│   │                         # (incluye RefreshTokenEntity)
 │   ├── security/              # JWT filter, UserDetailsServiceImpl,
-│   │                          # AuthenticateUserAdapter, GenerateTokenAdapter
+│   │                          # AuthenticateUserAdapter, GenerateTokenAdapter,
+│   │                          # RefreshTokenAdapter
+│   │   └── handler/            # RestAuthenticationEntryPoint, RestAccessDeniedHandler
 │   ├── config/                 # DiabeCareProperties (Security+Push only),
 │   │                           # JwtProperties, RateLimitConfig, MessageSourceConfig,
 │   │                           # MessageResolverAdapter
@@ -127,9 +136,10 @@ com.diabecare
 │   └── scheduler/               # WeeklySummaryScheduler
 └── presentation/
     ├── controller/             # REST Controllers (incluye AccountController,
-    │                           # SystemConfigController)
-    ├── dto/                     # Request/Response records
+    │                           # SystemConfigController, AuthController ampliado)
+    ├── dto/                     # Request/Response records (incluye ActiveSessionResponse)
     ├── mapper/                  # MapStruct mappers
+    ├── util/                     # DeviceLabelResolver
     └── advice/                   # GlobalExceptionHandler
 ```
 
@@ -140,11 +150,11 @@ com.diabecare
 - Los Controllers no pueden acceder directamente a repositorios
 - Las entidades JPA deben estar en `infrastructure.persistence.entity`
 
-### 2.5 Refactor de Autenticación (esta sesión)
+### 2.5 Refactor de Autenticación (sesión de refactor original)
 
 **Antes**: `AuthController` orquestaba directamente múltiples use cases, llamaba `JwtService` y buscaba `userId` — violando SRP y filtrando infraestructura a presentación.
 
-**Después**:
+**Después** (ampliado esta sesión con refresh tokens):
 ```
 LoginUseCase (port/in)
   → LoginUseCaseImpl
@@ -153,17 +163,23 @@ LoginUseCase (port/in)
       → LoadPatientPort.findByUserId()
       → GenerateTokenPort.generateToken()         → GenerateTokenAdapter (JwtService + JwtProperties)
       → GenerateTokenPort.getExpiresIn()
+      → RefreshTokenPort.issue(userId, deviceLabel) → RefreshTokenAdapter
 
 RegisterUseCase (port/in)
   → RegisterUseCaseImpl
       → RegisterUserUseCase.execute()
       → RegisterPatientUseCase.execute()
       → GenerateTokenPort.generateToken()
+      → RefreshTokenPort.issue(userId, deviceLabel)
 ```
 
-`AuthController` ahora solo delega — construye el `Command`, llama al use case, mapea el `Result` a `AuthResponse`. Sin lógica de negocio.
+`AuthController` ahora solo delega — construye el `Command`, llama al use case, mapea el `Result` a `AuthResponse`. Sin lógica de negocio. El `deviceLabel` (resuelto desde `User-Agent` por `DeviceLabelResolver`) se extrae en el controller y viaja en el `Command` — el use case de aplicación nunca conoce `HttpServletRequest` directamente.
 
 **JWT actualizado**: incluye claim adicional `userId` (UUID), no solo `sub` (email). Esto permite que el frontend identifique al usuario sin un endpoint adicional — necesario para `SuspendAccountUseCase`/`DeleteAccountUseCase`, que operan sobre `userId`, no `patientId`.
+
+### 2.6 Refresh Tokens (esta sesión)
+
+Ver sección 7.6 para el diseño completo. Resumen arquitectónico: `RefreshTokenPort` (puerto out) define el ciclo de vida completo (`issue`, `redeem`, `revokeOne`, `revokeAllForUser`, `findActiveSessions`); `RefreshTokenAdapter` (infraestructura) lo implementa con un valor aleatorio opaco hasheado en BD, nunca un JWT autocontenido. Cuatro casos de uso nuevos consumen el puerto: `RefreshAccessTokenUseCaseImpl`, `LogoutCurrentSessionUseCaseImpl`, `LogoutAllSessionsUseCaseImpl`, `GetActiveSessionsUseCaseImpl` — cada uno con una sola responsabilidad, siguiendo el mismo patrón "1 use case por operación" del resto del proyecto.
 
 ---
 
@@ -211,7 +227,22 @@ Métodos: `isSuspended()`, `isDeleted()`.
 | `description` | String | Descripción legible |
 | `updatedAt` | LocalDateTime | Última actualización |
 
-### 3.4 GlucoseReading
+### 3.4 RefreshToken _(nuevo)_
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | UUID | Identificador único |
+| `userId` | UUID | Referencia al usuario |
+| `tokenHash` | String | Hash SHA-256 del token crudo — el valor crudo nunca se persiste |
+| `deviceLabel` | String | Etiqueta legible del dispositivo (ej. "Chrome en Windows"), resuelta desde `User-Agent` |
+| `lastUsedAt` | LocalDateTime | Última vez que se usó (al emitir o rotar) |
+| `expiresAt` | LocalDateTime | Fecha de expiración (7 días desde la emisión) |
+| `revokedAt` | LocalDateTime | Fecha de revocación, null si sigue activo |
+| `createdAt` | LocalDateTime | Fecha de creación |
+
+Métodos: `isExpired()`, `isRevoked()`, `isValid()` (`!isExpired() && !isRevoked()`).
+
+### 3.5 GlucoseReading
 
 | Campo | Tipo | Descripción |
 |---|---|---|
@@ -222,7 +253,7 @@ Métodos: `isSuspended()`, `isDeleted()`.
 | `status` | Enum | `CRITICALLY_LOW`, `LOW`, `NORMAL`, `HIGH`, `CRITICALLY_HIGH` |
 | `measuredAt` | LocalDateTime | Fecha y hora de medición |
 
-### 3.5 Alert
+### 3.6 Alert
 
 | Campo | Tipo | Descripción |
 |---|---|---|
@@ -231,7 +262,7 @@ Métodos: `isSuspended()`, `isDeleted()`.
 | `title` | String | Título — resuelto vía `MessageResolverPort` |
 | `message` | String | Mensaje descriptivo — resuelto vía `MessageResolverPort` |
 
-### 3.6 AuditLog
+### 3.7 AuditLog
 
 | Campo | Tipo | Descripción |
 |---|---|---|
@@ -242,7 +273,7 @@ Métodos: `isSuspended()`, `isDeleted()`.
 | `newValue` | String | Valor nuevo |
 | `performedAt` | LocalDateTime | Fecha y hora del cambio |
 
-### 3.7 WeeklySummaryData _(record)_
+### 3.8 WeeklySummaryData _(record)_
 
 ```java
 public record WeeklySummaryData(
@@ -310,7 +341,7 @@ Detecta patrones clínicos en las lecturas de los últimos N días (configurable
 | `detectRecurrentHypoglycemia` | Hipoglucemia recurrente | `pattern.hypo_min_episodes` (3) |
 | `detectHighVariability` | Alta variabilidad | `pattern.cv_threshold` (36.0), `pattern.min_readings_variability` (7) |
 
-Cada método retorna `Optional<Alert>` — patrón limpio, testeable unitariamente. Los títulos y mensajes se resuelven vía `MessageResolverPort` (ver sección 14).
+Cada método retorna `Optional<Alert>` — patrón limpio, testeable unitariamente. Los títulos y mensajes se resuelven vía `MessageResolverPort` (ver sección 15).
 
 **Importante**: inyecta `SystemConfigPort` (no `RateLimitConfig` ni infraestructura) — todos los umbrales vienen de `system_config`, ninguno está hardcodeado en código.
 
@@ -354,6 +385,10 @@ Cada método interno construye el bucket con el límite correspondiente leído d
 ```
 POST   /api/v1/auth/register
 POST   /api/v1/auth/login
+POST   /api/v1/auth/refresh         # nuevo access token a partir de un refresh token vigente
+POST   /api/v1/auth/logout          # cierra solo la sesión actual (recibe refreshToken)
+POST   /api/v1/auth/logout-all      # cierra todas las sesiones del usuario (recibe userId)
+GET    /api/v1/auth/sessions/{userId}  # lista las sesiones (dispositivos) activas
 ```
 
 ### Cuenta de usuario _(nuevo)_
@@ -465,24 +500,25 @@ GET    /api/v1/metadata/diabetes-types
 
 ## 7. Seguridad y Autenticación
 
-### 7.1 JWT
+### 7.1 JWT (access token)
 
 - Access token: 15 minutos (`JWT_ACCESS_EXPIRY_MS=900000`)
 - Algoritmo: HMAC-SHA256
 - Cabecera: `Authorization: Bearer <token>`
-- **Claims**: `sub` (email) + `userId` (UUID) — agregado esta sesión para que el frontend identifique al usuario sin endpoint adicional
+- **Claims**: `sub` (email) + `userId` (UUID) — necesario para que el frontend identifique al usuario sin endpoint adicional
 
-### 7.2 Flujo de Login (refactorizado)
+### 7.2 Flujo de Login
 
 ```
 AuthController.login()
-  → LoginUseCase.execute(Command(email, password))
+  → LoginUseCase.execute(Command(email, password, deviceLabel))
       → AuthenticateUserPort.authenticate()   // valida credenciales, lanza excepción si falla
       → LoadUserPort.findUserIdByEmail()
       → LoadPatientPort.findByUserId()
       → GenerateTokenPort.generateToken(email, userId)
       → GenerateTokenPort.getExpiresIn()
-  ← Result(token, expiresIn, patientId, userId)
+      → RefreshTokenPort.issue(userId, deviceLabel)
+  ← Result(token, expiresIn, refreshToken, refreshExpiresIn, patientId, userId)
 ```
 
 ### 7.3 Endpoints públicos
@@ -495,18 +531,24 @@ private static final String[] PUBLIC_ENDPOINTS = {
 };
 ```
 
+`/api/v1/auth/refresh` necesariamente es público — el cliente lo llama justo porque su access token ya expiró; exigir uno válido sería contradictorio. La validación real de `/refresh` ocurre dentro del propio `redeem()` del refresh token, no a nivel de `SecurityConfig`.
+
 ### 7.4 Protección de datos
 
 - Contraseñas: BCrypt con strength configurable (`BCRYPT_STRENGTH=12`)
 - CORS: orígenes configurables via `CORS_ALLOWED_ORIGINS`
 - Sesión: `STATELESS` — sin cookies ni sesiones del servidor
+- Refresh tokens: valor aleatorio de 64 bytes (Base64 URL-safe), hasheado con SHA-256 antes de persistir — el valor crudo nunca se guarda en BD
 
 ### 7.5 Manejo de errores de autenticación
 
-| Excepción Spring Security | Código | Status | Descripción |
+| Excepción / caso | Código | Status | Descripción |
 |---|---|---|---|
 | `DisabledException` | `ACCOUNT_SUSPENDED` | 403 | Cuenta suspendida o eliminada (`enabled=false`) |
 | `BadCredentialsException` | `INVALID_CREDENTIALS` | 401 | Email o contraseña incorrectos |
+| `InvalidRefreshTokenException` | `INVALID_REFRESH_TOKEN` | 401 | Refresh token inexistente, ya usado (rotado), expirado, o usuario suspendido/eliminado |
+| Sin autenticación válida en ruta protegida | `SESSION_EXPIRED` | 401 | Token ausente, mal formado o expirado — manejado por `RestAuthenticationEntryPoint` |
+| Autenticado pero sin permiso | `ACCESS_DENIED` | 403 | Manejado por `RestAccessDeniedHandler` |
 
 ```json
 {
@@ -520,6 +562,108 @@ private static final String[] PUBLIC_ENDPOINTS = {
 ```
 
 Otros códigos: `PATIENT_NOT_FOUND`, `GLUCOSE_READING_NOT_FOUND`, `DOMAIN_VALIDATION_ERROR`, `VALIDATION_ERROR`, `RATE_LIMIT_EXCEEDED`, `INTERNAL_ERROR`.
+
+### 7.6 Corrección de semántica 401 vs 403 (esta sesión)
+
+**Bug reportado**: la aplicación mostraba pantallas con datos faltantes/rotos cuando la sesión expiraba mientras el usuario navegaba, y el Network tab mostraba `403 Forbidden` en lugar de `401 Unauthorized`. Causa raíz: Spring Security en modo `STATELESS`, sin un `AuthenticationEntryPoint` configurado explícitamente, cae a su comportamiento default — que devuelve 403 también cuando *no hay autenticación en absoluto*, mezclando ese caso con el 403 real ("autenticado pero sin permiso").
+
+**Corrección**:
+```java
+@Bean
+public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    return http
+        // ...
+        .exceptionHandling(exceptions -> exceptions
+            .authenticationEntryPoint(restAuthenticationEntryPoint)  // 401
+            .accessDeniedHandler(restAccessDeniedHandler)            // 403
+        )
+        // ...
+}
+```
+
+`RestAuthenticationEntryPoint implements AuthenticationEntryPoint` y `RestAccessDeniedHandler implements AccessDeniedHandler` — ambos serializan un `ApiError` (el mismo record que usa `GlobalExceptionHandler`) manualmente con un `ObjectMapper` inyectado, porque operan en el `ExceptionTranslationFilter` de Spring Security, **antes** de llegar al `DispatcherServlet` — `@RestControllerAdvice` no los intercepta.
+
+Patrón verificado contra la documentación oficial de Spring Security 6.x y fuentes externas (Baeldung) — es el mecanismo estándar de la industria para este problema, no una solución ad-hoc.
+
+### 7.7 Refresh Tokens — diseño completo
+
+#### Por qué opaco y no JWT autocontenido
+
+| Enfoque | Revocable antes de expirar | Detecta robo |
+|---|---|---|
+| **Elegido**: valor aleatorio, hash SHA-256 en BD | Sí | Sí (reuso de un token ya rotado) |
+| Descartado: JWT largo autocontenido | No (sin lista de revocación aparte) | No |
+
+```sql
+CREATE TABLE refresh_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    token_hash VARCHAR(255) NOT NULL UNIQUE,
+    device_label VARCHAR(150),
+    last_used_at TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    revoked_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+#### RefreshTokenPort
+
+```java
+public interface RefreshTokenPort {
+    record IssuedToken(String rawToken, long expiresInMs) {}
+    record RedeemedToken(UUID userId, String deviceLabel) {}
+    record ActiveSession(UUID id, String deviceLabel, LocalDateTime lastUsedAt, LocalDateTime createdAt) {}
+
+    IssuedToken issue(UUID userId, String deviceLabel);
+    Optional<RedeemedToken> redeem(String rawToken);   // valida + ROTA (revoca el usado)
+    void revokeOne(String rawToken);
+    void revokeAllForUser(UUID userId);
+    List<ActiveSession> findActiveSessions(UUID userId);
+}
+```
+
+`RefreshTokenAdapter` implementa el puerto: `issue()` genera 64 bytes aleatorios (`SecureRandom`), los codifica en Base64 URL-safe, hashea con SHA-256 y persiste solo el hash. `redeem()` busca por hash, valida que no esté revocado ni expirado, y en la **misma operación** lo marca revocado (rotación) antes de devolver `userId`+`deviceLabel` — el caller es responsable de emitir el par nuevo.
+
+#### Flujo de refresco
+
+```
+POST /api/v1/auth/refresh { refreshToken }
+  → RefreshAccessTokenUseCaseImpl
+      → RefreshTokenPort.redeem(rawToken)
+      → LoadUserPort.findById(userId)   // valida !suspended && !deleted && enabled
+      → GenerateTokenPort.generateToken()
+      → RefreshTokenPort.issue(userId, deviceLabel)   // mismo deviceLabel, nuevo token
+  ← Result(accessToken, expiresIn, refreshToken, refreshExpiresIn)
+```
+
+Si la cuenta fue suspendida/eliminada después de emitir el refresh token, el siguiente refresco falla con `InvalidRefreshTokenException` aunque el token no haya expirado por tiempo.
+
+#### Logout: sesión actual vs todos los dispositivos
+
+Inicialmente se implementó un único `LogoutUseCase` que revocaba *todos* los refresh tokens del usuario — pero esto se ejecutaba también desde el logout normal del navbar, lo cual no es el comportamiento esperado (cerrar sesión en la web no debería desconectar el móvil). Se separó en dos casos de uso:
+
+| Caso de uso | Recibe | Revoca | Endpoint |
+|---|---|---|---|
+| `LogoutCurrentSessionUseCaseImpl` | `refreshToken` | Solo ese token | `POST /auth/logout` |
+| `LogoutAllSessionsUseCaseImpl` | `userId` | Todos los activos del usuario | `POST /auth/logout-all` |
+
+`SuspendAccountUseCaseImpl` y `DeleteAccountUseCaseImpl` llaman `RefreshTokenPort.revokeAllForUser()` directamente (no vía caso de uso de logout) — suspender/eliminar invalida todas las sesiones automáticamente.
+
+#### Sesiones activas y `deviceLabel`
+
+```java
+public final class DeviceLabelResolver {
+    public static String resolve(String userAgent) {
+        // heurísticas simples por substring — sin librería externa de UA parsing
+        // ej. "Chrome en Windows", "Safari en iPhone"
+    }
+}
+```
+
+`AuthController` extrae el header `User-Agent` y llama `DeviceLabelResolver.resolve(...)` antes de construir el `Command` — los casos de uso de aplicación nunca conocen `HttpServletRequest`. El `deviceLabel` se persiste en `issue()` y se preserva en cada rotación (`redeem()` lo devuelve para reutilizarlo en el `issue()` siguiente).
+
+`GET /api/v1/auth/sessions/{userId}` expone `findActiveSessions()` — sesiones no expiradas y no revocadas, ordenadas por `last_used_at DESC`. Es la base de datos que necesitaría un futuro listado de "dispositivos conectados" en una app móvil, sin requerir cambios adicionales en el modelo.
 
 ---
 
@@ -539,7 +683,9 @@ Al recibir respuesta HTTP 410 (Gone) al enviar una notificación, la suscripció
 
 ### 8.3 Complemento: notificaciones inmediatas en frontend (sin WebSockets)
 
-**Decisión de arquitectura**: se evaluó implementar WebSockets para alertas en tiempo real y se **descartó** — las alertas se calculan on-demand (no hay eventos asíncronos espontáneos del servidor que las disparen). En su lugar, el frontend consulta `GET /api/v1/alerts/{patientId}` inmediatamente después de cada registro exitoso (glucosa, comida, ejercicio) y compara contra las alertas previamente conocidas en la sesión del navegador, notificando solo las realmente nuevas. Ver documentación de frontend para el detalle de implementación.
+**Decisión de arquitectura**: se evaluó implementar WebSockets para alertas en tiempo real y se **descartó** — las alertas se calculan on-demand (no hay eventos asíncronos espontáneos del servidor que las disparen). En su lugar, el frontend consulta `GET /api/v1/alerts/{patientId}` inmediatamente después de cada registro exitoso (glucosa, comida, ejercicio) y compara contra las alertas previamente conocidas en la sesión del navegador, notificando solo las realmente nuevas.
+
+**Actualización de esta sesión**: el canal de presentación de esas notificaciones en el frontend cambió de `MatSnackBar` a un `NotificationService` global con un banner montado una sola vez en el componente raíz — sin relación con este backend (la API de alertas no cambió), pero corrige un bug donde el overlay compartido de Angular Material (`CdkOverlay`) podía quedar huérfano tras una navegación rápida, bloqueando clics en la página de destino. Ver documentación de frontend, sección de notificaciones, para el detalle completo.
 
 ---
 
@@ -687,13 +833,50 @@ Una cuenta con `enabled=false` (suspendida o eliminada) no puede iniciar sesión
 
 ---
 
-## 14. Internacionalización (Preparación)
+## 14. Catálogo de Alimentos (Expansión)
 
-### 14.1 Decisión
+### 14.1 Alcance
 
-Se evaluó implementar i18n completo (multi-idioma) y se **descartó** por falta de caso de uso real: la app es 100% en español, dirigida a Colombia, y los 172 alimentos del catálogo no tienen traducción razonable a otros idiomas (son específicos de la dieta local). El costo de implementación (extracción completa de strings backend + frontend, bundles separados) no se justifica sin un mercado objetivo en otro idioma.
+El catálogo de alimentos (tabla `foods`) creció de 172 registros (V4) a **635** en esta sesión, repartidos en dos migraciones (V12: +315, V13: +148), sin modificar el esquema de la tabla — `category` siempre fue `VARCHAR` libre, tanto en `Food.java` (dominio) como en `FoodResponse` (presentación/frontend), así que las 7 categorías nuevas no requirieron cambios de código, solo datos.
 
-### 14.2 Preparación de bajo costo implementada
+### 14.2 Categorías nuevas
+
+| Categoría | Migración | Contenido |
+|---|---|---|
+| `FRUTOS_SECOS` | V12 | Almendras, nueces, semillas, mantequilla de maní |
+| `EMBUTIDOS` | V12 | Separada de `CARNES` para no diluir la categoría original — salchichas, jamón, mortadela, chorizo |
+| `CONDIMENTOS` | V12 | Salsas, aderezos, caldos — antes sin categoría propia |
+| `COMIDA_RAPIDA` | V12, ampliada en V13 | Cadena/franquicia tipo: hamburguesas, pizza, comida mexicana/italiana/asiática/americana |
+| `PANADERIA` | V12 | Productos de panadería y snacks dulces/salados industriales |
+| `VEGANOS` | V13 | Sustitutos directos de proteína animal y lácteos (hamburguesa vegetal, seitán, quesos/yogures veganos, proteína en polvo) |
+| `INDUSTRIALES` | V13 | Marcas de consumo común en Colombia (Alpina, Zenú, Bimbo, Fruco, Postobón) e internacionales (Coca-Cola, Nutella, Doritos) |
+
+`COMIDA_RAPIDA` (ampliación V13) y `PREPARADOS` (ampliación V13) también incorporaron una nueva categoría conceptual de comida de calle colombiana — separada en `COMIDA_CALLE` (choripán, salchipapa, perro caliente especial, arepa con huevo) por tener un perfil de consumo distinto a un plato de almuerzo (`PREPARADOS`) o a una franquicia (`COMIDA_RAPIDA`).
+
+### 14.3 Decisión: alimentos vegetales genéricos no se re-categorizaron
+
+Tofu, tempeh, edamame y las leches vegetales (almendra, soya, avena) ya existían en `LEGUMBRES`/`LACTEOS` antes de esta sesión. Se decidió **no moverlos** a `VEGANOS` — esa categoría se reservó exclusivamente para sustitutos directos pensados para reemplazar un alimento de origen animal específico (ej. "hamburguesa vegetal" reemplaza "hamburguesa de carne"), mientras que tofu o leche de almendra son alimentos con identidad propia, no sustitutos de algo puntual.
+
+### 14.4 Validación realizada (sin Postgres disponible)
+
+Las migraciones se generaron y validaron en un entorno sin acceso a Maven ni PostgreSQL. La validación fue estructural, no funcional:
+
+- Paréntesis y comillas balanceados en cada archivo SQL
+- Exactamente 8 columnas por fila de `INSERT`
+- Sin nombres duplicados (contra el catálogo acumulado completo, no solo dentro de cada migración)
+- Valores nutricionales dentro de rango fisiológico razonable (0–950 kcal/100g, 0–100g por macronutriente)
+
+**No se ejecutó el `INSERT` contra una base real.** La primera vez que se levante el backend con estas migraciones, Flyway debe aplicarlas sin error — esa es la verificación pendiente y definitiva.
+
+---
+
+## 15. Internacionalización (Preparación)
+
+### 15.1 Decisión
+
+Se evaluó implementar i18n completo (multi-idioma) y se **descartó** por falta de caso de uso real: la app es 100% en español, dirigida a Colombia, y buena parte de los 635 alimentos del catálogo (muchos colombianos) no tienen traducción razonable a otros idiomas. El costo de implementación (extracción completa de strings backend + frontend, bundles separados) no se justifica sin un mercado objetivo en otro idioma.
+
+### 15.2 Preparación de bajo costo implementada
 
 En lugar de i18n completo, se centralizaron los mensajes de negocio (alertas, patrones, resumen semanal) en un único punto, sin agregar selector de idioma ni `LocaleResolver`:
 
@@ -708,7 +891,7 @@ MessageResolverPort (application/port/out)
 src/main/resources/messages.properties   # Único archivo de mensajes (español)
 ```
 
-### 14.3 Ejemplo de mensaje con interpolación
+### 15.3 Ejemplo de mensaje con interpolación
 
 ```properties
 alert.pattern.fasting-high.message={0} de tus últimas {1} lecturas de ayuno superaron {2} mg/dL. Considera ajustar tu insulina basal o consultar a tu médico.
@@ -720,19 +903,19 @@ messages.resolve("alert.pattern.fasting-high.message", highCount, fasting.size()
 
 > **Nota técnica**: `MessageSource` usa `MessageFormat`, cuyo patrón de interpolación es `{0}`, `{1}` — distinto de `String.format` (`%d`, `%.0f`). Para números con formato específico se usa la sintaxis extendida de `MessageFormat`, ej. `{0,number,#}` para enteros sin decimales.
 
-### 14.4 Servicios migrados
+### 15.4 Servicios migrados
 
 `PatternDetectorService`, `GetAlertsUseCaseImpl`, `WeeklySummaryService` — ya no contienen strings de negocio hardcodeados ni `String.format` para mensajes al usuario.
 
-### 14.5 Costo de agregar un segundo idioma en el futuro
+### 15.5 Costo de agregar un segundo idioma en el futuro
 
 Crear `messages_en.properties` con las traducciones + configurar un `LocaleResolver` (ej. basado en header `Accept-Language` o preferencia del paciente). **Cero cambios en la lógica de negocio** — esa es la ganancia de esta preparación.
 
 ---
 
-## 15. Estándares Técnicos y de Código
+## 16. Estándares Técnicos y de Código
 
-### 15.1 Convenciones de Nomenclatura
+### 16.1 Convenciones de Nomenclatura
 
 | Elemento | Convención | Ejemplo |
 |---|---|---|
@@ -746,7 +929,7 @@ Crear `messages_en.properties` con las traducciones + configurar un `LocaleResol
 | Puertos entrada | PascalCase + `UseCase` | `LoginUseCase`, `SuspendAccountUseCase` |
 | Puertos salida | PascalCase + `Port` | `LoadPatientPort`, `MessageResolverPort` |
 
-### 15.2 Principios SOLID
+### 16.2 Principios SOLID
 
 - **S** — Un use case por operación. `RateLimitService` tiene un método por tipo de operación (`checkGlucoseLimit`, `checkMealLimit`, `checkExerciseLimit`)
 - **O** — Nuevas funcionalidades = nuevos use cases, no modificar existentes
@@ -754,7 +937,7 @@ Crear `messages_en.properties` con las traducciones + configurar un `LocaleResol
 - **I** — Puertos granulares: `LoadPatientPort`, `SavePatientPort`, `LoadUserPort`, `SaveUserPort` separados
 - **D** — Use Cases dependen de interfaces, nunca de implementaciones concretas (ej. `LoginUseCaseImpl` no conoce `JwtService` directamente, solo `GenerateTokenPort`)
 
-### 15.3 Reglas de código
+### 16.3 Reglas de código
 
 - Records Java para DTOs inmutables
 - `@Builder` + `@Getter` en entidades de dominio (nunca setters públicos)
@@ -765,9 +948,9 @@ Crear `messages_en.properties` con las traducciones + configurar un `LocaleResol
 
 ---
 
-## 16. Base de Datos
+## 17. Base de Datos
 
-### 16.1 Migraciones Flyway
+### 17.1 Migraciones Flyway
 
 | Versión | Archivo | Descripción |
 |---|---|---|
@@ -782,8 +965,13 @@ Crear `messages_en.properties` con las traducciones + configurar un `LocaleResol
 | V9 | `V9__audit_log.sql` | audit_log |
 | V10 | `V10__system_config.sql` | system_config + seed 16 parámetros |
 | V11 | `V11__user_account_management.sql` | users.suspended_at, users.deleted_at |
+| V12 | `V12__expand_foods.sql` | +315 alimentos (total 487): FRUTOS_SECOS, EMBUTIDOS, CONDIMENTOS, COMIDA_RAPIDA, PANADERIA |
+| V13 | `V13__expand_vegan_and_industrial_foods.sql` | +148 alimentos (total 635): VEGANOS, INDUSTRIALES + ampliación de COMIDA_RAPIDA/PREPARADOS |
+| V15 | `V15__refresh_tokens.sql` | Tabla refresh_tokens (sesión multi-dispositivo). *No existe V14 — ver nota abajo* |
 
-### 16.2 Tablas Principales
+> **Nota sobre la numeración**: no existe `V14`. Durante el desarrollo de esta sesión se generó una migración adicional de alimentos como `V14` y se decidió fusionarla dentro de `V13` antes de ejecutar (ninguna de las dos se había aplicado aún), dejando ese número sin usar. Flyway no exige numeración consecutiva, solo orden estrictamente creciente, así que esto no representa un problema funcional.
+
+### 17.2 Tablas Principales
 
 | Tabla | Descripción |
 |---|---|
@@ -791,7 +979,7 @@ Crear `messages_en.properties` con las traducciones + configurar un `LocaleResol
 | `patients` | Perfil médico del paciente |
 | `glucose_readings` | Lecturas de glucosa |
 | `meal_entries` + `meal_items` | Comidas y alimentos individuales |
-| `foods` | 172 alimentos colombianos con macros |
+| `foods` | 635 alimentos (colombianos, latinoamericanos e internacionales) con macros |
 | `vital_signs` | Peso, presión, FC, HbA1c medida |
 | `medications` | Medicamentos activos |
 | `exercise_logs` | Registros de actividad física |
@@ -799,8 +987,9 @@ Crear `messages_en.properties` con las traducciones + configurar un `LocaleResol
 | `push_subscriptions` | Suscripciones Web Push por paciente |
 | `audit_log` | Historial de cambios auditables |
 | `system_config` | Parámetros clínicos y operacionales |
+| `refresh_tokens` | Sesiones activas por dispositivo, hash del token, revocación |
 
-### 16.3 Índices de Rendimiento
+### 17.3 Índices de Rendimiento
 
 - `glucose_readings(patient_id, measured_at DESC)`
 - `meal_entries(patient_id, consumed_at DESC)`
@@ -811,9 +1000,9 @@ Crear `messages_en.properties` con las traducciones + configurar un `LocaleResol
 
 ---
 
-## 17. Estrategia de Testing
+## 18. Estrategia de Testing
 
-### 17.1 Pirámide de Tests
+### 18.1 Pirámide de Tests
 
 | Nivel | Herramienta | Qué prueba |
 |---|---|---|
@@ -821,7 +1010,7 @@ Crear `messages_en.properties` con las traducciones + configurar un `LocaleResol
 | Architecture Tests | ArchUnit | Dependencias entre capas |
 | Smoke Test | @SpringBootTest | Arranque del contexto completo |
 
-### 17.2 Suites actuales (31 tests — 100% passing)
+### 18.2 Suites actuales (31 tests — 100% passing)
 
 | Suite | Tests | Descripción |
 |---|---|---|
@@ -835,7 +1024,7 @@ Crear `messages_en.properties` con las traducciones + configurar un `LocaleResol
 
 ---
 
-## 18. Dependencias Principales
+## 19. Dependencias Principales
 
 | Dependencia | Versión | Propósito |
 |---|---|---|
@@ -859,16 +1048,16 @@ Crear `messages_en.properties` con las traducciones + configurar un `LocaleResol
 
 ---
 
-## 19. Configuración y Despliegue
+## 20. Configuración y Despliegue
 
-### 19.1 Perfiles de Spring
+### 20.1 Perfiles de Spring
 
 | Perfil | Configuración |
 |---|---|
 | `dev` | PostgreSQL local, logs DEBUG, Swagger habilitado |
 | `prod` | PostgreSQL, logs INFO/WARN, Swagger deshabilitado |
 
-### 19.2 Variables de Entorno Requeridas
+### 20.2 Variables de Entorno Requeridas
 
 ```env
 # Base de datos
@@ -893,7 +1082,7 @@ VAPID_SUBJECT=mailto:admin@diabecare.com
 
 > Los parámetros clínicos y de rate limiting **no** van aquí — viven en `system_config` (BD), gestionables vía API sin redeploy.
 
-### 19.3 Docker Compose (Desarrollo)
+### 20.3 Docker Compose (Desarrollo)
 
 ```yaml
 services:
@@ -923,4 +1112,4 @@ services:
 
 ---
 
-*DiabeCare Backend Documentation v3.0*
+*DiabeCare Backend Documentation v4.0*
