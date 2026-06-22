@@ -1,22 +1,17 @@
 package com.diabecare.domain.service;
 
+import com.diabecare.application.port.out.RateLimitPort;
 import com.diabecare.application.port.out.SystemConfigPort;
 import com.diabecare.domain.exception.RateLimitExceededException;
-import com.github.benmanes.caffeine.cache.Cache;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.util.UUID;
 
-@Service
 @RequiredArgsConstructor
 public class RateLimitService {
 
-    private final Cache<UUID, Bucket> rateLimitCache;
-    private final SystemConfigPort    systemConfig;
+    private final RateLimitPort    rateLimitPort;
+    private final SystemConfigPort systemConfig;
 
     public void checkGlucoseLimit(UUID patientId) {
         checkLimit(patientId, "GLUCOSE",
@@ -34,24 +29,12 @@ public class RateLimitService {
     }
 
     private void checkLimit(UUID patientId, String operation, int limit) {
-        String cacheKey  = patientId + ":" + operation;
-        UUID   bucketKey = UUID.nameUUIDFromBytes(cacheKey.getBytes());
+        boolean allowed = rateLimitPort.tryConsume(operation, patientId, limit);
 
-        Bucket bucket = rateLimitCache.get(bucketKey, k -> buildBucket(limit));
-
-        if (!bucket.tryConsume(1)) {
+        if (!allowed) {
             throw new RateLimitExceededException(
                     "Límite de registros excedido para " + operation +
                             ". Intenta de nuevo más tarde.");
         }
-    }
-
-    private Bucket buildBucket(int limit) {
-        return Bucket.builder()
-                .addLimit(Bandwidth.builder()
-                        .capacity(limit)
-                        .refillGreedy(limit, Duration.ofHours(1))
-                        .build())
-                .build();
     }
 }

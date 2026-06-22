@@ -1,11 +1,9 @@
 package com.diabecare.domain.service;
 
 import com.diabecare.domain.model.AuditLog;
-import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
-@Service
 public class AuditService {
 
     public AuditLog buildUpdateLog(UUID patientId, String entityType,

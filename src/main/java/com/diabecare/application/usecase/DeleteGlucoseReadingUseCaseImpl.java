@@ -3,7 +3,7 @@ package com.diabecare.application.usecase;
 import com.diabecare.application.port.in.DeleteGlucoseReadingUseCase;
 import com.diabecare.application.port.out.LoadGlucoseReadingPort;
 import com.diabecare.domain.exception.GlucoseReadingNotFoundException;
-import com.diabecare.domain.exception.InvalidGlucoseReadingException;
+import com.diabecare.domain.exception.UnauthorizedResourceAccessException;
 import com.diabecare.domain.model.GlucoseReading;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,7 @@ public class DeleteGlucoseReadingUseCaseImpl implements DeleteGlucoseReadingUseC
                 .orElseThrow(() -> new GlucoseReadingNotFoundException(readingId.toString()));
 
         if (!reading.getPatientId().equals(patientId)) {
-            throw new InvalidGlucoseReadingException(
+            throw new UnauthorizedResourceAccessException(
                     "No tienes permisos para eliminar esta lectura");
         }
         loadGlucoseReadingPort.deleteById(readingId);

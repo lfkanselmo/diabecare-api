@@ -1,4 +1,4 @@
-package com.diabecare.infrastructure.security;
+package com.diabecare.infrastructure.persistence.adapter;
 
 import com.diabecare.application.port.out.RefreshTokenPort;
 import com.diabecare.infrastructure.config.JwtProperties;

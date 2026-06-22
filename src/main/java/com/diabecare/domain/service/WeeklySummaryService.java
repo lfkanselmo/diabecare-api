@@ -3,13 +3,11 @@ package com.diabecare.domain.service;
 import com.diabecare.application.port.out.MessageResolverPort;
 import com.diabecare.domain.model.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
-@Service
 @RequiredArgsConstructor
 public class WeeklySummaryService {
 

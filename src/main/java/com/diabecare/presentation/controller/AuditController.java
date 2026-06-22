@@ -3,9 +3,11 @@ package com.diabecare.presentation.controller;
 import com.diabecare.application.port.in.GetAuditLogUseCase;
 import com.diabecare.domain.model.AuditLog;
 import com.diabecare.presentation.dto.response.AuditLogResponse;
+import com.diabecare.presentation.util.CurrentUserResolver;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,10 +20,14 @@ import java.util.UUID;
 public class AuditController {
 
     private final GetAuditLogUseCase getAuditLogUseCase;
+    private final CurrentUserResolver currentUserResolver;
 
     @GetMapping("/{patientId}")
     public ResponseEntity<List<AuditLogResponse>> getByPatient(
-            @PathVariable UUID patientId) {
+            @PathVariable UUID patientId, Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
         return ResponseEntity.ok(toResponse(
                 getAuditLogUseCase.getByPatient(patientId)));
     }
@@ -29,7 +35,11 @@ public class AuditController {
     @GetMapping("/{patientId}/{entityType}")
     public ResponseEntity<List<AuditLogResponse>> getByPatientAndEntity(
             @PathVariable UUID patientId,
-            @PathVariable String entityType) {
+            @PathVariable String entityType,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
         return ResponseEntity.ok(toResponse(
                 getAuditLogUseCase.getByPatientAndEntity(patientId, entityType.toUpperCase())));
     }

@@ -5,7 +5,6 @@ import com.diabecare.application.port.out.*;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.*;
 import com.diabecare.domain.service.MedicalCalculatorService;
-import com.diabecare.domain.service.ReportDataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -66,7 +65,7 @@ public class GenerateMedicalReportUseCaseImpl implements GenerateMedicalReportUs
                 .limit(5)
                 .toList();
 
-        ReportDataService reportData = ReportDataService.builder()
+        ReportData reportData = ReportData.builder()
                 .patient(patient)
                 .glucoseReadings(readings)
                 .mealEntries(meals)

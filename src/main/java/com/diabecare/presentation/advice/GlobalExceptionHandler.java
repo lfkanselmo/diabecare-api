@@ -34,7 +34,8 @@ public class GlobalExceptionHandler {
             InvalidGlucoseReadingException.class,
             InvalidMealEntryException.class,
             InvalidVitalSignException.class,
-            InvalidMedicationException.class
+            InvalidMedicationException.class,
+            InvalidExerciseLogException.class
     })
     public ResponseEntity<ApiError> handleDomainValidation(
             DomainException ex, HttpServletRequest request) {
@@ -67,6 +68,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleInvalidRefreshToken(
             InvalidRefreshTokenException ex, HttpServletRequest request) {
         return build(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(UnauthorizedResourceAccessException.class)
+    public ResponseEntity<ApiError> handleUnauthorizedResourceAccess(
+            UnauthorizedResourceAccessException ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, "UNAUTHORIZED_RESOURCE_ACCESS", ex.getMessage(), request);
     }
 
     @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)

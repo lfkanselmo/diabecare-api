@@ -18,6 +18,7 @@ import com.diabecare.presentation.dto.response.ActiveSessionResponse;
 import com.diabecare.presentation.dto.response.AuthResponse;
 import com.diabecare.presentation.dto.response.RefreshTokenResponse;
 import com.diabecare.presentation.mapper.PatientPresentationMapper;
+import com.diabecare.presentation.util.CurrentUserResolver;
 import com.diabecare.presentation.util.DeviceLabelResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,6 +27,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -49,6 +51,7 @@ public class AuthController {
     private final GetActiveSessionsUseCase    getActiveSessionsUseCase;
     private final GetPatientUseCase           getPatientUseCase;
     private final PatientPresentationMapper   patientMapper;
+    private final CurrentUserResolver         currentUserResolver;
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
@@ -121,14 +124,19 @@ public class AuthController {
 
     @PostMapping("/logout-all")
     @Operation(summary = "Cerrar sesión en todos los dispositivos")
-    public ResponseEntity<Void> logoutAll(@Valid @RequestBody LogoutRequest request) {
+    public ResponseEntity<Void> logoutAll(@Valid @RequestBody LogoutRequest request,
+                                          Authentication authentication) {
+        currentUserResolver.verifyIsCurrentUser(request.userId(), authentication);
         logoutAllSessionsUseCase.execute(new LogoutAllSessionsUseCase.Command(request.userId()));
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/sessions/{userId}")
     @Operation(summary = "Listar las sesiones (dispositivos) activas del usuario")
-    public ResponseEntity<List<ActiveSessionResponse>> getActiveSessions(@PathVariable UUID userId) {
+    public ResponseEntity<List<ActiveSessionResponse>> getActiveSessions(
+            @PathVariable UUID userId, Authentication authentication) {
+        currentUserResolver.verifyIsCurrentUser(userId, authentication);
+
         var sessions = getActiveSessionsUseCase.execute(userId).stream()
                 .map(s -> new ActiveSessionResponse(s.id(), s.deviceLabel(), s.lastUsedAt(), s.createdAt()))
                 .toList();

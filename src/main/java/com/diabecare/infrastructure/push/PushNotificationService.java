@@ -1,8 +1,8 @@
 package com.diabecare.infrastructure.push;
 
+import com.diabecare.application.port.out.PushSubscriptionPort;
+import com.diabecare.domain.model.PushSubscription;
 import com.diabecare.infrastructure.config.DiabeCareProperties;
-import com.diabecare.infrastructure.persistence.entity.PushSubscriptionEntity;
-import com.diabecare.infrastructure.persistence.repository.PushSubscriptionJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.martijndwars.webpush.Notification;
@@ -20,7 +20,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PushNotificationService {
 
-    private final PushSubscriptionJpaRepository subscriptionRepository;
+    private final PushSubscriptionPort subscriptionPort;
     private final DiabeCareProperties properties;
 
     static {
@@ -30,24 +30,18 @@ public class PushNotificationService {
     }
 
     public void subscribe(UUID patientId, String endpoint, String p256dh, String auth) {
-        if (subscriptionRepository.findAllByPatientId(patientId)
-                .stream().anyMatch(s -> s.getEndpoint().equals(endpoint))) {
+        if (subscriptionPort.existsByPatientIdAndEndpoint(patientId, endpoint)) {
             return;
         }
-        subscriptionRepository.save(PushSubscriptionEntity.builder()
-                .patientId(patientId)
-                .endpoint(endpoint)
-                .p256dh(p256dh)
-                .auth(auth)
-                .build());
+        subscriptionPort.save(patientId, endpoint, p256dh, auth);
     }
 
     public void unsubscribe(String endpoint) {
-        subscriptionRepository.deleteByEndpoint(endpoint);
+        subscriptionPort.deleteByEndpoint(endpoint);
     }
 
     public void sendToPatient(UUID patientId, String title, String body) {
-        List<PushSubscriptionEntity> subs = subscriptionRepository.findAllByPatientId(patientId);
+        List<PushSubscription> subs = subscriptionPort.findAllByPatientId(patientId);
         if (subs.isEmpty()) return;
 
         String payload = String.format(
@@ -56,7 +50,7 @@ public class PushNotificationService {
                 body.replace("\"", "\\\"")
         );
 
-        for (PushSubscriptionEntity sub : subs) {
+        for (PushSubscription sub : subs) {
             try {
                 PushService pushService = new PushService(
                         properties.push().vapidPublicKey(),
@@ -71,7 +65,7 @@ public class PushNotificationService {
             } catch (Exception e) {
                 log.warn("Error enviando push a {}: {}", sub.getEndpoint(), e.getMessage());
                 if (e.getMessage() != null && e.getMessage().contains("410")) {
-                    subscriptionRepository.deleteByEndpoint(sub.getEndpoint());
+                    subscriptionPort.deleteByEndpoint(sub.getEndpoint());
                 }
             }
         }

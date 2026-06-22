@@ -1,5 +1,6 @@
 package com.diabecare.infrastructure.security.filter;
 
+import com.diabecare.infrastructure.security.PublicEndpoints;
 import com.diabecare.infrastructure.security.jwt.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -76,11 +77,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
-        return path.startsWith("/api/v1/auth/")
-                || path.startsWith("/swagger-ui")
-                || path.startsWith("/v3/api-docs")
-                || path.startsWith("/api-docs")
-                || path.equals("/actuator/health");
+        return PublicEndpoints.matches(request.getServletPath());
     }
 }

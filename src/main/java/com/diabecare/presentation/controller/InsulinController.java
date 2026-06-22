@@ -3,9 +3,11 @@ package com.diabecare.presentation.controller;
 import com.diabecare.application.port.in.CalculateInsulinDoseUseCase;
 import com.diabecare.presentation.dto.request.InsulinCalculationRequest;
 import com.diabecare.presentation.dto.response.InsulinCalculationResponse;
+import com.diabecare.presentation.util.CurrentUserResolver;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -16,11 +18,15 @@ import java.util.UUID;
 public class InsulinController {
 
     private final CalculateInsulinDoseUseCase calculateInsulinDoseUseCase;
+    private final CurrentUserResolver currentUserResolver;
 
     @PostMapping("/{patientId}/calculate")
     public ResponseEntity<InsulinCalculationResponse> calculate(
             @PathVariable UUID patientId,
-            @Valid @RequestBody InsulinCalculationRequest request) {
+            @Valid @RequestBody InsulinCalculationRequest request,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         CalculateInsulinDoseUseCase.Result result =
                 calculateInsulinDoseUseCase.calculate(

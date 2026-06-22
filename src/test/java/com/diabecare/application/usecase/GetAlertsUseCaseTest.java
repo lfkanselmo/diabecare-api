@@ -3,6 +3,8 @@ package com.diabecare.application.usecase;
 import com.diabecare.application.port.out.*;
 import com.diabecare.domain.model.*;
 import com.diabecare.domain.service.MedicalCalculatorService;
+import com.diabecare.domain.service.MenstrualCycleGuidanceService;
+import com.diabecare.domain.service.PatternDetectorService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,10 @@ class GetAlertsUseCaseTest {
     @Mock private LoadMealEntryPort      loadMealEntryPort;
     @Mock private LoadMenstrualCyclePort loadMenstrualCyclePort;
     @Mock private AlertConfigPort        alertConfig;
+    @Mock private PatternDetectorService patternDetectorService;
+    @Mock private SystemConfigPort       systemConfig;
+    @Mock private MessageResolverPort    messages;
+    @Mock private MenstrualCycleGuidanceService cycleGuidanceService;
 
     private GetAlertsUseCaseImpl useCase;
     private UUID patientId;
@@ -48,13 +54,28 @@ class GetAlertsUseCaseTest {
         when(alertConfig.goodTirThreshold()).thenReturn(70.0);
         when(alertConfig.streakDays()).thenReturn(3);
 
+        when(systemConfig.getInt(any())).thenReturn(7);
+        when(systemConfig.getDecimal(any())).thenReturn(7.0);
+
+        when(messages.resolve(any())).thenReturn("mensaje");
+        when(messages.resolve(any(), any())).thenReturn("mensaje");
+
+        when(patternDetectorService.detectHighFastingPattern(any())).thenReturn(Optional.empty());
+        when(patternDetectorService.detectHighPostMealPattern(any())).thenReturn(Optional.empty());
+        when(patternDetectorService.detectRecurrentHypoglycemia(any())).thenReturn(Optional.empty());
+        when(patternDetectorService.detectHighVariability(any())).thenReturn(Optional.empty());
+
         useCase = new GetAlertsUseCaseImpl(
                 loadPatientPort,
                 loadGlucoseReadingPort,
                 loadMealEntryPort,
                 loadMenstrualCyclePort,
                 new MedicalCalculatorService(),
-                alertConfig
+                alertConfig,
+                patternDetectorService,
+                systemConfig,
+                messages,
+                cycleGuidanceService
         );
     }
 

@@ -6,12 +6,14 @@ import com.diabecare.domain.model.GlucoseReading;
 import com.diabecare.domain.service.GlucoseExportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ExportGlucoseDataUseCaseImpl implements ExportGlucoseDataUseCase {
 

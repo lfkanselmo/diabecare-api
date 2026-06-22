@@ -4,6 +4,7 @@ import com.diabecare.application.port.out.LoadPatientPort;
 import com.diabecare.application.port.out.SaveGlucoseReadingPort;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.*;
+import com.diabecare.domain.service.RateLimitService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("RegisterGlucoseReadingUseCase")
 class RegisterGlucoseReadingUseCaseTest {
 
@@ -31,6 +35,9 @@ class RegisterGlucoseReadingUseCaseTest {
 
     @Mock
     private SaveGlucoseReadingPort saveGlucoseReadingPort;
+
+    @Mock
+    private RateLimitService rateLimitService;
 
     @InjectMocks
     private RegisterGlucoseReadingUseCaseImpl useCase;
@@ -42,6 +49,8 @@ class RegisterGlucoseReadingUseCaseTest {
     void setUp() {
         patientId = UUID.randomUUID();
         patient   = buildPatient(patientId);
+
+        doNothing().when(rateLimitService).checkGlucoseLimit(any());
     }
 
     @Test

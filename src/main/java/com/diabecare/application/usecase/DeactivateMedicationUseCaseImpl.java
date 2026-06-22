@@ -5,6 +5,7 @@ import com.diabecare.application.port.out.LoadMedicationPort;
 import com.diabecare.application.port.out.SaveAuditLogPort;
 import com.diabecare.application.port.out.SaveMedicationPort;
 import com.diabecare.domain.exception.InvalidMedicationException;
+import com.diabecare.domain.exception.UnauthorizedResourceAccessException;
 import com.diabecare.domain.model.Medication;
 import com.diabecare.domain.service.AuditService;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +31,7 @@ public class DeactivateMedicationUseCaseImpl implements DeactivateMedicationUseC
                         "Medicamento no encontrado: " + medicationId));
 
         if (!medication.getPatientId().equals(patientId)) {
-            throw new InvalidMedicationException(
+            throw new UnauthorizedResourceAccessException(
                     "No tienes permisos para modificar este medicamento");
         }
 

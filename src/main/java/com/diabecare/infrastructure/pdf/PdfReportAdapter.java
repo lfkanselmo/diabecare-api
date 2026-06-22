@@ -1,7 +1,7 @@
 package com.diabecare.infrastructure.pdf;
 
 import com.diabecare.application.port.out.GenerateReportPort;
-import com.diabecare.domain.service.ReportDataService;
+import com.diabecare.domain.model.ReportData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +14,7 @@ public class PdfReportAdapter implements GenerateReportPort {
     private final MedicalReportPdfGenerator generator;
 
     @Override
-    public byte[] generate(ReportDataService data, LocalDate from, LocalDate to) {
+    public byte[] generate(ReportData data, LocalDate from, LocalDate to) {
         return generator.generate(data, from, to);
     }
 }

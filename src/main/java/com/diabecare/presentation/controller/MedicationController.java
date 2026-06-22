@@ -9,10 +9,12 @@ import com.diabecare.domain.model.MedicationType;
 import com.diabecare.presentation.dto.request.RegisterMedicationRequest;
 import com.diabecare.presentation.dto.response.MedicationResponse;
 import com.diabecare.presentation.mapper.MedicationPresentationMapper;
+import com.diabecare.presentation.util.CurrentUserResolver;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,11 +29,15 @@ public class MedicationController {
     private final GetMedicationsUseCase getMedicationsUseCase;
     private final DeactivateMedicationUseCase deactivateMedicationUseCase;
     private final MedicationPresentationMapper mapper;
+    private final CurrentUserResolver currentUserResolver;
 
     @PostMapping("/{patientId}")
     public ResponseEntity<MedicationResponse> register(
             @PathVariable UUID patientId,
-            @Valid @RequestBody RegisterMedicationRequest request) {
+            @Valid @RequestBody RegisterMedicationRequest request,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 mapper.toResponse(registerMedicationUseCase.execute(
@@ -48,7 +54,11 @@ public class MedicationController {
     }
 
     @GetMapping("/{patientId}")
-    public ResponseEntity<List<MedicationResponse>> getActive(@PathVariable UUID patientId) {
+    public ResponseEntity<List<MedicationResponse>> getActive(
+            @PathVariable UUID patientId, Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
         return ResponseEntity.ok(getMedicationsUseCase.getActiveByPatientId(patientId)
                 .stream().map(mapper::toResponse).toList());
     }
@@ -56,7 +66,10 @@ public class MedicationController {
     @DeleteMapping("/{patientId}/{medicationId}")
     public ResponseEntity<Void> deactivate(
             @PathVariable UUID patientId,
-            @PathVariable UUID medicationId) {
+            @PathVariable UUID medicationId,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
         deactivateMedicationUseCase.execute(medicationId, patientId);
         return ResponseEntity.noContent().build();
     }

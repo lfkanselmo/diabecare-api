@@ -2,6 +2,7 @@ package com.diabecare.application.usecase;
 
 import com.diabecare.application.port.in.CalculateInsulinDoseUseCase;
 import com.diabecare.application.port.out.LoadPatientPort;
+import com.diabecare.application.port.out.MessageResolverPort;
 import com.diabecare.domain.exception.InvalidPatientDataException;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.Patient;
@@ -18,6 +19,7 @@ import java.math.RoundingMode;
 public class CalculateInsulinDoseUseCaseImpl implements CalculateInsulinDoseUseCase {
 
     private final LoadPatientPort loadPatientPort;
+    private final MessageResolverPort messages;
 
     @Override
     public Result calculate(Command command) {
@@ -71,21 +73,25 @@ public class CalculateInsulinDoseUseCaseImpl implements CalculateInsulinDoseUseC
                                     BigDecimal total, BigDecimal carbs,
                                     boolean beforeMeal) {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("Glucosa actual: %.0f mg/dL → objetivo: %.0f mg/dL. ",
+        sb.append(messages.resolve("insulin.explanation.header",
                 current.doubleValue(), target.doubleValue()));
+        sb.append(" ");
 
         if (correction.compareTo(BigDecimal.ZERO) > 0) {
-            sb.append(String.format("Dosis de corrección: %.1f U. ", correction.doubleValue()));
+            sb.append(messages.resolve("insulin.explanation.correction-needed",
+                    correction.doubleValue()));
         } else {
-            sb.append("No se requiere corrección. ");
+            sb.append(messages.resolve("insulin.explanation.no-correction"));
         }
+        sb.append(" ");
 
         if (beforeMeal && carbs != null && carbs.compareTo(BigDecimal.ZERO) > 0) {
-            sb.append(String.format("Dosis para %.0f g de carbohidratos: %.1f U. ",
+            sb.append(messages.resolve("insulin.explanation.meal-dose",
                     carbs.doubleValue(), meal.doubleValue()));
+            sb.append(" ");
         }
 
-        sb.append(String.format("Dosis total sugerida: %.1f U.", total.doubleValue()));
+        sb.append(messages.resolve("insulin.explanation.total", total.doubleValue()));
         return sb.toString();
     }
 }

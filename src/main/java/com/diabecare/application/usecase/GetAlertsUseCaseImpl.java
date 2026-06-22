@@ -5,9 +5,11 @@ import com.diabecare.application.port.out.*;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.*;
 import com.diabecare.domain.service.MedicalCalculatorService;
+import com.diabecare.domain.service.MenstrualCycleGuidanceService;
 import com.diabecare.domain.service.PatternDetectorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
 
@@ -28,6 +31,7 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
     private final PatternDetectorService   patternDetectorService;
     private final SystemConfigPort         systemConfig;
     private final MessageResolverPort      messages;
+    private final MenstrualCycleGuidanceService cycleGuidanceService;
 
     @Override
     public List<Alert> getAlerts(UUID patientId) {
@@ -166,19 +170,19 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
                                 .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
                                 .severity(Alert.Severity.WARNING)
                                 .title(messages.resolve("alert.cycle.luteal-late.title"))
-                                .message(cycle.getPhaseGlucoseGuidance())
+                                .message(cycleGuidanceService.resolveGuidance(phase))
                                 .build());
                         case LUTEAL_EARLY -> alerts.add(Alert.builder()
                                 .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
                                 .severity(Alert.Severity.INFO)
                                 .title(messages.resolve("alert.cycle.luteal-early.title"))
-                                .message(cycle.getPhaseGlucoseGuidance())
+                                .message(cycleGuidanceService.resolveGuidance(phase))
                                 .build());
                         case OVULATION -> alerts.add(Alert.builder()
                                 .type(Alert.AlertType.GLUCOSE_AVERAGE_HIGH)
                                 .severity(Alert.Severity.INFO)
                                 .title(messages.resolve("alert.cycle.ovulation.title"))
-                                .message(cycle.getPhaseGlucoseGuidance())
+                                .message(cycleGuidanceService.resolveGuidance(phase))
                                 .build());
                         default -> {}
                     }

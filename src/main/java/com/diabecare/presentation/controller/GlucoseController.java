@@ -10,11 +10,13 @@ import com.diabecare.presentation.dto.response.GlucoseReadingResponse;
 import com.diabecare.presentation.dto.response.GlucoseStatsResponse;
 import com.diabecare.presentation.mapper.GlucoseReadingPresentationMapper;
 import com.diabecare.presentation.mapper.GlucoseStatsPresentationMapper;
+import com.diabecare.presentation.util.CurrentUserResolver;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -33,11 +35,15 @@ public class GlucoseController {
     private final GlucoseReadingPresentationMapper readingMapper;
     private final GlucoseStatsPresentationMapper statsMapper;
     private final ExportGlucoseDataUseCase exportGlucoseDataUseCase;
+    private final CurrentUserResolver currentUserResolver;
 
     @PostMapping("/{patientId}")
     public ResponseEntity<GlucoseReadingResponse> register(
             @PathVariable UUID patientId,
-            @Valid @RequestBody RegisterGlucoseRequest request) {
+            @Valid @RequestBody RegisterGlucoseRequest request,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         GlucoseReading reading = registerGlucoseReadingUseCase.execute(
                 new RegisterGlucoseReadingUseCase.Command(
@@ -56,7 +62,10 @@ public class GlucoseController {
     public ResponseEntity<GlucoseCorrelationResponse> getHistory(
             @PathVariable UUID patientId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         GetGlucoseHistoryUseCase.Result result =
                 getGlucoseHistoryUseCase.getByPatientAndDateRange(patientId, from, to);
@@ -81,7 +90,10 @@ public class GlucoseController {
     public ResponseEntity<GlucoseStatsResponse> getStats(
             @PathVariable UUID patientId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         return ResponseEntity.ok(statsMapper.toResponse(
                 getGlucoseStatsUseCase.getStats(patientId, from, to)));
@@ -90,7 +102,10 @@ public class GlucoseController {
     @DeleteMapping("/{patientId}/{readingId}")
     public ResponseEntity<Void> delete(
             @PathVariable UUID patientId,
-            @PathVariable UUID readingId) {
+            @PathVariable UUID readingId,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
         deleteGlucoseReadingUseCase.execute(readingId, patientId);
         return ResponseEntity.noContent().build();
     }
@@ -99,7 +114,10 @@ public class GlucoseController {
     public ResponseEntity<byte[]> exportCsv(
             @PathVariable UUID patientId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         String csv = exportGlucoseDataUseCase.exportAsCsv(patientId, from, to);
         byte[] bytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -114,7 +132,10 @@ public class GlucoseController {
     public ResponseEntity<byte[]> exportJson(
             @PathVariable UUID patientId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         String json = exportGlucoseDataUseCase.exportAsJson(patientId, from, to);
         byte[] bytes = json.getBytes(java.nio.charset.StandardCharsets.UTF_8);

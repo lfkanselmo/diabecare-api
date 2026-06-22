@@ -1,8 +1,8 @@
 package com.diabecare.presentation.controller;
 
+import com.diabecare.application.port.in.UpdateInsulinProfileUseCase;
 import com.diabecare.application.port.in.UpdatePatientUseCase;
 import com.diabecare.application.port.out.LoadPatientPort;
-import com.diabecare.application.port.out.SavePatientPort;
 import com.diabecare.domain.model.ActivityLevel;
 import com.diabecare.domain.model.GlucoseUnit;
 import com.diabecare.domain.model.Patient;
@@ -10,9 +10,11 @@ import com.diabecare.presentation.dto.request.UpdateInsulinProfileRequest;
 import com.diabecare.presentation.dto.request.UpdatePatientRequest;
 import com.diabecare.presentation.dto.response.PatientResponse;
 import com.diabecare.presentation.mapper.PatientPresentationMapper;
+import com.diabecare.presentation.util.CurrentUserResolver;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -23,30 +25,37 @@ import java.util.UUID;
 public class PatientController {
 
     private final LoadPatientPort loadPatientPort;
-    private final SavePatientPort savePatientPort;
     private final UpdatePatientUseCase updatePatientUseCase;
+    private final UpdateInsulinProfileUseCase updateInsulinProfileUseCase;
     private final PatientPresentationMapper mapper;
+    private final CurrentUserResolver currentUserResolver;
 
     @PatchMapping("/{patientId}/insulin-profile")
     public ResponseEntity<PatientResponse> updateInsulinProfile(
             @PathVariable UUID patientId,
-            @Valid @RequestBody UpdateInsulinProfileRequest request) {
+            @Valid @RequestBody UpdateInsulinProfileRequest request,
+            Authentication authentication) {
 
-        return loadPatientPort.findById(patientId)
-                .map(patient -> {
-                    patient.updateInsulinProfile(
-                            request.sensitivityFactor(),
-                            request.carbRatio(),
-                            request.targetGlucose());
-                    return ResponseEntity.ok(mapper.toResponse(savePatientPort.save(patient)));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
+        Patient patient = updateInsulinProfileUseCase.execute(
+                new UpdateInsulinProfileUseCase.Command(
+                        patientId,
+                        request.sensitivityFactor(),
+                        request.carbRatio(),
+                        request.targetGlucose()
+                ));
+
+        return ResponseEntity.ok(mapper.toResponse(patient));
     }
 
     @PutMapping("/{patientId}")
     public ResponseEntity<PatientResponse> update(
             @PathVariable UUID patientId,
-            @Valid @RequestBody UpdatePatientRequest request) {
+            @Valid @RequestBody UpdatePatientRequest request,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         Patient patient = updatePatientUseCase.execute(
                 new UpdatePatientUseCase.Command(
@@ -65,7 +74,11 @@ public class PatientController {
     }
 
     @GetMapping("/{patientId}")
-    public ResponseEntity<PatientResponse> getById(@PathVariable UUID patientId) {
+    public ResponseEntity<PatientResponse> getById(
+            @PathVariable UUID patientId, Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
         return loadPatientPort.findById(patientId)
                 .map(mapper::toResponse)
                 .map(ResponseEntity::ok)

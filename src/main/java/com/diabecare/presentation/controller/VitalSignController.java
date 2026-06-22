@@ -7,9 +7,11 @@ import com.diabecare.presentation.dto.request.RegisterVitalSignRequest;
 import com.diabecare.presentation.dto.response.Hba1cTrendResponse;
 import com.diabecare.presentation.dto.response.VitalSignResponse;
 import com.diabecare.presentation.mapper.VitalSignPresentationMapper;
+import com.diabecare.presentation.util.CurrentUserResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,11 +26,15 @@ public class VitalSignController {
     private final GetVitalSignsUseCase getVitalSignsUseCase;
     private final VitalSignPresentationMapper mapper;
     private final GetHba1cTrendUseCase getHba1cTrendUseCase;
+    private final CurrentUserResolver currentUserResolver;
 
     @PostMapping("/{patientId}")
     public ResponseEntity<VitalSignResponse> register(
             @PathVariable UUID patientId,
-            @RequestBody RegisterVitalSignRequest request) {
+            @RequestBody RegisterVitalSignRequest request,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 mapper.toResponse(registerVitalSignUseCase.execute(
@@ -46,13 +52,21 @@ public class VitalSignController {
     }
 
     @GetMapping("/{patientId}")
-    public ResponseEntity<List<VitalSignResponse>> getAll(@PathVariable UUID patientId) {
+    public ResponseEntity<List<VitalSignResponse>> getAll(
+            @PathVariable UUID patientId, Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
         return ResponseEntity.ok(getVitalSignsUseCase.getByPatientId(patientId)
                 .stream().map(mapper::toResponse).toList());
     }
 
     @GetMapping("/{patientId}/latest")
-    public ResponseEntity<VitalSignResponse> getLatest(@PathVariable UUID patientId) {
+    public ResponseEntity<VitalSignResponse> getLatest(
+            @PathVariable UUID patientId, Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
         return getVitalSignsUseCase.getLatest(patientId)
                 .map(mapper::toResponse)
                 .map(ResponseEntity::ok)
@@ -62,7 +76,10 @@ public class VitalSignController {
     @GetMapping("/{patientId}/hba1c-trend")
     public ResponseEntity<List<Hba1cTrendResponse>> getHba1cTrend(
             @PathVariable UUID patientId,
-            @RequestParam(defaultValue = "6") int months) {
+            @RequestParam(defaultValue = "6") int months,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         return ResponseEntity.ok(
                 getHba1cTrendUseCase.getTrend(patientId, months)

@@ -1,6 +1,7 @@
 package com.diabecare.presentation.controller;
 
 import com.diabecare.application.port.in.GetDailySummaryUseCase;
+import com.diabecare.application.port.in.GetMealHistoryUseCase;
 import com.diabecare.application.port.in.RegisterMealEntryUseCase;
 import com.diabecare.domain.model.MealItem;
 import com.diabecare.domain.model.MealType;
@@ -9,11 +10,13 @@ import com.diabecare.presentation.dto.response.DailySummaryResponse;
 import com.diabecare.presentation.dto.response.MealEntryResponse;
 import com.diabecare.presentation.mapper.DailySummaryPresentationMapper;
 import com.diabecare.presentation.mapper.MealEntryPresentationMapper;
+import com.diabecare.presentation.util.CurrentUserResolver;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -27,13 +30,18 @@ public class NutritionController {
 
     private final RegisterMealEntryUseCase registerMealEntryUseCase;
     private final GetDailySummaryUseCase getDailySummaryUseCase;
+    private final GetMealHistoryUseCase getMealHistoryUseCase;
     private final MealEntryPresentationMapper mealMapper;
     private final DailySummaryPresentationMapper summaryMapper;
+    private final CurrentUserResolver currentUserResolver;
 
     @PostMapping("/{patientId}/meals")
     public ResponseEntity<MealEntryResponse> register(
             @PathVariable UUID patientId,
-            @Valid @RequestBody RegisterMealRequest request) {
+            @Valid @RequestBody RegisterMealRequest request,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         List<MealItem> items = request.items().stream()
                 .map(i -> MealItem.create(i.foodName(), i.quantityGrams(),
@@ -54,8 +62,27 @@ public class NutritionController {
     @GetMapping("/{patientId}/summary")
     public ResponseEntity<DailySummaryResponse> getDailySummary(
             @PathVariable UUID patientId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
         return ResponseEntity.ok(summaryMapper.toResponse(
                 getDailySummaryUseCase.getSummary(patientId, date)));
+    }
+
+    @GetMapping("/{patientId}/meals")
+    public ResponseEntity<List<MealEntryResponse>> getHistory(
+            @PathVariable UUID patientId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
+        return ResponseEntity.ok(
+                getMealHistoryUseCase.getHistory(patientId, from, to).stream()
+                        .map(mealMapper::toResponse)
+                        .toList());
     }
 }

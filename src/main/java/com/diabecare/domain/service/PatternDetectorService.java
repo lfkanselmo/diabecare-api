@@ -4,13 +4,11 @@ import com.diabecare.application.port.out.MessageResolverPort;
 import com.diabecare.application.port.out.SystemConfigPort;
 import com.diabecare.domain.model.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
-@Component
 @RequiredArgsConstructor
 public class PatternDetectorService {
 

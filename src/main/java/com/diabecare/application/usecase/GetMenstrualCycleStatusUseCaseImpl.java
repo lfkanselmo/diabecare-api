@@ -8,6 +8,7 @@ import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.CyclePhase;
 import com.diabecare.domain.model.MenstrualCycle;
 import com.diabecare.domain.model.Patient;
+import com.diabecare.domain.service.MenstrualCycleGuidanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ public class GetMenstrualCycleStatusUseCaseImpl implements GetMenstrualCycleStat
 
     private final LoadMenstrualCyclePort loadMenstrualCyclePort;
     private final LoadPatientPort loadPatientPort;
+    private final MenstrualCycleGuidanceService cycleGuidanceService;
 
     @Override
     public CycleStatus getStatus(UUID patientId) {
@@ -46,7 +48,7 @@ public class GetMenstrualCycleStatusUseCaseImpl implements GetMenstrualCycleStat
         CyclePhase phase = latest.calculateCurrentPhase(today);
         int dayOfCycle = (int) ChronoUnit.DAYS.between(latest.getCycleStartDate(), today) + 1;
         LocalDate nextCycle = latest.predictNextCycleStart();
-        String guidance = latest.getPhaseGlucoseGuidance();
+        String guidance = cycleGuidanceService.resolveGuidance(phase);
 
         double avgLength = computeAverageLength(history);
 

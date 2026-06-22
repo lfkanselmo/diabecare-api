@@ -53,24 +53,4 @@ public class MenstrualCycle {
         int length = cycleLengthDays != null ? cycleLengthDays : 28;
         return cycleStartDate.plusDays(length);
     }
-
-    public String getPhaseGlucoseGuidance() {
-        return switch (calculateCurrentPhase(LocalDate.now())) {
-            case MENSTRUATION ->
-                    "Durante la menstruación la glucosa puede ser impredecible. " +
-                            "Monitorea con más frecuencia.";
-            case FOLLICULAR ->
-                    "Fase folicular: mayor sensibilidad a la insulina. " +
-                            "Es posible que necesites menos insulina.";
-            case OVULATION ->
-                    "Período de ovulación: el pico de estrógeno puede causar " +
-                            "una bajada temporal de glucosa.";
-            case LUTEAL_EARLY ->
-                    "Fase lútea temprana: la progesterona empieza a aumentar la " +
-                            "resistencia a la insulina. Monitorea de cerca.";
-            case LUTEAL_LATE ->
-                    "Fase lútea tardía: resistencia a la insulina en su punto " +
-                            "máximo. Es normal necesitar más insulina estos días.";
-        };
-    }
 }

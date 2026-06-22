@@ -1,20 +1,24 @@
 package com.diabecare.presentation.controller;
 
+import com.diabecare.application.port.in.GetCyclePhaseCalendarUseCase;
 import com.diabecare.application.port.in.GetMenstrualCycleStatusUseCase;
 import com.diabecare.application.port.in.RegisterMenstrualCycleUseCase;
-import com.diabecare.domain.model.CyclePhase;
+import com.diabecare.domain.service.MenstrualCycleGuidanceService;
 import com.diabecare.presentation.dto.request.MenstrualCycleRequest;
+import com.diabecare.presentation.dto.response.CyclePhaseDayResponse;
 import com.diabecare.presentation.dto.response.MenstrualCycleStatusResponse;
+import com.diabecare.presentation.util.CurrentUserResolver;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -24,19 +28,17 @@ public class MenstrualCycleController {
 
     private final RegisterMenstrualCycleUseCase registerUseCase;
     private final GetMenstrualCycleStatusUseCase getStatusUseCase;
-
-    private static final Map<CyclePhase, String> PHASE_LABELS = Map.of(
-            CyclePhase.MENSTRUATION,  "Menstruación",
-            CyclePhase.FOLLICULAR,    "Fase folicular",
-            CyclePhase.OVULATION,     "Ovulación",
-            CyclePhase.LUTEAL_EARLY,  "Fase lútea temprana",
-            CyclePhase.LUTEAL_LATE,   "Fase lútea tardía"
-    );
+    private final GetCyclePhaseCalendarUseCase getCyclePhaseCalendarUseCase;
+    private final CurrentUserResolver currentUserResolver;
+    private final MenstrualCycleGuidanceService cycleGuidanceService;
 
     @PostMapping("/{patientId}")
     public ResponseEntity<MenstrualCycleStatusResponse> register(
             @PathVariable UUID patientId,
-            @Valid @RequestBody MenstrualCycleRequest request) {
+            @Valid @RequestBody MenstrualCycleRequest request,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         registerUseCase.execute(new RegisterMenstrualCycleUseCase.Command(
                 patientId,
@@ -52,8 +54,28 @@ public class MenstrualCycleController {
 
     @GetMapping("/{patientId}/status")
     public ResponseEntity<MenstrualCycleStatusResponse> getStatus(
-            @PathVariable UUID patientId) {
+            @PathVariable UUID patientId, Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
         return ResponseEntity.ok(buildStatus(patientId));
+    }
+
+    @GetMapping("/{patientId}/phase-calendar")
+    public ResponseEntity<List<CyclePhaseDayResponse>> getPhaseCalendar(
+            @PathVariable UUID patientId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
+        List<CyclePhaseDayResponse> calendar = getCyclePhaseCalendarUseCase
+                .getCalendar(patientId, from, to).stream()
+                .map(day -> new CyclePhaseDayResponse(day.date(), day.phase().name()))
+                .toList();
+
+        return ResponseEntity.ok(calendar);
     }
 
     private MenstrualCycleStatusResponse buildStatus(UUID patientId) {
@@ -76,7 +98,7 @@ public class MenstrualCycleController {
 
         return new MenstrualCycleStatusResponse(
                 status.currentPhase().name(),
-                PHASE_LABELS.get(status.currentPhase()),
+                cycleGuidanceService.resolveLabel(status.currentPhase()),
                 status.dayOfCycle(),
                 status.nextCycleStart(),
                 (int) daysUntilNext,

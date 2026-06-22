@@ -4,11 +4,9 @@ import com.diabecare.domain.model.GlucoseReading;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-@Service
 public class GlucoseExportService {
 
     private final ObjectMapper objectMapper;

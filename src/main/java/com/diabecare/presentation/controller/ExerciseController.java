@@ -7,11 +7,13 @@ import com.diabecare.domain.model.ExerciseLog;
 import com.diabecare.domain.model.ExerciseType;
 import com.diabecare.presentation.dto.request.RegisterExerciseRequest;
 import com.diabecare.presentation.dto.response.ExerciseLogResponse;
+import com.diabecare.presentation.util.CurrentUserResolver;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -25,11 +27,15 @@ public class ExerciseController {
 
     private final RegisterExerciseUseCase registerExerciseUseCase;
     private final GetExerciseHistoryUseCase getExerciseHistoryUseCase;
+    private final CurrentUserResolver currentUserResolver;
 
     @PostMapping("/{patientId}")
     public ResponseEntity<ExerciseLogResponse> register(
             @PathVariable UUID patientId,
-            @Valid @RequestBody RegisterExerciseRequest request) {
+            @Valid @RequestBody RegisterExerciseRequest request,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         LocalDateTime performedAt = request.performedAt() != null
                 ? LocalDateTime.parse(request.performedAt()) : null;
@@ -51,7 +57,10 @@ public class ExerciseController {
     public ResponseEntity<List<ExerciseLogResponse>> getHistory(
             @PathVariable UUID patientId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         return ResponseEntity.ok(
                 getExerciseHistoryUseCase.getHistory(patientId, from, to)

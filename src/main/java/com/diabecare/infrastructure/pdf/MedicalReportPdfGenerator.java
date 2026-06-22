@@ -2,8 +2,9 @@ package com.diabecare.infrastructure.pdf;
 
 import com.diabecare.domain.model.ExerciseLog;
 import com.diabecare.domain.model.MenstrualCycle;
+import com.diabecare.domain.model.ReportData;
 import com.diabecare.domain.model.VitalSign;
-import com.diabecare.domain.service.ReportDataService;
+import com.diabecare.domain.service.MenstrualCycleGuidanceService;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.pdf.PdfDocument;
@@ -12,6 +13,7 @@ import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
@@ -22,7 +24,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 @Component
+@RequiredArgsConstructor
 public class MedicalReportPdfGenerator {
+
+    private final MenstrualCycleGuidanceService cycleGuidanceService;
 
     private static final DeviceRgb PRIMARY     = new DeviceRgb(21, 101, 192);
     private static final DeviceRgb LIGHT_GRAY  = new DeviceRgb(245, 247, 250);
@@ -34,7 +39,7 @@ public class MedicalReportPdfGenerator {
     private static final DateTimeFormatter DATE_ONLY =
             DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    public byte[] generate(ReportDataService data, LocalDate from, LocalDate to) {
+    public byte[] generate(ReportData data, LocalDate from, LocalDate to) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PdfWriter writer = new PdfWriter(baos);
         PdfDocument pdf = new PdfDocument(writer);
@@ -60,7 +65,7 @@ public class MedicalReportPdfGenerator {
         return baos.toByteArray();
     }
 
-    private void addHeader(Document doc, ReportDataService data,
+    private void addHeader(Document doc, ReportData data,
                            LocalDate from, LocalDate to) {
         Table header = new Table(UnitValue.createPercentArray(new float[]{70, 30}))
                 .setWidth(UnitValue.createPercentValue(100));
@@ -91,7 +96,7 @@ public class MedicalReportPdfGenerator {
                 .setStrokeColor(PRIMARY).setMarginBottom(10));
     }
 
-    private void addPatientInfo(Document doc, ReportDataService data) {
+    private void addPatientInfo(Document doc, ReportData data) {
         doc.add(sectionTitle("Datos del Paciente"));
 
         Table table = new Table(UnitValue.createPercentArray(new float[]{25, 25, 25, 25}))
@@ -109,7 +114,7 @@ public class MedicalReportPdfGenerator {
         doc.add(new Paragraph("\n").setFontSize(4));
     }
 
-    private void addGlucoseSummary(Document doc, ReportDataService data) {
+    private void addGlucoseSummary(Document doc, ReportData data) {
         doc.add(sectionTitle("Resumen Glucémico"));
 
         Table table = new Table(UnitValue.createPercentArray(new float[]{25, 25, 25, 25}))
@@ -140,7 +145,7 @@ public class MedicalReportPdfGenerator {
         doc.add(new Paragraph("\n").setFontSize(4));
     }
 
-    private void addGlucoseHistory(Document doc, ReportDataService data) {
+    private void addGlucoseHistory(Document doc, ReportData data) {
         if (data.getGlucoseReadings().isEmpty()) return;
 
         doc.add(sectionTitle("Historial de Glucosa (últimas 20 lecturas)"));
@@ -167,7 +172,7 @@ public class MedicalReportPdfGenerator {
         doc.add(new Paragraph("\n").setFontSize(4));
     }
 
-    private void addVitalSigns(Document doc, ReportDataService data) {
+    private void addVitalSigns(Document doc, ReportData data) {
         if (data.getVitalSigns().isEmpty()) return;
 
         doc.add(sectionTitle("Último Registro de Signos Vitales"));
@@ -191,7 +196,7 @@ public class MedicalReportPdfGenerator {
         doc.add(new Paragraph("\n").setFontSize(4));
     }
 
-    private void addMedications(Document doc, ReportDataService data) {
+    private void addMedications(Document doc, ReportData data) {
         if (data.getMedications().isEmpty()) return;
 
         doc.add(sectionTitle("Medicamentos Activos"));
@@ -222,8 +227,6 @@ public class MedicalReportPdfGenerator {
                 .setFontSize(8).setFontColor(ColorConstants.GRAY)
                 .setTextAlignment(TextAlignment.CENTER));
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Paragraph sectionTitle(String title) {
         return new Paragraph(title)
@@ -306,7 +309,7 @@ public class MedicalReportPdfGenerator {
         };
     }
 
-    private void addTirDetailed(Document doc, ReportDataService data) {
+    private void addTirDetailed(Document doc, ReportData data) {
         if (data.getTirDetailed().isEmpty()) return;
 
         doc.add(sectionTitle("Distribución del Tiempo en Rango (Consenso Internacional)"));
@@ -347,7 +350,7 @@ public class MedicalReportPdfGenerator {
         doc.add(new Paragraph("\n").setFontSize(4));
     }
 
-    private void addAverageByReadingType(Document doc, ReportDataService data) {
+    private void addAverageByReadingType(Document doc, ReportData data) {
         if (data.getAverageByReadingType().isEmpty()) return;
 
         doc.add(sectionTitle("Promedio de Glucosa por Período del Día"));
@@ -378,7 +381,7 @@ public class MedicalReportPdfGenerator {
         doc.add(new Paragraph("\n").setFontSize(4));
     }
 
-    private void addHypoglycemiaEvents(Document doc, ReportDataService data) {
+    private void addHypoglycemiaEvents(Document doc, ReportData data) {
         doc.add(sectionTitle("Episodios de Hipoglucemia (<70 mg/dL)"));
 
         if (data.getHypoglycemiaEvents().isEmpty()) {
@@ -410,7 +413,7 @@ public class MedicalReportPdfGenerator {
         doc.add(new Paragraph("\n").setFontSize(4));
     }
 
-    private void addAdherence(Document doc, ReportDataService data) {
+    private void addAdherence(Document doc, ReportData data) {
         doc.add(sectionTitle("Adherencia al Monitoreo"));
 
         double adherence = data.getAdherencePercent();
@@ -441,7 +444,7 @@ public class MedicalReportPdfGenerator {
         doc.add(new Paragraph("\n").setFontSize(4));
     }
 
-    private void addTopImpactMeals(Document doc, ReportDataService data) {
+    private void addTopImpactMeals(Document doc, ReportData data) {
         if (data.getTopImpactMeals().isEmpty()) return;
 
         doc.add(sectionTitle("Comidas con Mayor Impacto Calórico"));
@@ -463,7 +466,7 @@ public class MedicalReportPdfGenerator {
         doc.add(new Paragraph("\n").setFontSize(4));
     }
 
-    private void addExerciseSummary(Document doc, ReportDataService data) {
+    private void addExerciseSummary(Document doc, ReportData data) {
         if (data.getExerciseLogs().isEmpty()) return;
 
         doc.add(sectionTitle("Actividad Física en el Período"));
@@ -502,19 +505,20 @@ public class MedicalReportPdfGenerator {
         doc.add(new Paragraph("\n").setFontSize(4));
     }
 
-    private void addMenstrualCycle(Document doc, ReportDataService data) {
+    private void addMenstrualCycle(Document doc, ReportData data) {
         if (data.getLatestMenstrualCycle() == null) return;
 
         doc.add(sectionTitle("Ciclo Menstrual"));
 
         MenstrualCycle cycle = data.getLatestMenstrualCycle();
+        var currentPhase = cycle.calculateCurrentPhase(LocalDate.now());
         Table table = new Table(UnitValue.createPercentArray(new float[]{25, 25, 25, 25}))
                 .setWidth(UnitValue.createPercentValue(100));
 
         addInfoCell(table, "Inicio del ciclo",
                 cycle.getCycleStartDate().format(DATE_ONLY));
         addInfoCell(table, "Fase actual",
-                formatCyclePhase(cycle.calculateCurrentPhase(LocalDate.now()).name()));
+                cycleGuidanceService.resolveLabel(currentPhase));
         addInfoCell(table, "Próximo ciclo",
                 cycle.predictNextCycleStart().format(DATE_ONLY));
         addInfoCell(table, "Duración promedio",
@@ -522,13 +526,11 @@ public class MedicalReportPdfGenerator {
 
         doc.add(table);
 
-        doc.add(new Paragraph(cycle.getPhaseGlucoseGuidance())
+        doc.add(new Paragraph(cycleGuidanceService.resolveGuidance(currentPhase))
                 .setFontSize(9).setFontColor(ColorConstants.DARK_GRAY)
                 .setBackgroundColor(LIGHT_GRAY)
                 .setPadding(8).setMarginTop(6).setMarginBottom(8));
     }
-
-// ── Helpers adicionales ───────────────────────────────────────────────────
 
     private String formatMealType(String type) {
         return switch (type) {
@@ -562,17 +564,6 @@ public class MedicalReportPdfGenerator {
             case "MODERATE" -> "Moderada";
             case "HIGH"     -> "Alta";
             default         -> intensity;
-        };
-    }
-
-    private String formatCyclePhase(String phase) {
-        return switch (phase) {
-            case "MENSTRUATION"  -> "Menstruación";
-            case "FOLLICULAR"    -> "Fase folicular";
-            case "OVULATION"     -> "Ovulación";
-            case "LUTEAL_EARLY"  -> "Lútea temprana";
-            case "LUTEAL_LATE"   -> "Lútea tardía";
-            default              -> phase;
         };
     }
 }

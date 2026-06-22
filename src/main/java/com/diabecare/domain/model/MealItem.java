@@ -1,5 +1,6 @@
 package com.diabecare.domain.model;
 
+import com.diabecare.domain.exception.InvalidMealEntryException;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -28,6 +29,13 @@ public class MealItem {
             BigDecimal fats,
             String foodCode
     ) {
+        validateFoodName(foodName);
+        validateQuantity(quantityGrams);
+        validateRequiredNonNegative(calories, "Las calorías");
+        validateRequiredNonNegative(carbohydrates, "Los carbohidratos");
+        validateOptionalNonNegative(proteins, "Las proteínas");
+        validateOptionalNonNegative(fats, "Las grasas");
+
         return MealItem.builder()
                 .mealItemId(UUID.randomUUID())
                 .foodName(foodName)
@@ -38,5 +46,29 @@ public class MealItem {
                 .fats(fats)
                 .foodCode(foodCode)
                 .build();
+    }
+
+    private static void validateFoodName(String foodName) {
+        if (foodName == null || foodName.isBlank()) {
+            throw new InvalidMealEntryException("El nombre del alimento es obligatorio");
+        }
+    }
+
+    private static void validateQuantity(BigDecimal quantityGrams) {
+        if (quantityGrams == null || quantityGrams.compareTo(BigDecimal.valueOf(0.1)) < 0) {
+            throw new InvalidMealEntryException("La cantidad debe ser mayor o igual a 0.1 gramos");
+        }
+    }
+
+    private static void validateRequiredNonNegative(BigDecimal value, String fieldLabel) {
+        if (value == null || value.compareTo(BigDecimal.ZERO) < 0) {
+            throw new InvalidMealEntryException(fieldLabel + " son obligatorias y no pueden ser negativas");
+        }
+    }
+
+    private static void validateOptionalNonNegative(BigDecimal value, String fieldLabel) {
+        if (value != null && value.compareTo(BigDecimal.ZERO) < 0) {
+            throw new InvalidMealEntryException(fieldLabel + " no pueden ser negativas");
+        }
     }
 }

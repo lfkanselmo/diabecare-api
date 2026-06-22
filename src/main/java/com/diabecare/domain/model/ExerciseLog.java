@@ -1,6 +1,6 @@
 package com.diabecare.domain.model;
 
-import com.diabecare.domain.exception.DomainException;
+import com.diabecare.domain.exception.InvalidExerciseLogException;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -30,10 +30,10 @@ public class ExerciseLog {
             LocalDateTime performedAt) {
 
         if (durationMinutes == null || durationMinutes <= 0) {
-            throw new DomainException("La duración debe ser mayor a 0 minutos") {};
+            throw new InvalidExerciseLogException("La duración debe ser mayor a 0 minutos");
         }
         if (performedAt != null && performedAt.isAfter(LocalDateTime.now())) {
-            throw new DomainException("La fecha del ejercicio no puede ser futura") {};
+            throw new InvalidExerciseLogException("La fecha del ejercicio no puede ser futura");
         }
 
         BigDecimal calories = estimateCalories(exerciseType, intensity, durationMinutes);
