@@ -4,6 +4,7 @@ import com.diabecare.application.port.in.GetCyclePhaseCalendarUseCase;
 import com.diabecare.application.port.out.LoadMenstrualCyclePort;
 import com.diabecare.domain.exception.InvalidPatientDataException;
 import com.diabecare.domain.model.MenstrualCycle;
+import com.diabecare.domain.service.CycleStatisticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ import java.util.UUID;
 public class GetCyclePhaseCalendarUseCaseImpl implements GetCyclePhaseCalendarUseCase {
 
     private final LoadMenstrualCyclePort loadMenstrualCyclePort;
+    private final CycleStatisticsService cycleStatisticsService;
 
     @Override
     public List<DayPhase> getCalendar(UUID patientId, LocalDate from, LocalDate to) {
@@ -25,8 +27,13 @@ public class GetCyclePhaseCalendarUseCaseImpl implements GetCyclePhaseCalendarUs
                 .orElseThrow(() -> new InvalidPatientDataException(
                         "No hay ciclos registrados. Registra tu primer ciclo."));
 
+        List<MenstrualCycle> history = loadMenstrualCyclePort.findByPatientId(patientId);
+        Integer avgCycleLength = cycleStatisticsService.calculateAverageCycleLength(history);
+        Integer avgPeriodLength = cycleStatisticsService.calculateAveragePeriodLength(history);
+
         return from.datesUntil(to.plusDays(1))
-                .map(date -> new DayPhase(date, latestCycle.calculateCurrentPhase(date)))
+                .map(date -> new DayPhase(date,
+                        latestCycle.calculateCurrentPhase(date, avgCycleLength, avgPeriodLength)))
                 .toList();
     }
 }

@@ -4,7 +4,6 @@ import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 
-public record MenstrualCycleRequest(
-        @NotNull LocalDate startDate,
-        String notes
+public record FinishPeriodRequest(
+        @NotNull LocalDate endDate
 ) {}

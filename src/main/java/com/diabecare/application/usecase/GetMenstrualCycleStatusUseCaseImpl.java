@@ -1,13 +1,16 @@
 package com.diabecare.application.usecase;
 
 import com.diabecare.application.port.in.GetMenstrualCycleStatusUseCase;
+import com.diabecare.application.port.out.LoadCycleDayEntryPort;
 import com.diabecare.application.port.out.LoadMenstrualCyclePort;
 import com.diabecare.application.port.out.LoadPatientPort;
 import com.diabecare.domain.exception.InvalidPatientDataException;
 import com.diabecare.domain.exception.PatientNotFoundException;
+import com.diabecare.domain.model.CycleDayEntry;
 import com.diabecare.domain.model.CyclePhase;
 import com.diabecare.domain.model.MenstrualCycle;
 import com.diabecare.domain.model.Patient;
+import com.diabecare.domain.service.CycleStatisticsService;
 import com.diabecare.domain.service.MenstrualCycleGuidanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.OptionalDouble;
 import java.util.UUID;
 
 @Service
@@ -25,8 +27,10 @@ import java.util.UUID;
 public class GetMenstrualCycleStatusUseCaseImpl implements GetMenstrualCycleStatusUseCase {
 
     private final LoadMenstrualCyclePort loadMenstrualCyclePort;
+    private final LoadCycleDayEntryPort loadCycleDayEntryPort;
     private final LoadPatientPort loadPatientPort;
     private final MenstrualCycleGuidanceService cycleGuidanceService;
+    private final CycleStatisticsService cycleStatisticsService;
 
     @Override
     public CycleStatus getStatus(UUID patientId) {
@@ -45,24 +49,30 @@ public class GetMenstrualCycleStatusUseCaseImpl implements GetMenstrualCycleStat
                         "No hay ciclos registrados. Registra tu primer ciclo."));
 
         LocalDate today = LocalDate.now();
-        CyclePhase phase = latest.calculateCurrentPhase(today);
-        int dayOfCycle = (int) ChronoUnit.DAYS.between(latest.getCycleStartDate(), today) + 1;
-        LocalDate nextCycle = latest.predictNextCycleStart();
+
+        Integer avgCycleLength = cycleStatisticsService.calculateAverageCycleLength(history);
+        Integer avgPeriodLength = cycleStatisticsService.calculateAveragePeriodLength(history);
+
+        CyclePhase phase = latest.calculateCurrentPhase(today, avgCycleLength, avgPeriodLength);
+        int dayOfCycle = (int) ChronoUnit.DAYS.between(latest.getStartDate(), today) + 1;
+        LocalDate nextCycle = latest.predictNextCycleStart(avgCycleLength);
         String guidance = cycleGuidanceService.resolveGuidance(phase);
 
-        double avgLength = computeAverageLength(history);
+        CycleDayEntry todayEntry = loadCycleDayEntryPort
+                .findByCycleIdAndDate(latest.getCycleId(), today)
+                .orElse(null);
 
-        return new CycleStatus(phase, dayOfCycle, nextCycle, guidance, avgLength, history);
-    }
-
-    private double computeAverageLength(List<MenstrualCycle> history) {
-        if (history.size() < 2) return 28.0;
-        OptionalDouble avg = java.util.stream.IntStream.range(0, history.size() - 1)
-                .mapToDouble(i -> ChronoUnit.DAYS.between(
-                        history.get(i + 1).getCycleStartDate(),
-                        history.get(i).getCycleStartDate()))
-                .filter(d -> d >= 21 && d <= 35)
-                .average();
-        return avg.orElse(28.0);
+        return new CycleStatus(
+                phase,
+                dayOfCycle,
+                latest.isOngoing(),
+                latest.getStartDate(),
+                nextCycle,
+                guidance,
+                avgCycleLength,
+                avgPeriodLength,
+                todayEntry,
+                history
+        );
     }
 }

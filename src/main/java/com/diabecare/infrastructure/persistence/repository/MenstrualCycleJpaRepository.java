@@ -8,6 +8,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface MenstrualCycleJpaRepository extends JpaRepository<MenstrualCycleEntity, UUID> {
-    List<MenstrualCycleEntity> findByPatientIdOrderByCycleStartDateDesc(UUID patientId);
-    Optional<MenstrualCycleEntity> findFirstByPatientIdOrderByCycleStartDateDesc(UUID patientId);
+    List<MenstrualCycleEntity> findByPatientIdOrderByStartDateDesc(UUID patientId);
+    Optional<MenstrualCycleEntity> findFirstByPatientIdOrderByStartDateDesc(UUID patientId);
 }

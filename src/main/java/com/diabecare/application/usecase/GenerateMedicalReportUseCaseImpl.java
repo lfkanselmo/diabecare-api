@@ -4,6 +4,7 @@ import com.diabecare.application.port.in.GenerateMedicalReportUseCase;
 import com.diabecare.application.port.out.*;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.*;
+import com.diabecare.domain.service.CycleStatisticsService;
 import com.diabecare.domain.service.MedicalCalculatorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class GenerateMedicalReportUseCaseImpl implements GenerateMedicalReportUs
     private final LoadExerciseLogPort      loadExerciseLogPort;
     private final LoadMenstrualCyclePort   loadMenstrualCyclePort;
     private final MedicalCalculatorService medicalCalculatorService;
+    private final CycleStatisticsService   cycleStatisticsService;
     private final GenerateReportPort       generateReportPort;
 
     @Override
@@ -52,10 +54,14 @@ public class GenerateMedicalReportUseCaseImpl implements GenerateMedicalReportUs
                 .findByPatientIdAndDateRange(command.patientId(), from, to);
 
         MenstrualCycle latestCycle = null;
+        Integer avgCycleLength = null;
+        Integer avgPeriodLength = null;
         if (patient.isFemale()) {
-            latestCycle = loadMenstrualCyclePort
-                    .findLatestByPatientId(command.patientId())
-                    .orElse(null);
+            List<MenstrualCycle> cycleHistory = loadMenstrualCyclePort
+                    .findByPatientId(command.patientId());
+            latestCycle = cycleHistory.stream().findFirst().orElse(null);
+            avgCycleLength = cycleStatisticsService.calculateAverageCycleLength(cycleHistory);
+            avgPeriodLength = cycleStatisticsService.calculateAveragePeriodLength(cycleHistory);
         }
 
         BigDecimal avg = medicalCalculatorService.calculateAverage(readings);
@@ -73,6 +79,8 @@ public class GenerateMedicalReportUseCaseImpl implements GenerateMedicalReportUs
                 .medications(medications)
                 .exerciseLogs(exercises)
                 .latestMenstrualCycle(latestCycle)
+                .averageCycleLength(avgCycleLength)
+                .averagePeriodLength(avgPeriodLength)
                 .averageGlucose(avg)
                 .estimatedHba1c(readings.isEmpty() ? null :
                         medicalCalculatorService.estimateHba1c(avg))

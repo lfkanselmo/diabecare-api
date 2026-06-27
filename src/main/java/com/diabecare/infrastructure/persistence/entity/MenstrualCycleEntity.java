@@ -25,23 +25,11 @@ public class MenstrualCycleEntity {
     @Column(name = "patient_id", nullable = false)
     private UUID patientId;
 
-    @Column(name = "cycle_start_date", nullable = false)
-    private LocalDate cycleStartDate;
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
 
-    @Column(name = "cycle_end_date")
-    private LocalDate cycleEndDate;
-
-    @Column(name = "cycle_length_days")
-    private Integer cycleLengthDays;
-
-    @Column(name = "period_length_days")
-    private Integer periodLengthDays;
-
-    @Column(nullable = false, length = 20)
-    private String phase;
-
-    @Column(columnDefinition = "TEXT")
-    private String symptoms;
+    @Column(name = "end_date")
+    private LocalDate endDate;
 
     @Column(length = 500)
     private String notes;

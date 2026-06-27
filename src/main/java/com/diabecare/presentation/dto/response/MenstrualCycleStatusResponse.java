@@ -7,17 +7,20 @@ public record MenstrualCycleStatusResponse(
         String currentPhase,
         String currentPhaseLabel,
         int dayOfCycle,
+        boolean isOngoing,
+        LocalDate periodStartDate,
         LocalDate nextCycleStart,
         int daysUntilNextCycle,
         String glucoseGuidance,
-        double averageCycleLength,
+        Integer averageCycleLength,
+        Integer averagePeriodLength,
+        CycleDayEntryResponse todayEntry,
         List<CycleHistoryItem> history
 ) {
     public record CycleHistoryItem(
             String cycleId,
             LocalDate startDate,
-            Integer cycleLengthDays,
-            Integer periodLengthDays,
-            String symptoms
+            LocalDate endDate,
+            Integer actualPeriodLengthDays
     ) {}
 }

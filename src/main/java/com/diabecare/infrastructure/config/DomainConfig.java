@@ -3,6 +3,8 @@ package com.diabecare.infrastructure.config;
 import com.diabecare.application.port.out.MessageResolverPort;
 import com.diabecare.application.port.out.SystemConfigPort;
 import com.diabecare.domain.service.AuditService;
+import com.diabecare.domain.service.CycleLabelService;
+import com.diabecare.domain.service.CycleStatisticsService;
 import com.diabecare.domain.service.GlucoseExportService;
 import com.diabecare.domain.service.MedicalCalculatorService;
 import com.diabecare.domain.service.MenstrualCycleGuidanceService;
@@ -47,5 +49,15 @@ public class DomainConfig {
     @Bean
     public MenstrualCycleGuidanceService menstrualCycleGuidanceService() {
         return new MenstrualCycleGuidanceService(messages);
+    }
+
+    @Bean
+    public CycleStatisticsService cycleStatisticsService() {
+        return new CycleStatisticsService();
+    }
+
+    @Bean
+    public CycleLabelService cycleLabelService() {
+        return new CycleLabelService(messages);
     }
 }

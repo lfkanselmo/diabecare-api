@@ -4,6 +4,7 @@ import com.diabecare.application.port.in.GetAlertsUseCase;
 import com.diabecare.application.port.out.*;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.*;
+import com.diabecare.domain.service.CycleStatisticsService;
 import com.diabecare.domain.service.MedicalCalculatorService;
 import com.diabecare.domain.service.MenstrualCycleGuidanceService;
 import com.diabecare.domain.service.PatternDetectorService;
@@ -32,6 +33,7 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
     private final SystemConfigPort         systemConfig;
     private final MessageResolverPort      messages;
     private final MenstrualCycleGuidanceService cycleGuidanceService;
+    private final CycleStatisticsService   cycleStatisticsService;
 
     @Override
     public List<Alert> getAlerts(UUID patientId) {
@@ -161,9 +163,15 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
 
         loadMenstrualCyclePort.findLatestByPatientId(patient.getPatientId())
                 .ifPresent(cycle -> {
-                    CyclePhase phase = cycle.calculateCurrentPhase(java.time.LocalDate.now());
+                    List<MenstrualCycle> history = loadMenstrualCyclePort
+                            .findByPatientId(patient.getPatientId());
+                    Integer avgCycleLength = cycleStatisticsService.calculateAverageCycleLength(history);
+                    Integer avgPeriodLength = cycleStatisticsService.calculateAveragePeriodLength(history);
+
+                    CyclePhase phase = cycle.calculateCurrentPhase(
+                            java.time.LocalDate.now(), avgCycleLength, avgPeriodLength);
                     long daysUntilNext = java.time.temporal.ChronoUnit.DAYS.between(
-                            java.time.LocalDate.now(), cycle.predictNextCycleStart());
+                            java.time.LocalDate.now(), cycle.predictNextCycleStart(avgCycleLength));
 
                     switch (phase) {
                         case LUTEAL_LATE -> alerts.add(Alert.builder()

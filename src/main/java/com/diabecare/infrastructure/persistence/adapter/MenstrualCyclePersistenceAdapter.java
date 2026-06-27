@@ -27,13 +27,13 @@ public class MenstrualCyclePersistenceAdapter
 
     @Override
     public List<MenstrualCycle> findByPatientId(UUID patientId) {
-        return repository.findByPatientIdOrderByCycleStartDateDesc(patientId)
+        return repository.findByPatientIdOrderByStartDateDesc(patientId)
                 .stream().map(mapper::toDomain).toList();
     }
 
     @Override
     public Optional<MenstrualCycle> findLatestByPatientId(UUID patientId) {
-        return repository.findFirstByPatientIdOrderByCycleStartDateDesc(patientId)
+        return repository.findFirstByPatientIdOrderByStartDateDesc(patientId)
                 .map(mapper::toDomain);
     }
 }

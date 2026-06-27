@@ -18,6 +18,8 @@ public class ReportData {
     private List<Medication> medications;
     private List<ExerciseLog> exerciseLogs;
     private MenstrualCycle latestMenstrualCycle;
+    private Integer averageCycleLength;
+    private Integer averagePeriodLength;
 
     private BigDecimal estimatedHba1c;
     private BigDecimal timeInRangePercent;

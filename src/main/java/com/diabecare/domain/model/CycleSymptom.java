@@ -1,0 +1,31 @@
+package com.diabecare.domain.model;
+
+public enum CycleSymptom {
+    CRAMPS,
+    HEADACHE,
+    MIGRAINE,
+    FATIGUE,
+    MOOD_CHANGES,
+    ANXIETY,
+    IRRITABILITY,
+    SADNESS,
+    BLOATING,
+    CRAVINGS,
+    APPETITE_INCREASE,
+    APPETITE_DECREASE,
+    BREAST_TENDERNESS,
+    SLEEP_DIFFICULTY,
+    BACK_PAIN,
+    JOINT_PAIN,
+    NAUSEA,
+    DIARRHEA,
+    CONSTIPATION,
+    ACNE,
+    SPOTTING,
+    HOT_FLASHES,
+    DIZZINESS,
+    LOW_LIBIDO,
+    HIGH_LIBIDO,
+    BRAIN_FOG,
+    CLOTS
+}

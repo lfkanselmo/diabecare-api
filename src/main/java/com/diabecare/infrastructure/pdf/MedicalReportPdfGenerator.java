@@ -511,18 +511,19 @@ public class MedicalReportPdfGenerator {
         doc.add(sectionTitle("Ciclo Menstrual"));
 
         MenstrualCycle cycle = data.getLatestMenstrualCycle();
-        var currentPhase = cycle.calculateCurrentPhase(LocalDate.now());
+        var currentPhase = cycle.calculateCurrentPhase(
+                LocalDate.now(), data.getAverageCycleLength(), data.getAveragePeriodLength());
         Table table = new Table(UnitValue.createPercentArray(new float[]{25, 25, 25, 25}))
                 .setWidth(UnitValue.createPercentValue(100));
 
         addInfoCell(table, "Inicio del ciclo",
-                cycle.getCycleStartDate().format(DATE_ONLY));
+                cycle.getStartDate().format(DATE_ONLY));
         addInfoCell(table, "Fase actual",
                 cycleGuidanceService.resolveLabel(currentPhase));
         addInfoCell(table, "Próximo ciclo",
-                cycle.predictNextCycleStart().format(DATE_ONLY));
+                cycle.predictNextCycleStart(data.getAverageCycleLength()).format(DATE_ONLY));
         addInfoCell(table, "Duración promedio",
-                (cycle.getCycleLengthDays() != null ? cycle.getCycleLengthDays() : 28) + " días");
+                (data.getAverageCycleLength() != null ? data.getAverageCycleLength() : 28) + " días");
 
         doc.add(table);
 

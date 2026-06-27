@@ -1,5 +1,6 @@
 package com.diabecare.application.port.in;
 
+import com.diabecare.domain.model.CycleDayEntry;
 import com.diabecare.domain.model.CyclePhase;
 import com.diabecare.domain.model.MenstrualCycle;
 
@@ -12,9 +13,13 @@ public interface GetMenstrualCycleStatusUseCase {
     record CycleStatus(
             CyclePhase currentPhase,
             int dayOfCycle,
+            boolean isOngoing,
+            LocalDate periodStartDate,
             LocalDate nextCycleStart,
             String glucoseGuidance,
-            double averageCycleLength,
+            Integer averageCycleLength,
+            Integer averagePeriodLength,
+            CycleDayEntry todayEntry,
             List<MenstrualCycle> history
     ) {}
 

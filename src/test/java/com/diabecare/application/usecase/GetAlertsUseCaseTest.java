@@ -2,6 +2,7 @@ package com.diabecare.application.usecase;
 
 import com.diabecare.application.port.out.*;
 import com.diabecare.domain.model.*;
+import com.diabecare.domain.service.CycleStatisticsService;
 import com.diabecare.domain.service.MedicalCalculatorService;
 import com.diabecare.domain.service.MenstrualCycleGuidanceService;
 import com.diabecare.domain.service.PatternDetectorService;
@@ -39,6 +40,7 @@ class GetAlertsUseCaseTest {
     @Mock private SystemConfigPort       systemConfig;
     @Mock private MessageResolverPort    messages;
     @Mock private MenstrualCycleGuidanceService cycleGuidanceService;
+    @Mock private CycleStatisticsService cycleStatisticsService;
 
     private GetAlertsUseCaseImpl useCase;
     private UUID patientId;
@@ -65,6 +67,10 @@ class GetAlertsUseCaseTest {
         when(patternDetectorService.detectRecurrentHypoglycemia(any())).thenReturn(Optional.empty());
         when(patternDetectorService.detectHighVariability(any())).thenReturn(Optional.empty());
 
+        when(loadMenstrualCyclePort.findByPatientId(any())).thenReturn(List.of());
+        when(cycleStatisticsService.calculateAverageCycleLength(any())).thenReturn(null);
+        when(cycleStatisticsService.calculateAveragePeriodLength(any())).thenReturn(null);
+
         useCase = new GetAlertsUseCaseImpl(
                 loadPatientPort,
                 loadGlucoseReadingPort,
@@ -75,7 +81,8 @@ class GetAlertsUseCaseTest {
                 patternDetectorService,
                 systemConfig,
                 messages,
-                cycleGuidanceService
+                cycleGuidanceService,
+                cycleStatisticsService
         );
     }
 

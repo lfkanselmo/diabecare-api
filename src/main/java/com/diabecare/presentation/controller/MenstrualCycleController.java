@@ -1,10 +1,20 @@
 package com.diabecare.presentation.controller;
 
+import com.diabecare.application.port.in.FinishPeriodUseCase;
 import com.diabecare.application.port.in.GetCyclePhaseCalendarUseCase;
 import com.diabecare.application.port.in.GetMenstrualCycleStatusUseCase;
+import com.diabecare.application.port.in.RegisterCycleDayEntryUseCase;
 import com.diabecare.application.port.in.RegisterMenstrualCycleUseCase;
+import com.diabecare.domain.model.CycleDayEntry;
+import com.diabecare.domain.model.CycleSymptom;
+import com.diabecare.domain.model.FlowIntensity;
+import com.diabecare.domain.model.SymptomSeverity;
+import com.diabecare.domain.service.CycleLabelService;
 import com.diabecare.domain.service.MenstrualCycleGuidanceService;
+import com.diabecare.presentation.dto.request.FinishPeriodRequest;
 import com.diabecare.presentation.dto.request.MenstrualCycleRequest;
+import com.diabecare.presentation.dto.request.RegisterCycleDayEntryRequest;
+import com.diabecare.presentation.dto.response.CycleDayEntryResponse;
 import com.diabecare.presentation.dto.response.CyclePhaseDayResponse;
 import com.diabecare.presentation.dto.response.MenstrualCycleStatusResponse;
 import com.diabecare.presentation.util.CurrentUserResolver;
@@ -27,10 +37,13 @@ import java.util.UUID;
 public class MenstrualCycleController {
 
     private final RegisterMenstrualCycleUseCase registerUseCase;
+    private final RegisterCycleDayEntryUseCase registerDayEntryUseCase;
+    private final FinishPeriodUseCase finishPeriodUseCase;
     private final GetMenstrualCycleStatusUseCase getStatusUseCase;
     private final GetCyclePhaseCalendarUseCase getCyclePhaseCalendarUseCase;
     private final CurrentUserResolver currentUserResolver;
     private final MenstrualCycleGuidanceService cycleGuidanceService;
+    private final CycleLabelService cycleLabelService;
 
     @PostMapping("/{patientId}")
     public ResponseEntity<MenstrualCycleStatusResponse> register(
@@ -43,13 +56,50 @@ public class MenstrualCycleController {
         registerUseCase.execute(new RegisterMenstrualCycleUseCase.Command(
                 patientId,
                 request.startDate(),
-                request.periodLengthDays(),
-                request.symptoms(),
                 request.notes()
         ));
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(buildStatus(patientId));
+    }
+
+    @PostMapping("/{patientId}/finish-period")
+    public ResponseEntity<MenstrualCycleStatusResponse> finishPeriod(
+            @PathVariable UUID patientId,
+            @Valid @RequestBody FinishPeriodRequest request,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
+        finishPeriodUseCase.execute(new FinishPeriodUseCase.Command(patientId, request.endDate()));
+
+        return ResponseEntity.ok(buildStatus(patientId));
+    }
+
+    @PostMapping("/{patientId}/days")
+    public ResponseEntity<CycleDayEntryResponse> registerDayEntry(
+            @PathVariable UUID patientId,
+            @Valid @RequestBody RegisterCycleDayEntryRequest request,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
+        var symptoms = request.symptoms() == null ? List.<RegisterCycleDayEntryUseCase.SymptomInput>of() :
+                request.symptoms().stream()
+                        .map(s -> new RegisterCycleDayEntryUseCase.SymptomInput(
+                                CycleSymptom.valueOf(s.symptom()),
+                                SymptomSeverity.valueOf(s.severity())))
+                        .toList();
+
+        CycleDayEntry entry = registerDayEntryUseCase.execute(new RegisterCycleDayEntryUseCase.Command(
+                patientId,
+                request.entryDate(),
+                FlowIntensity.valueOf(request.flowIntensity()),
+                request.notes(),
+                symptoms
+        ));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(entry));
     }
 
     @GetMapping("/{patientId}/status")
@@ -90,21 +140,46 @@ public class MenstrualCycleController {
                         .limit(6)
                         .map(c -> new MenstrualCycleStatusResponse.CycleHistoryItem(
                                 c.getCycleId().toString(),
-                                c.getCycleStartDate(),
-                                c.getCycleLengthDays(),
-                                c.getPeriodLengthDays(),
-                                c.getSymptoms()))
+                                c.getStartDate(),
+                                c.getEndDate(),
+                                c.getActualPeriodLengthDays()))
                         .toList();
+
+        CycleDayEntryResponse todayEntry = status.todayEntry() != null
+                ? toResponse(status.todayEntry())
+                : null;
 
         return new MenstrualCycleStatusResponse(
                 status.currentPhase().name(),
                 cycleGuidanceService.resolveLabel(status.currentPhase()),
                 status.dayOfCycle(),
+                status.isOngoing(),
+                status.periodStartDate(),
                 status.nextCycleStart(),
                 (int) daysUntilNext,
                 status.glucoseGuidance(),
                 status.averageCycleLength(),
+                status.averagePeriodLength(),
+                todayEntry,
                 history
+        );
+    }
+
+    private CycleDayEntryResponse toResponse(CycleDayEntry entry) {
+        List<CycleDayEntryResponse.SymptomResponse> symptoms = entry.getSymptoms().stream()
+                .map(s -> new CycleDayEntryResponse.SymptomResponse(
+                        s.getSymptom().name(),
+                        cycleLabelService.resolveSymptomLabel(s.getSymptom()),
+                        s.getSeverity().name()))
+                .toList();
+
+        return new CycleDayEntryResponse(
+                entry.getDayEntryId().toString(),
+                entry.getEntryDate(),
+                entry.getFlowIntensity().name(),
+                cycleLabelService.resolveFlowLabel(entry.getFlowIntensity()),
+                entry.getNotes(),
+                symptoms
         );
     }
 }
