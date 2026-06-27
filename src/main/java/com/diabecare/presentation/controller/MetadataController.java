@@ -1,6 +1,9 @@
 package com.diabecare.presentation.controller;
 
 import com.diabecare.domain.model.*;
+import com.diabecare.domain.service.CycleLabelService;
+import com.diabecare.domain.service.MenstrualCycleGuidanceService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,7 +15,11 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/metadata")
+@RequiredArgsConstructor
 public class MetadataController {
+
+    private final CycleLabelService cycleLabelService;
+    private final MenstrualCycleGuidanceService cycleGuidanceService;
 
     @GetMapping("/exercise-types")
     public ResponseEntity<List<Map<String, String>>> getExerciseTypes() {
@@ -84,6 +91,41 @@ public class MetadataController {
                 .toList());
     }
 
+    @GetMapping("/glucose-statuses")
+    public ResponseEntity<List<Map<String, String>>> getGlucoseStatuses() {
+        return ResponseEntity.ok(Arrays.stream(GlucoseStatus.values())
+                .map(s -> Map.of("value", s.name(), "label", getGlucoseStatusLabel(s)))
+                .toList());
+    }
+
+    @GetMapping("/cycle-symptoms")
+    public ResponseEntity<List<Map<String, String>>> getCycleSymptoms() {
+        return ResponseEntity.ok(Arrays.stream(CycleSymptom.values())
+                .map(s -> Map.of("value", s.name(), "label", cycleLabelService.resolveSymptomLabel(s)))
+                .toList());
+    }
+
+    @GetMapping("/flow-intensities")
+    public ResponseEntity<List<Map<String, String>>> getFlowIntensities() {
+        return ResponseEntity.ok(Arrays.stream(FlowIntensity.values())
+                .map(f -> Map.of("value", f.name(), "label", cycleLabelService.resolveFlowLabel(f)))
+                .toList());
+    }
+
+    @GetMapping("/symptom-severities")
+    public ResponseEntity<List<Map<String, String>>> getSymptomSeverities() {
+        return ResponseEntity.ok(Arrays.stream(SymptomSeverity.values())
+                .map(s -> Map.of("value", s.name(), "label", getSeverityLabel(s)))
+                .toList());
+    }
+
+    @GetMapping("/cycle-phases")
+    public ResponseEntity<List<Map<String, String>>> getCyclePhases() {
+        return ResponseEntity.ok(Arrays.stream(CyclePhase.values())
+                .map(p -> Map.of("value", p.name(), "label", cycleGuidanceService.resolveLabel(p)))
+                .toList());
+    }
+
     // ── Labels ────────────────────────────────────────────────────────────────
 
     private String getExerciseLabel(ExerciseType type) {
@@ -151,10 +193,10 @@ public class MetadataController {
     private String getReadingTypeLabel(ReadingType type) {
         return switch (type) {
             case FASTING   -> "Ayuno";
-            case PRE_MEAL  -> "Preprandial";
-            case POST_MEAL -> "Postprandial";
+            case PRE_MEAL  -> "Antes de comer";
+            case POST_MEAL -> "Después de comer";
             case BEDTIME   -> "Antes de dormir";
-            case RANDOM    -> "Aleatoria";
+            case RANDOM    -> "En cualquier momento";
         };
     }
 
@@ -181,6 +223,24 @@ public class MetadataController {
         return switch (unit) {
             case MG_DL  -> "mg/dL";
             case MMOL_L -> "mmol/L";
+        };
+    }
+
+    private String getGlucoseStatusLabel(GlucoseStatus status) {
+        return switch (status) {
+            case CRITICALLY_LOW  -> "Crítico bajo";
+            case LOW             -> "Bajo";
+            case NORMAL          -> "Normal";
+            case HIGH            -> "Alto";
+            case CRITICALLY_HIGH -> "Crítico alto";
+        };
+    }
+
+    private String getSeverityLabel(SymptomSeverity severity) {
+        return switch (severity) {
+            case MILD     -> "Leve";
+            case MODERATE -> "Moderado";
+            case SEVERE   -> "Severo";
         };
     }
 }

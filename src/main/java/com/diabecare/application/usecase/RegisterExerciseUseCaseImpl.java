@@ -33,7 +33,8 @@ public class RegisterExerciseUseCaseImpl implements RegisterExerciseUseCase {
                 command.intensity(),
                 command.durationMinutes(),
                 command.notes(),
-                command.performedAt()
+                command.performedAt(),
+                command.caloriesBurnedOverride()
         );
         return saveExerciseLogPort.save(log);
     }

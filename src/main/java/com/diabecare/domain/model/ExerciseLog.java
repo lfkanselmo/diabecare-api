@@ -27,7 +27,8 @@ public class ExerciseLog {
             ExerciseIntensity intensity,
             Integer durationMinutes,
             String notes,
-            LocalDateTime performedAt) {
+            LocalDateTime performedAt,
+            BigDecimal caloriesBurnedOverride) {
 
         if (durationMinutes == null || durationMinutes <= 0) {
             throw new InvalidExerciseLogException("La duración debe ser mayor a 0 minutos");
@@ -35,8 +36,16 @@ public class ExerciseLog {
         if (performedAt != null && performedAt.isAfter(LocalDateTime.now())) {
             throw new InvalidExerciseLogException("La fecha del ejercicio no puede ser futura");
         }
+        if (caloriesBurnedOverride != null &&
+                (caloriesBurnedOverride.signum() < 0 ||
+                        caloriesBurnedOverride.compareTo(BigDecimal.valueOf(5000)) > 0)) {
+            throw new InvalidExerciseLogException(
+                    "Las calorías quemadas deben estar entre 0 y 5000");
+        }
 
-        BigDecimal calories = estimateCalories(exerciseType, intensity, durationMinutes);
+        BigDecimal calories = caloriesBurnedOverride != null
+                ? caloriesBurnedOverride
+                : estimateCalories(exerciseType, intensity, durationMinutes);
 
         return ExerciseLog.builder()
                 .exerciseId(UUID.randomUUID())

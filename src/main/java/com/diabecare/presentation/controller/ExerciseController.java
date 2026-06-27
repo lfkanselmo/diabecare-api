@@ -47,7 +47,8 @@ public class ExerciseController {
                         ExerciseIntensity.valueOf(request.intensity()),
                         request.durationMinutes(),
                         request.notes(),
-                        performedAt
+                        performedAt,
+                        request.caloriesBurned()
                 ));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(log));

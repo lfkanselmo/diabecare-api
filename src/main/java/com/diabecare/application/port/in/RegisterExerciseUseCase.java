@@ -4,6 +4,7 @@ import com.diabecare.domain.model.ExerciseIntensity;
 import com.diabecare.domain.model.ExerciseLog;
 import com.diabecare.domain.model.ExerciseType;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -15,7 +16,8 @@ public interface RegisterExerciseUseCase {
             ExerciseIntensity intensity,
             Integer durationMinutes,
             String notes,
-            LocalDateTime performedAt
+            LocalDateTime performedAt,
+            BigDecimal caloriesBurnedOverride
     ) {}
 
     ExerciseLog execute(Command command);
