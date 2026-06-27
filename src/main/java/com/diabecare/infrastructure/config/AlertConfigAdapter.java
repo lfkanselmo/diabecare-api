@@ -30,4 +30,9 @@ public class AlertConfigAdapter implements AlertConfigPort {
     public int streakDays() {
         return systemConfig.getInt("alert.streak_days");
     }
+
+    @Override
+    public int daysBeforeOpenCycleAlert() {
+        return systemConfig.getInt("alert.days_before_open_cycle_alert");
+    }
 }

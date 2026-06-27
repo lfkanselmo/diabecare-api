@@ -171,7 +171,7 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
                     CyclePhase phase = cycle.calculateCurrentPhase(
                             java.time.LocalDate.now(), avgCycleLength, avgPeriodLength);
                     long daysUntilNext = java.time.temporal.ChronoUnit.DAYS.between(
-                            java.time.LocalDate.now(), cycle.predictNextCycleStart(avgCycleLength));
+                            java.time.LocalDate.now(), cycle.predictNextCycleStart(java.time.LocalDate.now(), avgCycleLength));
 
                     switch (phase) {
                         case LUTEAL_LATE -> alerts.add(Alert.builder()
@@ -216,6 +216,20 @@ public class GetAlertsUseCaseImpl implements GetAlertsUseCase {
                                 .title(messages.resolve("alert.cycle.period-today.title"))
                                 .message(messages.resolve("alert.cycle.period-today.message"))
                                 .build());
+                    }
+
+                    if (cycle.isOngoing()) {
+                        long daysSinceStart = java.time.temporal.ChronoUnit.DAYS.between(
+                                cycle.getStartDate(), java.time.LocalDate.now());
+
+                        if (daysSinceStart >= alertConfig.daysBeforeOpenCycleAlert()) {
+                            alerts.add(Alert.builder()
+                                    .type(Alert.AlertType.OPEN_CYCLE_REMINDER)
+                                    .severity(Alert.Severity.WARNING)
+                                    .title(messages.resolve("alert.cycle.open-too-long.title"))
+                                    .message(messages.resolve("alert.cycle.open-too-long.message", daysSinceStart))
+                                    .build());
+                        }
                     }
                 });
 

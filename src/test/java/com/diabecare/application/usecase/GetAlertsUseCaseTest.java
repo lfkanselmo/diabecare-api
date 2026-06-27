@@ -55,6 +55,7 @@ class GetAlertsUseCaseTest {
         when(alertConfig.minReadingsForStats()).thenReturn(3);
         when(alertConfig.goodTirThreshold()).thenReturn(70.0);
         when(alertConfig.streakDays()).thenReturn(3);
+        when(alertConfig.daysBeforeOpenCycleAlert()).thenReturn(10);
 
         when(systemConfig.getInt(any())).thenReturn(7);
         when(systemConfig.getDecimal(any())).thenReturn(7.0);

@@ -1,0 +1,2 @@
+INSERT INTO system_config (key, value, data_type, category, description) VALUES
+    ('alert.days_before_open_cycle_alert', '10', 'INTEGER', 'ALERTS', 'Días sin cerrar un período para alertar al paciente');

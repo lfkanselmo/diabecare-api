@@ -5,6 +5,7 @@ import com.diabecare.application.port.out.LoadMenstrualCyclePort;
 import com.diabecare.application.port.out.LoadPatientPort;
 import com.diabecare.application.port.out.SaveMenstrualCyclePort;
 import com.diabecare.domain.exception.InvalidPatientDataException;
+import com.diabecare.domain.exception.OpenCycleConflictException;
 import com.diabecare.domain.exception.PatientNotFoundException;
 import com.diabecare.domain.model.MenstrualCycle;
 import com.diabecare.domain.model.Patient;
@@ -36,9 +37,7 @@ public class RegisterMenstrualCycleUseCaseImpl implements RegisterMenstrualCycle
         loadMenstrualCyclePort.findLatestByPatientId(command.patientId())
                 .filter(MenstrualCycle::isOngoing)
                 .ifPresent(ongoing -> {
-                    throw new InvalidPatientDataException(
-                            "Ya tienes un ciclo en curso iniciado el " + ongoing.getStartDate() +
-                                    ". Finaliza tu período actual antes de registrar uno nuevo.");
+                    throw new OpenCycleConflictException(ongoing.getStartDate());
                 });
 
         MenstrualCycle cycle = MenstrualCycle.startNewCycle(

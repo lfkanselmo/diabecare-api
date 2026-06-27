@@ -8,6 +8,8 @@ public record MenstrualCycleStatusResponse(
         String currentPhaseLabel,
         int dayOfCycle,
         boolean isOngoing,
+        boolean isOpenTooLong,
+        boolean isProjectionStale,
         LocalDate periodStartDate,
         LocalDate nextCycleStart,
         int daysUntilNextCycle,

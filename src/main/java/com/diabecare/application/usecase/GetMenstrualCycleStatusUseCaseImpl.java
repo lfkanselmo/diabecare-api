@@ -1,6 +1,7 @@
 package com.diabecare.application.usecase;
 
 import com.diabecare.application.port.in.GetMenstrualCycleStatusUseCase;
+import com.diabecare.application.port.out.AlertConfigPort;
 import com.diabecare.application.port.out.LoadCycleDayEntryPort;
 import com.diabecare.application.port.out.LoadMenstrualCyclePort;
 import com.diabecare.application.port.out.LoadPatientPort;
@@ -31,6 +32,7 @@ public class GetMenstrualCycleStatusUseCaseImpl implements GetMenstrualCycleStat
     private final LoadPatientPort loadPatientPort;
     private final MenstrualCycleGuidanceService cycleGuidanceService;
     private final CycleStatisticsService cycleStatisticsService;
+    private final AlertConfigPort alertConfig;
 
     @Override
     public CycleStatus getStatus(UUID patientId) {
@@ -54,9 +56,13 @@ public class GetMenstrualCycleStatusUseCaseImpl implements GetMenstrualCycleStat
         Integer avgPeriodLength = cycleStatisticsService.calculateAveragePeriodLength(history);
 
         CyclePhase phase = latest.calculateCurrentPhase(today, avgCycleLength, avgPeriodLength);
-        int dayOfCycle = (int) ChronoUnit.DAYS.between(latest.getStartDate(), today) + 1;
-        LocalDate nextCycle = latest.predictNextCycleStart(avgCycleLength);
+        int dayOfCycle = latest.calculateDayOfCycle(today, avgCycleLength);
+        LocalDate nextCycle = latest.predictNextCycleStart(today, avgCycleLength);
+        boolean isProjectionStale = latest.isProjectionStale(today, avgCycleLength);
         String guidance = cycleGuidanceService.resolveGuidance(phase);
+
+        boolean isOpenTooLong = latest.isOngoing() &&
+                ChronoUnit.DAYS.between(latest.getStartDate(), today) >= alertConfig.daysBeforeOpenCycleAlert();
 
         CycleDayEntry todayEntry = loadCycleDayEntryPort
                 .findByCycleIdAndDate(latest.getCycleId(), today)
@@ -66,6 +72,8 @@ public class GetMenstrualCycleStatusUseCaseImpl implements GetMenstrualCycleStat
                 phase,
                 dayOfCycle,
                 latest.isOngoing(),
+                isOpenTooLong,
+                isProjectionStale,
                 latest.getStartDate(),
                 nextCycle,
                 guidance,

@@ -29,6 +29,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, "GLUCOSE_READING_NOT_FOUND", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(OpenCycleConflictException.class)
+    public ResponseEntity<ApiError> handleOpenCycleConflict(
+            OpenCycleConflictException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, "OPEN_CYCLE_CONFLICT", ex.getMessage(), request);
+    }
+
     @ExceptionHandler({
             InvalidPatientDataException.class,
             InvalidGlucoseReadingException.class,

@@ -14,6 +14,8 @@ public interface GetMenstrualCycleStatusUseCase {
             CyclePhase currentPhase,
             int dayOfCycle,
             boolean isOngoing,
+            boolean isOpenTooLong,
+            boolean isProjectionStale,
             LocalDate periodStartDate,
             LocalDate nextCycleStart,
             String glucoseGuidance,

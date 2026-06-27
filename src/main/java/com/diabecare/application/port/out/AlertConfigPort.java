@@ -5,4 +5,5 @@ public interface AlertConfigPort {
     int minReadingsForStats();
     double goodTirThreshold();
     int streakDays();
+    int daysBeforeOpenCycleAlert();
 }

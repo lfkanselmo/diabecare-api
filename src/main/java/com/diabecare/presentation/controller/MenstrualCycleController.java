@@ -154,6 +154,8 @@ public class MenstrualCycleController {
                 cycleGuidanceService.resolveLabel(status.currentPhase()),
                 status.dayOfCycle(),
                 status.isOngoing(),
+                status.isOpenTooLong(),
+                status.isProjectionStale(),
                 status.periodStartDate(),
                 status.nextCycleStart(),
                 (int) daysUntilNext,

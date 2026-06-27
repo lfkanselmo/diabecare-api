@@ -43,7 +43,8 @@ public class MenstrualCycle {
     }
 
     public CyclePhase calculateCurrentPhase(LocalDate today, Integer averageCycleLength, Integer averagePeriodLength) {
-        long dayOfCycle = ChronoUnit.DAYS.between(startDate, today) + 1;
+        LocalDate effectiveStart = resolveEffectiveStartDate(today, averageCycleLength);
+        long dayOfCycle = ChronoUnit.DAYS.between(effectiveStart, today) + 1;
         int length = averageCycleLength != null ? averageCycleLength : DEFAULT_CYCLE_LENGTH;
         int period = resolvePeriodLength(averagePeriodLength);
 
@@ -54,9 +55,39 @@ public class MenstrualCycle {
         return CyclePhase.LUTEAL_LATE;
     }
 
-    public LocalDate predictNextCycleStart(Integer averageCycleLength) {
+    public int calculateDayOfCycle(LocalDate today, Integer averageCycleLength) {
+        LocalDate effectiveStart = resolveEffectiveStartDate(today, averageCycleLength);
+        return (int) ChronoUnit.DAYS.between(effectiveStart, today) + 1;
+    }
+
+    public LocalDate predictNextCycleStart(LocalDate today, Integer averageCycleLength) {
+        LocalDate effectiveStart = resolveEffectiveStartDate(today, averageCycleLength);
         int length = averageCycleLength != null ? averageCycleLength : DEFAULT_CYCLE_LENGTH;
-        return startDate.plusDays(length);
+        return effectiveStart.plusDays(length);
+    }
+
+    public boolean isProjectionStale(LocalDate today, Integer averageCycleLength) {
+        if (isOngoing()) return false;
+
+        int length = averageCycleLength != null ? averageCycleLength : DEFAULT_CYCLE_LENGTH;
+        LocalDate predictedNextStart = startDate.plusDays(length);
+
+        return countElapsedCycles(today, predictedNextStart, length) >= 1;
+    }
+
+    private LocalDate resolveEffectiveStartDate(LocalDate today, Integer averageCycleLength) {
+        if (isOngoing()) return startDate;
+
+        int length = averageCycleLength != null ? averageCycleLength : DEFAULT_CYCLE_LENGTH;
+        LocalDate predictedNextStart = startDate.plusDays(length);
+        long cyclesElapsed = countElapsedCycles(today, predictedNextStart, length);
+
+        return predictedNextStart.plusDays(cyclesElapsed * length);
+    }
+
+    private long countElapsedCycles(LocalDate today, LocalDate predictedNextStart, int length) {
+        if (today.isBefore(predictedNextStart)) return 0;
+        return ChronoUnit.DAYS.between(predictedNextStart, today) / length;
     }
 
     private int resolvePeriodLength(Integer averagePeriodLength) {
