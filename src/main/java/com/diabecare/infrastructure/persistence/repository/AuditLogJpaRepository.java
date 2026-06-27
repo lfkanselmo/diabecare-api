@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AuditLogJpaRepository extends JpaRepository<AuditLogEntity, UUID> {
-    List<AuditLogEntity> findByPatientIdOrderByPerformedAtDesc(UUID patientId);
-    List<AuditLogEntity> findByPatientIdAndEntityTypeOrderByPerformedAtDesc(UUID patientId, String entityType);
+    List<AuditLogEntity> findFirst200ByPatientIdOrderByPerformedAtDesc(UUID patientId);
+    List<AuditLogEntity> findFirst200ByPatientIdAndEntityTypeOrderByPerformedAtDesc(
+            UUID patientId, String entityType);
 }

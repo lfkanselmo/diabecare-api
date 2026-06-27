@@ -8,6 +8,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface VitalSignJpaRepository extends JpaRepository<VitalSignEntity, UUID> {
-    List<VitalSignEntity> findByPatientIdOrderByMeasuredAtDesc(UUID patientId);
+    List<VitalSignEntity> findFirst500ByPatientIdOrderByMeasuredAtDesc(UUID patientId);
     Optional<VitalSignEntity> findFirstByPatientIdOrderByMeasuredAtDesc(UUID patientId);
 }

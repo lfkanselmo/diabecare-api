@@ -31,12 +31,6 @@ public class GlucoseReadingPersistenceAdapter implements SaveGlucoseReadingPort,
     }
 
     @Override
-    public List<GlucoseReading> findByPatientId(UUID patientId) {
-        return repository.findByPatientIdOrderByMeasuredAtDesc(patientId)
-                .stream().map(mapper::toDomain).toList();
-    }
-
-    @Override
     public List<GlucoseReading> findByPatientIdAndDateRange(UUID patientId,
                                                             LocalDateTime from,
                                                             LocalDateTime to) {

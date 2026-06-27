@@ -37,7 +37,7 @@ public class VitalSignPersistenceAdapter implements SaveVitalSignPort, LoadVital
 
     @Override
     public List<VitalSign> findByPatientId(UUID patientId) {
-        return repository.findByPatientIdOrderByMeasuredAtDesc(patientId)
+        return repository.findFirst500ByPatientIdOrderByMeasuredAtDesc(patientId)
                 .stream().map(mapper::toDomain).toList();
     }
 }

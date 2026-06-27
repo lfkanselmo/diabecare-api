@@ -9,7 +9,6 @@ import java.util.UUID;
 
 public interface LoadGlucoseReadingPort {
     Optional<GlucoseReading> findById(UUID readingId);
-    List<GlucoseReading> findByPatientId(UUID patientId);
     List<GlucoseReading> findByPatientIdAndDateRange(UUID patientId,
                                                      LocalDateTime from,
                                                      LocalDateTime to);

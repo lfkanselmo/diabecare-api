@@ -4,6 +4,7 @@ import com.diabecare.domain.model.ExerciseLog;
 import com.diabecare.domain.model.MenstrualCycle;
 import com.diabecare.domain.model.ReportData;
 import com.diabecare.domain.model.VitalSign;
+import com.diabecare.domain.service.ExerciseLabelService;
 import com.diabecare.domain.service.MenstrualCycleGuidanceService;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
@@ -28,6 +29,7 @@ import java.util.Map;
 public class MedicalReportPdfGenerator {
 
     private final MenstrualCycleGuidanceService cycleGuidanceService;
+    private final ExerciseLabelService exerciseLabelService;
 
     private static final DeviceRgb PRIMARY     = new DeviceRgb(21, 101, 192);
     private static final DeviceRgb LIGHT_GRAY  = new DeviceRgb(245, 247, 250);
@@ -227,6 +229,8 @@ public class MedicalReportPdfGenerator {
                 .setFontSize(8).setFontColor(ColorConstants.GRAY)
                 .setTextAlignment(TextAlignment.CENTER));
     }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Paragraph sectionTitle(String title) {
         return new Paragraph(title)
@@ -496,9 +500,9 @@ public class MedicalReportPdfGenerator {
 
         data.getExerciseLogs().stream().limit(10).forEach(e -> {
             detail.addCell(bodyCell(e.getPerformedAt().format(DATE_FMT)));
-            detail.addCell(bodyCell(formatExerciseType(e.getExerciseType().name())));
+            detail.addCell(bodyCell(exerciseLabelService.resolveTypeLabel(e.getExerciseType())));
             detail.addCell(bodyCell(e.getDurationMinutes() + " min"));
-            detail.addCell(bodyCell(formatIntensity(e.getIntensity().name())));
+            detail.addCell(bodyCell(exerciseLabelService.resolveIntensityLabel(e.getIntensity())));
         });
 
         doc.add(detail);
@@ -533,6 +537,8 @@ public class MedicalReportPdfGenerator {
                 .setPadding(8).setMarginTop(6).setMarginBottom(8));
     }
 
+// ── Helpers adicionales ───────────────────────────────────────────────────
+
     private String formatMealType(String type) {
         return switch (type) {
             case "BREAKFAST" -> "Desayuno";
@@ -540,31 +546,6 @@ public class MedicalReportPdfGenerator {
             case "DINNER"    -> "Cena";
             case "SNACK"     -> "Merienda";
             default          -> type;
-        };
-    }
-
-    private String formatExerciseType(String type) {
-        return switch (type) {
-            case "WALKING"         -> "Caminata";
-            case "RUNNING"         -> "Trote";
-            case "CYCLING"         -> "Ciclismo";
-            case "SWIMMING"        -> "Natación";
-            case "WEIGHT_TRAINING" -> "Pesas";
-            case "YOGA"            -> "Yoga";
-            case "FOOTBALL"        -> "Fútbol";
-            case "BASKETBALL"      -> "Baloncesto";
-            case "DANCING"         -> "Baile";
-            case "HIKING"          -> "Senderismo";
-            default                -> "Otro";
-        };
-    }
-
-    private String formatIntensity(String intensity) {
-        return switch (intensity) {
-            case "LOW"      -> "Baja";
-            case "MODERATE" -> "Moderada";
-            case "HIGH"     -> "Alta";
-            default         -> intensity;
         };
     }
 }

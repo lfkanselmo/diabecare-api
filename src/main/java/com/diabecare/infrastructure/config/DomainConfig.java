@@ -5,6 +5,7 @@ import com.diabecare.application.port.out.SystemConfigPort;
 import com.diabecare.domain.service.AuditService;
 import com.diabecare.domain.service.CycleLabelService;
 import com.diabecare.domain.service.CycleStatisticsService;
+import com.diabecare.domain.service.ExerciseLabelService;
 import com.diabecare.domain.service.GlucoseExportService;
 import com.diabecare.domain.service.MedicalCalculatorService;
 import com.diabecare.domain.service.MenstrualCycleGuidanceService;
@@ -59,5 +60,10 @@ public class DomainConfig {
     @Bean
     public CycleLabelService cycleLabelService() {
         return new CycleLabelService(messages);
+    }
+
+    @Bean
+    public ExerciseLabelService exerciseLabelService() {
+        return new ExerciseLabelService();
     }
 }

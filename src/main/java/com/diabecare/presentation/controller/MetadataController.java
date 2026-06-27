@@ -2,6 +2,7 @@ package com.diabecare.presentation.controller;
 
 import com.diabecare.domain.model.*;
 import com.diabecare.domain.service.CycleLabelService;
+import com.diabecare.domain.service.ExerciseLabelService;
 import com.diabecare.domain.service.MenstrualCycleGuidanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,18 +21,19 @@ public class MetadataController {
 
     private final CycleLabelService cycleLabelService;
     private final MenstrualCycleGuidanceService cycleGuidanceService;
+    private final ExerciseLabelService exerciseLabelService;
 
     @GetMapping("/exercise-types")
     public ResponseEntity<List<Map<String, String>>> getExerciseTypes() {
         return ResponseEntity.ok(Arrays.stream(ExerciseType.values())
-                .map(e -> Map.of("value", e.name(), "label", getExerciseLabel(e)))
+                .map(e -> Map.of("value", e.name(), "label", exerciseLabelService.resolveTypeLabel(e)))
                 .toList());
     }
 
     @GetMapping("/exercise-intensities")
     public ResponseEntity<List<Map<String, String>>> getExerciseIntensities() {
         return ResponseEntity.ok(Arrays.stream(ExerciseIntensity.values())
-                .map(i -> Map.of("value", i.name(), "label", getIntensityLabel(i)))
+                .map(i -> Map.of("value", i.name(), "label", exerciseLabelService.resolveIntensityLabel(i)))
                 .toList());
     }
 
@@ -127,30 +129,6 @@ public class MetadataController {
     }
 
     // ── Labels ────────────────────────────────────────────────────────────────
-
-    private String getExerciseLabel(ExerciseType type) {
-        return switch (type) {
-            case WALKING         -> "Caminata";
-            case RUNNING         -> "Trote / Carrera";
-            case CYCLING         -> "Ciclismo";
-            case SWIMMING        -> "Natación";
-            case WEIGHT_TRAINING -> "Pesas";
-            case YOGA            -> "Yoga";
-            case FOOTBALL        -> "Fútbol";
-            case BASKETBALL      -> "Baloncesto";
-            case DANCING         -> "Baile";
-            case HIKING          -> "Senderismo";
-            case OTHER           -> "Otro";
-        };
-    }
-
-    private String getIntensityLabel(ExerciseIntensity intensity) {
-        return switch (intensity) {
-            case LOW      -> "Baja";
-            case MODERATE -> "Moderada";
-            case HIGH     -> "Alta";
-        };
-    }
 
     private String getMedicationTypeLabel(MedicationType type) {
         return switch (type) {

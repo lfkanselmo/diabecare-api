@@ -25,13 +25,13 @@ public class AuditLogPersistenceAdapter implements SaveAuditLogPort, LoadAuditLo
 
     @Override
     public List<AuditLog> findByPatientId(UUID patientId) {
-        return repository.findByPatientIdOrderByPerformedAtDesc(patientId)
+        return repository.findFirst200ByPatientIdOrderByPerformedAtDesc(patientId)
                 .stream().map(mapper::toDomain).toList();
     }
 
     @Override
     public List<AuditLog> findByPatientIdAndEntityType(UUID patientId, String entityType) {
-        return repository.findByPatientIdAndEntityTypeOrderByPerformedAtDesc(patientId, entityType)
+        return repository.findFirst200ByPatientIdAndEntityTypeOrderByPerformedAtDesc(patientId, entityType)
                 .stream().map(mapper::toDomain).toList();
     }
 }
