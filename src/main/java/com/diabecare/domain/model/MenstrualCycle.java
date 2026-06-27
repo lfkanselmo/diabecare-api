@@ -80,8 +80,10 @@ public class MenstrualCycle {
 
         int length = averageCycleLength != null ? averageCycleLength : DEFAULT_CYCLE_LENGTH;
         LocalDate predictedNextStart = startDate.plusDays(length);
-        long cyclesElapsed = countElapsedCycles(today, predictedNextStart, length);
 
+        if (today.isBefore(predictedNextStart)) return startDate;
+
+        long cyclesElapsed = countElapsedCycles(today, predictedNextStart, length);
         return predictedNextStart.plusDays(cyclesElapsed * length);
     }
 
