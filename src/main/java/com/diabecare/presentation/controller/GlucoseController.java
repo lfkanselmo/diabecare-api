@@ -31,6 +31,7 @@ public class GlucoseController {
     private final RegisterGlucoseReadingUseCase registerGlucoseReadingUseCase;
     private final GetGlucoseHistoryUseCase getGlucoseHistoryUseCase;
     private final GetGlucoseStatsUseCase getGlucoseStatsUseCase;
+    private final GetLatestGlucoseReadingUseCase getLatestGlucoseReadingUseCase;
     private final DeleteGlucoseReadingUseCase deleteGlucoseReadingUseCase;
     private final GlucoseReadingPresentationMapper readingMapper;
     private final GlucoseStatsPresentationMapper statsMapper;
@@ -97,6 +98,18 @@ public class GlucoseController {
 
         return ResponseEntity.ok(statsMapper.toResponse(
                 getGlucoseStatsUseCase.getStats(patientId, from, to)));
+    }
+
+    @GetMapping("/{patientId}/latest")
+    public ResponseEntity<GlucoseReadingResponse> getLatest(
+            @PathVariable UUID patientId,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
+        return getLatestGlucoseReadingUseCase.getLatest(patientId)
+                .map(reading -> ResponseEntity.ok(readingMapper.toResponse(reading)))
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @DeleteMapping("/{patientId}/{readingId}")
