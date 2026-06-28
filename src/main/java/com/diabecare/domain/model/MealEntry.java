@@ -79,12 +79,14 @@ public class MealEntry {
     public BigDecimal getTotalProteins() {
         return items.stream()
                 .map(MealItem::getProteins)
+                .filter(java.util.Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public BigDecimal getTotalFats() {
         return items.stream()
                 .map(MealItem::getFats)
+                .filter(java.util.Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }
