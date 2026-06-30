@@ -1,6 +1,8 @@
 package com.diabecare.domain.service;
 
+import com.diabecare.domain.model.ActivityLevel;
 import com.diabecare.domain.model.GlucoseReading;
+import com.diabecare.domain.model.GlucoseStatus;
 import com.diabecare.domain.model.GlucoseUnit;
 import com.diabecare.domain.model.ReadingType;
 import org.junit.jupiter.api.BeforeEach;
@@ -181,7 +183,260 @@ class MedicalCalculatorServiceTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("calculateStandardDeviation")
+    class CalculateStandardDeviation {
+
+        @Test
+        @DisplayName("retorna cero con menos de 2 lecturas")
+        void returnsZeroWithFewerThanTwoReadings() {
+            assertThat(calculator.calculateStandardDeviation(List.of())).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(calculator.calculateStandardDeviation(List.of(reading(100))))
+                    .isEqualByComparingTo(BigDecimal.ZERO);
+        }
+
+        @Test
+        @DisplayName("calcula la desviación estándar poblacional correctamente")
+        void calculatesCorrectly() {
+            List<GlucoseReading> readings = List.of(
+                    reading(100), reading(120), reading(80), reading(110), reading(90));
+
+            BigDecimal std = calculator.calculateStandardDeviation(readings);
+
+            assertThat(std.doubleValue()).isCloseTo(14.14, within(0.01));
+        }
+
+        @Test
+        @DisplayName("retorna cero cuando todos los valores son idénticos")
+        void returnsZeroWhenAllValuesIdentical() {
+            List<GlucoseReading> readings = List.of(reading(100), reading(100), reading(100));
+            assertThat(calculator.calculateStandardDeviation(readings)).isEqualByComparingTo(BigDecimal.ZERO);
+        }
+    }
+
+    @Nested
+    @DisplayName("calculateTimeByStatus")
+    class CalculateTimeByStatus {
+
+        @Test
+        @DisplayName("calcula el porcentaje correcto para el estado solicitado")
+        void calculatesCorrectPercentage() {
+            List<GlucoseReading> readings = List.of(
+                    reading(100), // NORMAL
+                    reading(110), // NORMAL
+                    reading(50),  // CRITICALLY_LOW
+                    reading(300)  // CRITICALLY_HIGH
+            );
+
+            BigDecimal percent = calculator.calculateTimeByStatus(readings, GlucoseStatus.NORMAL);
+
+            assertThat(percent).isEqualByComparingTo(new BigDecimal("50.00"));
+        }
+
+        @Test
+        @DisplayName("retorna cero cuando ninguna lectura coincide con el estado")
+        void returnsZeroWhenNoMatch() {
+            List<GlucoseReading> readings = List.of(reading(100), reading(110));
+            BigDecimal percent = calculator.calculateTimeByStatus(readings, GlucoseStatus.CRITICALLY_LOW);
+            assertThat(percent).isEqualByComparingTo(BigDecimal.ZERO);
+        }
+
+        @Test
+        @DisplayName("retorna cero con lista vacía")
+        void returnsZeroWhenEmpty() {
+            assertThat(calculator.calculateTimeByStatus(List.of(), GlucoseStatus.NORMAL))
+                    .isEqualByComparingTo(BigDecimal.ZERO);
+        }
+    }
+
+    @Nested
+    @DisplayName("calculateDailyCalorieNeeds")
+    class CalculateDailyCalorieNeeds {
+
+        @Test
+        @DisplayName("calcula correctamente para un hombre sedentario")
+        void calculatesCorrectlyForSedentaryMale() {
+            int result = calculator.calculateDailyCalorieNeeds(
+                    BigDecimal.valueOf(70), BigDecimal.valueOf(175), 30, true, ActivityLevel.SEDENTARY);
+
+            // TMB = 1648.75, x1.2 = 1978.5 -> Math.round en Java redondea siempre hacia arriba en .5, da 1979
+            assertThat(result).isEqualTo(1979);
+        }
+
+        @Test
+        @DisplayName("calcula correctamente para una mujer moderadamente activa")
+        void calculatesCorrectlyForModeratelyActiveFemale() {
+            int result = calculator.calculateDailyCalorieNeeds(
+                    BigDecimal.valueOf(70), BigDecimal.valueOf(175), 30, false, ActivityLevel.MODERATELY_ACTIVE);
+
+            assertThat(result).isEqualTo(2298);
+        }
+
+        @Test
+        @DisplayName("usa una fórmula distinta para hombres y mujeres con los mismos datos")
+        void usesDifferentFormulaForMaleAndFemale() {
+            int male = calculator.calculateDailyCalorieNeeds(
+                    BigDecimal.valueOf(70), BigDecimal.valueOf(175), 30, true, ActivityLevel.SEDENTARY);
+            int female = calculator.calculateDailyCalorieNeeds(
+                    BigDecimal.valueOf(70), BigDecimal.valueOf(175), 30, false, ActivityLevel.SEDENTARY);
+
+            assertThat(male).isGreaterThan(female);
+        }
+
+        @Test
+        @DisplayName("a mayor nivel de actividad, mayor necesidad calórica")
+        void higherActivityMeansHigherNeeds() {
+            int sedentary = calculator.calculateDailyCalorieNeeds(
+                    BigDecimal.valueOf(70), BigDecimal.valueOf(175), 30, true, ActivityLevel.SEDENTARY);
+            int veryActive = calculator.calculateDailyCalorieNeeds(
+                    BigDecimal.valueOf(70), BigDecimal.valueOf(175), 30, true, ActivityLevel.VERY_ACTIVE);
+
+            assertThat(veryActive).isGreaterThan(sedentary);
+        }
+    }
+
+    @Nested
+    @DisplayName("calculateAverageByReadingType")
+    class CalculateAverageByReadingType {
+
+        @Test
+        @DisplayName("calcula el promedio correcto agrupando por tipo de lectura")
+        void calculatesAverageGroupedByType() {
+            List<GlucoseReading> readings = List.of(
+                    readingOfType(100, ReadingType.FASTING),
+                    readingOfType(120, ReadingType.FASTING),
+                    readingOfType(200, ReadingType.POST_MEAL)
+            );
+
+            var result = calculator.calculateAverageByReadingType(readings);
+
+            assertThat(result.get("FASTING")).isEqualByComparingTo(new BigDecimal("110.00"));
+            assertThat(result.get("POST_MEAL")).isEqualByComparingTo(new BigDecimal("200.00"));
+        }
+
+        @Test
+        @DisplayName("no incluye tipos de lectura sin ninguna lectura registrada")
+        void excludesTypesWithoutReadings() {
+            List<GlucoseReading> readings = List.of(readingOfType(100, ReadingType.FASTING));
+
+            var result = calculator.calculateAverageByReadingType(readings);
+
+            assertThat(result).containsOnlyKeys("FASTING");
+        }
+
+        @Test
+        @DisplayName("retorna mapa vacío con lista vacía")
+        void returnsEmptyWhenEmpty() {
+            assertThat(calculator.calculateAverageByReadingType(List.of())).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("getHypoglycemiaEvents")
+    class GetHypoglycemiaEvents {
+
+        @Test
+        @DisplayName("filtra solo las lecturas por debajo de 70 mg/dL")
+        void filtersOnlyValuesBelow70() {
+            List<GlucoseReading> readings = List.of(
+                    reading(65), reading(100), reading(60), reading(150));
+
+            List<GlucoseReading> hypoEvents = calculator.getHypoglycemiaEvents(readings);
+
+            assertThat(hypoEvents).hasSize(2);
+            assertThat(hypoEvents).allMatch(r -> r.getValueInMgDl().doubleValue() < 70);
+        }
+
+        @Test
+        @DisplayName("ordena los eventos por fecha de medición ascendente")
+        void ordersEventsByMeasuredAtAscending() {
+            LocalDateTime now = LocalDateTime.now();
+            GlucoseReading later = readingAt(60, now);
+            GlucoseReading earlier = readingAt(65, now.minusHours(2));
+
+            List<GlucoseReading> hypoEvents = calculator.getHypoglycemiaEvents(List.of(later, earlier));
+
+            assertThat(hypoEvents).containsExactly(earlier, later);
+        }
+
+        @Test
+        @DisplayName("retorna lista vacía cuando ninguna lectura es hipoglucemia")
+        void returnsEmptyWhenNoHypoglycemia() {
+            List<GlucoseReading> readings = List.of(reading(100), reading(150));
+            assertThat(calculator.getHypoglycemiaEvents(readings)).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("calculateAdherencePercent")
+    class CalculateAdherencePercent {
+
+        @Test
+        @DisplayName("retorna 0 con lista vacía")
+        void returnsZeroWhenEmpty() {
+            LocalDateTime from = LocalDateTime.now().minusDays(10);
+            LocalDateTime to = LocalDateTime.now();
+            assertThat(calculator.calculateAdherencePercent(List.of(), from, to)).isEqualTo(0.0);
+        }
+
+        @Test
+        @DisplayName("calcula correctamente el porcentaje de días con al menos un registro")
+        void calculatesCorrectPercentage() {
+            LocalDateTime from = LocalDateTime.of(2026, 6, 1, 0, 0);
+            LocalDateTime to = LocalDateTime.of(2026, 6, 10, 23, 59);
+
+            // 5 días distintos con registros, de un total de 10 días en el rango
+            List<GlucoseReading> readings = List.of(
+                    readingAt(100, LocalDateTime.of(2026, 6, 1, 8, 0)),
+                    readingAt(100, LocalDateTime.of(2026, 6, 2, 8, 0)),
+                    readingAt(100, LocalDateTime.of(2026, 6, 3, 8, 0)),
+                    readingAt(100, LocalDateTime.of(2026, 6, 4, 8, 0)),
+                    readingAt(100, LocalDateTime.of(2026, 6, 5, 8, 0))
+            );
+
+            double adherence = calculator.calculateAdherencePercent(readings, from, to);
+
+            assertThat(adherence).isEqualTo(50.0);
+        }
+
+        @Test
+        @DisplayName("cuenta un mismo día solo una vez aunque haya múltiples lecturas")
+        void countsSameDayOnlyOnce() {
+            LocalDateTime from = LocalDateTime.of(2026, 6, 1, 0, 0);
+            LocalDateTime to = LocalDateTime.of(2026, 6, 1, 23, 59);
+
+            List<GlucoseReading> readings = List.of(
+                    readingAt(100, LocalDateTime.of(2026, 6, 1, 8, 0)),
+                    readingAt(110, LocalDateTime.of(2026, 6, 1, 14, 0)),
+                    readingAt(120, LocalDateTime.of(2026, 6, 1, 20, 0))
+            );
+
+            double adherence = calculator.calculateAdherencePercent(readings, from, to);
+
+            assertThat(adherence).isEqualTo(100.0);
+        }
+
+        @Test
+        @DisplayName("nunca supera el 100% aunque haya más días con registro que días en el rango")
+        void neverExceeds100Percent() {
+            LocalDateTime from = LocalDateTime.of(2026, 6, 1, 0, 0);
+            LocalDateTime to = LocalDateTime.of(2026, 6, 1, 23, 59);
+
+            // Lecturas en días fuera del rango consultado, pero el cálculo de días únicos
+            // no debería poder superar el 100% del rango total
+            List<GlucoseReading> readings = List.of(
+                    readingAt(100, LocalDateTime.of(2026, 6, 1, 8, 0)),
+                    readingAt(100, LocalDateTime.of(2026, 5, 30, 8, 0)),
+                    readingAt(100, LocalDateTime.of(2026, 5, 29, 8, 0))
+            );
+
+            double adherence = calculator.calculateAdherencePercent(readings, from, to);
+
+            assertThat(adherence).isLessThanOrEqualTo(100.0);
+        }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private GlucoseReading reading(double value) {
         return GlucoseReading.builder()
@@ -191,6 +446,28 @@ class MedicalCalculatorServiceTest {
                 .unit(GlucoseUnit.MG_DL)
                 .readingType(ReadingType.RANDOM)
                 .measuredAt(LocalDateTime.now())
+                .build();
+    }
+
+    private GlucoseReading readingOfType(double value, ReadingType type) {
+        return GlucoseReading.builder()
+                .readingId(UUID.randomUUID())
+                .patientId(UUID.randomUUID())
+                .value(BigDecimal.valueOf(value))
+                .unit(GlucoseUnit.MG_DL)
+                .readingType(type)
+                .measuredAt(LocalDateTime.now())
+                .build();
+    }
+
+    private GlucoseReading readingAt(double value, LocalDateTime measuredAt) {
+        return GlucoseReading.builder()
+                .readingId(UUID.randomUUID())
+                .patientId(UUID.randomUUID())
+                .value(BigDecimal.valueOf(value))
+                .unit(GlucoseUnit.MG_DL)
+                .readingType(ReadingType.RANDOM)
+                .measuredAt(measuredAt)
                 .build();
     }
 }

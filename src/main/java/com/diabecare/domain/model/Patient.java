@@ -85,6 +85,15 @@ public class Patient {
         this.targetGlucoseMax = max;
     }
 
+    public void updateHeight(BigDecimal heightCm) {
+        if (heightCm.compareTo(BigDecimal.valueOf(50)) < 0
+                || heightCm.compareTo(BigDecimal.valueOf(250)) > 0) {
+            throw new InvalidPatientDataException(
+                    "La talla debe estar entre 50 y 250 cm");
+        }
+        this.heightCm = heightCm;
+    }
+
     public void updateDailyCalorieGoal(Integer calories) {
         if (calories != null && (calories < 500 || calories > 5000)) {
             throw new InvalidPatientDataException(

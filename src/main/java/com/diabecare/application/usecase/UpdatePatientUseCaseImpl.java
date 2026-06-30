@@ -27,17 +27,35 @@ public class UpdatePatientUseCaseImpl implements UpdatePatientUseCase {
                 .orElseThrow(() -> new PatientNotFoundException(
                         command.patientId().toString()));
 
+        auditHeight(patient, command);
         auditGlucoseTarget(patient, command);
         auditCalorieGoal(patient, command);
         auditActivityLevel(patient, command);
         auditGlucoseUnit(patient, command);
 
+        if (command.heightCm() != null) {
+            patient.updateHeight(command.heightCm());
+        }
         patient.updateGlucoseTarget(command.targetGlucoseMin(), command.targetGlucoseMax());
         patient.updateDailyCalorieGoal(command.dailyCalorieGoal());
         patient.updateActivityLevel(command.activityLevel());
         patient.updatePreferredGlucoseUnit(command.preferredGlucoseUnit());
 
         return savePatientPort.save(patient);
+    }
+
+    private void auditHeight(Patient patient, Command command) {
+        if (command.heightCm() == null) return;
+        String oldVal = patient.getHeightCm() != null
+                ? patient.getHeightCm().toPlainString() : "null";
+        String newVal = command.heightCm().toPlainString();
+
+        if (!oldVal.equals(newVal)) {
+            saveAuditLogPort.save(auditService.buildUpdateLog(
+                    patient.getPatientId(), "PATIENT", patient.getPatientId(),
+                    "heightCm", oldVal, newVal
+            ));
+        }
     }
 
     private void auditGlucoseTarget(Patient patient, Command command) {

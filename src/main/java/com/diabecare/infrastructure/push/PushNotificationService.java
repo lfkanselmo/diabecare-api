@@ -52,11 +52,7 @@ public class PushNotificationService {
 
         for (PushSubscription sub : subs) {
             try {
-                PushService pushService = new PushService(
-                        properties.push().vapidPublicKey(),
-                        properties.push().vapidPrivateKey(),
-                        properties.push().vapidSubject()
-                );
+                PushService pushService = buildPushService();
                 Subscription subscription = new Subscription(
                         sub.getEndpoint(),
                         new Subscription.Keys(sub.getP256dh(), sub.getAuth())
@@ -69,5 +65,13 @@ public class PushNotificationService {
                 }
             }
         }
+    }
+
+    protected PushService buildPushService() throws java.security.GeneralSecurityException {
+        return new PushService(
+                properties.push().vapidPublicKey(),
+                properties.push().vapidPrivateKey(),
+                properties.push().vapidSubject()
+        );
     }
 }
