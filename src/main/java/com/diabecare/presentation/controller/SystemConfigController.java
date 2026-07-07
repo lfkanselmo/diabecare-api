@@ -15,11 +15,13 @@ import java.util.List;
 @RequestMapping("/api/v1/system-config")
 @RequiredArgsConstructor
 @Tag(name = "Configuración del sistema")
-@PreAuthorize("hasRole('ADMIN')")
 public class SystemConfigController {
 
     private final GetSystemConfigUseCase getSystemConfigUseCase;
 
+    // Lectura disponible para cualquier usuario autenticado: el frontend la necesita
+    // para todos los pacientes (colores de alertas, umbrales clínicos, fases del
+    // ciclo, etc.), no es una acción administrativa. Solo recargar desde BD lo es.
     @GetMapping
     public ResponseEntity<List<SystemConfigResponse>> getAll() {
         return ResponseEntity.ok(
@@ -30,6 +32,7 @@ public class SystemConfigController {
     }
 
     @PostMapping("/reload")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> reload() {
         getSystemConfigUseCase.reload();
         return ResponseEntity.ok().build();
