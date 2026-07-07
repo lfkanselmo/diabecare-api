@@ -29,7 +29,7 @@ class MedicalReportPdfGeneratorTest {
     void setUp() {
         generator = new MedicalReportPdfGenerator(
                 new MenstrualCycleGuidanceService((key, args) -> "texto de guía"),
-                new ExerciseLabelService());
+                new ExerciseLabelService((key, args) -> "ejercicio"));
     }
 
     @Nested

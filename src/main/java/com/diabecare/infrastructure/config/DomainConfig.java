@@ -9,6 +9,7 @@ import com.diabecare.domain.service.ExerciseLabelService;
 import com.diabecare.domain.service.GlucoseExportService;
 import com.diabecare.domain.service.MedicalCalculatorService;
 import com.diabecare.domain.service.MenstrualCycleGuidanceService;
+import com.diabecare.domain.service.MetadataLabelService;
 import com.diabecare.domain.service.PatternDetectorService;
 import com.diabecare.domain.service.WeeklySummaryService;
 import lombok.RequiredArgsConstructor;
@@ -64,6 +65,11 @@ public class DomainConfig {
 
     @Bean
     public ExerciseLabelService exerciseLabelService() {
-        return new ExerciseLabelService();
+        return new ExerciseLabelService(messages);
+    }
+
+    @Bean
+    public MetadataLabelService metadataLabelService() {
+        return new MetadataLabelService(messages);
     }
 }

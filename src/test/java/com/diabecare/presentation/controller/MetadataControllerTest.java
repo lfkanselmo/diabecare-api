@@ -4,6 +4,8 @@ import com.diabecare.domain.model.*;
 import com.diabecare.domain.service.CycleLabelService;
 import com.diabecare.domain.service.ExerciseLabelService;
 import com.diabecare.domain.service.MenstrualCycleGuidanceService;
+import com.diabecare.domain.service.MetadataLabelService;
+import com.diabecare.support.RealMessageResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,7 +28,8 @@ class MetadataControllerTest {
         MetadataController controller = new MetadataController(
                 new CycleLabelService((key, args) -> "etiqueta"),
                 new MenstrualCycleGuidanceService((key, args) -> "etiqueta"),
-                new ExerciseLabelService());
+                new ExerciseLabelService(RealMessageResolver.spanish()),
+                new MetadataLabelService(RealMessageResolver.spanish()));
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 

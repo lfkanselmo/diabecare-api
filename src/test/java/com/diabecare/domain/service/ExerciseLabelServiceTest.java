@@ -2,6 +2,7 @@ package com.diabecare.domain.service;
 
 import com.diabecare.domain.model.ExerciseIntensity;
 import com.diabecare.domain.model.ExerciseType;
+import com.diabecare.support.RealMessageResolver;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,8 @@ import static org.assertj.core.api.Assertions.*;
 @DisplayName("ExerciseLabelService")
 class ExerciseLabelServiceTest {
 
-    private final ExerciseLabelService service = new ExerciseLabelService();
+    private final ExerciseLabelService service = new ExerciseLabelService(RealMessageResolver.spanish());
+    private final ExerciseLabelService englishService = new ExerciseLabelService(RealMessageResolver.english());
 
     @Nested
     @DisplayName("resolveTypeLabel")
@@ -28,11 +30,19 @@ class ExerciseLabelServiceTest {
         }
 
         @Test
-        @DisplayName("resuelve etiquetas específicas correctamente")
+        @DisplayName("resuelve etiquetas específicas correctamente en español")
         void resolvesSpecificLabelsCorrectly() {
             assertThat(service.resolveTypeLabel(ExerciseType.WALKING)).isEqualTo("Caminata");
             assertThat(service.resolveTypeLabel(ExerciseType.SWIMMING)).isEqualTo("Natación");
             assertThat(service.resolveTypeLabel(ExerciseType.OTHER)).isEqualTo("Otro");
+        }
+
+        @Test
+        @DisplayName("resuelve etiquetas específicas correctamente en inglés")
+        void resolvesSpecificLabelsInEnglish() {
+            assertThat(englishService.resolveTypeLabel(ExerciseType.WALKING)).isEqualTo("Walking");
+            assertThat(englishService.resolveTypeLabel(ExerciseType.SWIMMING)).isEqualTo("Swimming");
+            assertThat(englishService.resolveTypeLabel(ExerciseType.OTHER)).isEqualTo("Other");
         }
 
         @Test
