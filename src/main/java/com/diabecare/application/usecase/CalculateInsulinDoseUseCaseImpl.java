@@ -58,7 +58,8 @@ public class CalculateInsulinDoseUseCaseImpl implements CalculateInsulinDoseUseC
                 correctionDose.max(BigDecimal.ZERO).setScale(1, RoundingMode.HALF_UP),
                 mealDose.setScale(1, RoundingMode.HALF_UP),
                 total,
-                explanation);
+                explanation,
+                messages.resolve("insulin.disclaimer"));
     }
 
     private BigDecimal calculateCorrectionDose(BigDecimal currentGlucose,

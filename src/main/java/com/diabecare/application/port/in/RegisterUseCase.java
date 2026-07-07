@@ -17,7 +17,8 @@ public interface RegisterUseCase {
             LocalDate    diagnosisDate,
             BigDecimal   heightCm,
             BiologicalSex biologicalSex,
-            String       deviceLabel
+            String       deviceLabel,
+            String       clientIp
     ) {}
 
     record Result(

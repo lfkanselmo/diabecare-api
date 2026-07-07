@@ -51,7 +51,8 @@ class InsulinControllerTest {
         void returns200WithCalculationResultMappedCorrectly() throws Exception {
             var result = new CalculateInsulinDoseUseCase.Result(
                     BigDecimal.valueOf(2.6), BigDecimal.valueOf(6), BigDecimal.valueOf(8.6),
-                    "Corrección + dosis de comida");
+                    "Corrección + dosis de comida",
+                    "No es una recomendación clínica automática.");
 
             when(calculateInsulinDoseUseCase.calculate(any())).thenReturn(result);
 
@@ -65,7 +66,8 @@ class InsulinControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.correctionDose").value(2.6))
                     .andExpect(jsonPath("$.mealDose").value(6))
-                    .andExpect(jsonPath("$.totalDose").value(8.6));
+                    .andExpect(jsonPath("$.totalDose").value(8.6))
+                    .andExpect(jsonPath("$.disclaimer").value("No es una recomendación clínica automática."));
         }
 
         @Test

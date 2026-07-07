@@ -9,6 +9,7 @@ import com.diabecare.application.port.out.RefreshTokenPort;
 import com.diabecare.domain.model.BiologicalSex;
 import com.diabecare.domain.model.DiabetesType;
 import com.diabecare.domain.model.Patient;
+import com.diabecare.domain.service.RateLimitService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -40,6 +41,8 @@ class LoginUseCaseTest {
     private GenerateTokenPort generateTokenPort;
     @Mock
     private RefreshTokenPort refreshTokenPort;
+    @Mock
+    private RateLimitService rateLimitService;
 
     @InjectMocks
     private LoginUseCaseImpl useCase;
@@ -64,7 +67,7 @@ class LoginUseCaseTest {
                     .thenReturn(new RefreshTokenPort.IssuedToken("refresh-token", 604800000L));
 
             LoginUseCase.Result result = useCase.execute(
-                    new LoginUseCase.Command(email, "password123", "iPhone"));
+                    new LoginUseCase.Command(email, "password123", "iPhone", "127.0.0.1"));
 
             assertThat(result.token()).isEqualTo("access-token");
             assertThat(result.expiresIn()).isEqualTo(3600L);
@@ -84,7 +87,7 @@ class LoginUseCaseTest {
             when(refreshTokenPort.issue(any(), any()))
                     .thenReturn(new RefreshTokenPort.IssuedToken("rt", 1000L));
 
-            useCase.execute(new LoginUseCase.Command(email, "password123", "iPhone"));
+            useCase.execute(new LoginUseCase.Command(email, "password123", "iPhone", "127.0.0.1"));
 
             verify(authenticateUserPort).authenticate(email, "password123");
         }
@@ -96,7 +99,7 @@ class LoginUseCaseTest {
                     .when(authenticateUserPort).authenticate(email, "wrong");
 
             assertThatThrownBy(() -> useCase.execute(
-                    new LoginUseCase.Command(email, "wrong", "iPhone")))
+                    new LoginUseCase.Command(email, "wrong", "iPhone", "127.0.0.1")))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("credenciales inválidas");
 
@@ -109,7 +112,7 @@ class LoginUseCaseTest {
             when(loadUserPort.findUserIdByEmail(email)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> useCase.execute(
-                    new LoginUseCase.Command(email, "password123", "iPhone")))
+                    new LoginUseCase.Command(email, "password123", "iPhone", "127.0.0.1")))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Usuario no encontrado");
 
@@ -123,7 +126,7 @@ class LoginUseCaseTest {
             when(loadPatientPort.findByUserId(userId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> useCase.execute(
-                    new LoginUseCase.Command(email, "password123", "iPhone")))
+                    new LoginUseCase.Command(email, "password123", "iPhone", "127.0.0.1")))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Perfil no encontrado");
 

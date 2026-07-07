@@ -5,6 +5,7 @@ import com.diabecare.application.port.in.RegisterUseCase;
 import com.diabecare.application.port.in.RegisterUserUseCase;
 import com.diabecare.application.port.out.GenerateTokenPort;
 import com.diabecare.application.port.out.RefreshTokenPort;
+import com.diabecare.domain.service.RateLimitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,9 +19,12 @@ public class RegisterUseCaseImpl implements RegisterUseCase {
     private final RegisterPatientUseCase registerPatientUseCase;
     private final GenerateTokenPort      generateTokenPort;
     private final RefreshTokenPort       refreshTokenPort;
+    private final RateLimitService       rateLimitService;
 
     @Override
     public Result execute(Command command) {
+        rateLimitService.checkRegisterLimit(command.clientIp());
+
         var user = registerUserUseCase.execute(
                 new RegisterUserUseCase.Command(command.email(), command.password()));
 

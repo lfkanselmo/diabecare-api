@@ -16,7 +16,8 @@ public interface CalculateInsulinDoseUseCase {
             BigDecimal correctionDose,
             BigDecimal mealDose,
             BigDecimal totalDose,
-            String explanation
+            String explanation,
+            String disclaimer
     ) {}
 
     Result calculate(Command command);

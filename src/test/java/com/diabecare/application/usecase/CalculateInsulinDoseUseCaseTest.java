@@ -160,6 +160,22 @@ class CalculateInsulinDoseUseCaseTest {
 
             assertThat(result.explanation()).isNotBlank();
         }
+
+        @Test
+        @DisplayName("incluye un disclaimer no vacío resuelto vía MessageResolverPort")
+        void includesNonBlankDisclaimer() {
+            Patient patient = patientWithInsulinProfile();
+            when(loadPatientPort.findById(patientId)).thenReturn(Optional.of(patient));
+            when(messages.resolve("insulin.disclaimer")).thenReturn(
+                    "No es una recomendación clínica automática.");
+
+            CalculateInsulinDoseUseCase.Command command = new CalculateInsulinDoseUseCase.Command(
+                    patientId, BigDecimal.valueOf(250), BigDecimal.valueOf(60), true);
+
+            CalculateInsulinDoseUseCase.Result result = useCase.calculate(command);
+
+            assertThat(result.disclaimer()).isEqualTo("No es una recomendación clínica automática.");
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

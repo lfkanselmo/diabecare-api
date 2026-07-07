@@ -5,7 +5,8 @@ public interface LoginUseCase {
     record Command(
             String email,
             String password,
-            String deviceLabel
+            String deviceLabel,
+            String clientIp
     ) {}
 
     record Result(

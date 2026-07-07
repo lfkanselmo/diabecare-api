@@ -6,5 +6,6 @@ public record InsulinCalculationResponse(
         BigDecimal correctionDose,
         BigDecimal mealDose,
         BigDecimal totalDose,
-        String explanation
+        String explanation,
+        String disclaimer
 ) {}

@@ -42,6 +42,7 @@ import java.util.UUID;
 public class AuthController {
 
     private static final String USER_AGENT_HEADER = "User-Agent";
+    private static final String FORWARDED_FOR_HEADER = "X-Forwarded-For";
 
     private final LoginUseCase                loginUseCase;
     private final RegisterUseCase             registerUseCase;
@@ -68,7 +69,8 @@ public class AuthController {
                         LocalDate.parse(request.diagnosisDate()),
                         request.heightCm() != null ? new BigDecimal(request.heightCm()) : null,
                         BiologicalSex.valueOf(request.biologicalSex()),
-                        deviceLabel(httpRequest)
+                        deviceLabel(httpRequest),
+                        clientIp(httpRequest)
                 ));
 
         var patient = getPatientUseCase.getByUserId(UUID.fromString(result.userId()));
@@ -88,7 +90,8 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request,
                                               HttpServletRequest httpRequest) {
         LoginUseCase.Result result = loginUseCase.execute(
-                new LoginUseCase.Command(request.email(), request.password(), deviceLabel(httpRequest)));
+                new LoginUseCase.Command(request.email(), request.password(),
+                        deviceLabel(httpRequest), clientIp(httpRequest)));
 
         var patient = getPatientUseCase.getByUserId(UUID.fromString(result.userId()));
 
@@ -146,5 +149,13 @@ public class AuthController {
 
     private String deviceLabel(HttpServletRequest request) {
         return DeviceLabelResolver.resolve(request.getHeader(USER_AGENT_HEADER));
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader(FORWARDED_FOR_HEADER);
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

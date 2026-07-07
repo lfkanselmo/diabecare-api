@@ -14,22 +14,36 @@ public class RateLimitService {
     private final SystemConfigPort systemConfig;
 
     public void checkGlucoseLimit(UUID patientId) {
-        checkLimit(patientId, "GLUCOSE",
+        checkLimit(patientId.toString(), "GLUCOSE",
                 systemConfig.getInt("rate_limit.glucose_per_hour"));
     }
 
     public void checkMealLimit(UUID patientId) {
-        checkLimit(patientId, "MEAL",
+        checkLimit(patientId.toString(), "MEAL",
                 systemConfig.getInt("rate_limit.meal_per_hour"));
     }
 
     public void checkExerciseLimit(UUID patientId) {
-        checkLimit(patientId, "EXERCISE",
+        checkLimit(patientId.toString(), "EXERCISE",
                 systemConfig.getInt("rate_limit.exercise_per_hour"));
     }
 
-    private void checkLimit(UUID patientId, String operation, int limit) {
-        boolean allowed = rateLimitPort.tryConsume(operation, patientId, limit);
+    /**
+     * Clave por IP, no por usuario: antes de autenticarse no existe un patientId,
+     * y es justamente el intento de fuerza bruta lo que se quiere frenar.
+     */
+    public void checkLoginLimit(String clientIp) {
+        checkLimit(clientIp, "LOGIN",
+                systemConfig.getInt("rate_limit.login_per_hour"));
+    }
+
+    public void checkRegisterLimit(String clientIp) {
+        checkLimit(clientIp, "REGISTER",
+                systemConfig.getInt("rate_limit.register_per_hour"));
+    }
+
+    private void checkLimit(String subjectKey, String operation, int limit) {
+        boolean allowed = rateLimitPort.tryConsume(operation, subjectKey, limit);
 
         if (!allowed) {
             throw new RateLimitExceededException(

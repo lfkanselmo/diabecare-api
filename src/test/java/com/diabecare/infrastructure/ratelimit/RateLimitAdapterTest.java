@@ -22,7 +22,7 @@ class RateLimitAdapterTest {
         @DisplayName("permite consumir hasta el límite configurado")
         void allowsConsumingUpToTheConfiguredLimit() {
             for (int i = 0; i < 5; i++) {
-                assertThat(adapter.tryConsume("GLUCOSE", patientId, 5)).isTrue();
+                assertThat(adapter.tryConsume("GLUCOSE", patientId.toString(), 5)).isTrue();
             }
         }
 
@@ -30,10 +30,10 @@ class RateLimitAdapterTest {
         @DisplayName("rechaza el intento que excede el límite configurado")
         void rejectsAttemptExceedingTheConfiguredLimit() {
             for (int i = 0; i < 5; i++) {
-                adapter.tryConsume("GLUCOSE", patientId, 5);
+                adapter.tryConsume("GLUCOSE", patientId.toString(), 5);
             }
 
-            boolean sixthAttempt = adapter.tryConsume("GLUCOSE", patientId, 5);
+            boolean sixthAttempt = adapter.tryConsume("GLUCOSE", patientId.toString(), 5);
 
             assertThat(sixthAttempt).isFalse();
         }
@@ -44,10 +44,10 @@ class RateLimitAdapterTest {
             UUID otherPatientId = UUID.randomUUID();
 
             for (int i = 0; i < 3; i++) {
-                adapter.tryConsume("GLUCOSE", patientId, 3);
+                adapter.tryConsume("GLUCOSE", patientId.toString(), 3);
             }
 
-            boolean otherPatientAttempt = adapter.tryConsume("GLUCOSE", otherPatientId, 3);
+            boolean otherPatientAttempt = adapter.tryConsume("GLUCOSE", otherPatientId.toString(), 3);
 
             assertThat(otherPatientAttempt).isTrue();
         }
@@ -56,10 +56,10 @@ class RateLimitAdapterTest {
         @DisplayName("mantiene límites independientes para distintas operaciones del mismo paciente")
         void keepsIndependentLimitsForDifferentOperations() {
             for (int i = 0; i < 3; i++) {
-                adapter.tryConsume("GLUCOSE", patientId, 3);
+                adapter.tryConsume("GLUCOSE", patientId.toString(), 3);
             }
 
-            boolean differentOperationAttempt = adapter.tryConsume("MEAL", patientId, 3);
+            boolean differentOperationAttempt = adapter.tryConsume("MEAL", patientId.toString(), 3);
 
             assertThat(differentOperationAttempt).isTrue();
         }

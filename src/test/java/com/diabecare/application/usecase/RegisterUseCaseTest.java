@@ -9,6 +9,7 @@ import com.diabecare.application.port.out.RefreshTokenPort;
 import com.diabecare.domain.model.BiologicalSex;
 import com.diabecare.domain.model.DiabetesType;
 import com.diabecare.domain.model.Patient;
+import com.diabecare.domain.service.RateLimitService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,8 @@ class RegisterUseCaseTest {
     private GenerateTokenPort generateTokenPort;
     @Mock
     private RefreshTokenPort refreshTokenPort;
+    @Mock
+    private RateLimitService rateLimitService;
 
     @InjectMocks
     private RegisterUseCaseImpl useCase;
@@ -63,7 +66,7 @@ class RegisterUseCaseTest {
             RegisterUseCase.Command command = new RegisterUseCase.Command(
                     "ana@example.com", "password123", "Ana García",
                     LocalDate.of(1990, 5, 10), DiabetesType.TYPE_1, LocalDate.of(2010, 1, 1),
-                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone");
+                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone", "127.0.0.1");
 
             RegisterUseCase.Result result = useCase.execute(command);
 
@@ -81,7 +84,7 @@ class RegisterUseCaseTest {
             RegisterUseCase.Command command = new RegisterUseCase.Command(
                     "ana@example.com", "password123", "Ana García",
                     LocalDate.of(1990, 5, 10), DiabetesType.TYPE_1, LocalDate.of(2010, 1, 1),
-                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone");
+                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone", "127.0.0.1");
 
             useCase.execute(command);
 
@@ -101,7 +104,7 @@ class RegisterUseCaseTest {
             RegisterUseCase.Command command = new RegisterUseCase.Command(
                     "ana@example.com", "password123", "Ana García",
                     LocalDate.of(1990, 5, 10), DiabetesType.TYPE_1, LocalDate.of(2010, 1, 1),
-                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone");
+                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone", "127.0.0.1");
 
             useCase.execute(command);
 
@@ -124,7 +127,7 @@ class RegisterUseCaseTest {
             RegisterUseCase.Command command = new RegisterUseCase.Command(
                     "ana@example.com", "password123", "Ana García",
                     LocalDate.of(1990, 5, 10), DiabetesType.TYPE_1, LocalDate.of(2010, 1, 1),
-                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone");
+                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone", "127.0.0.1");
 
             assertThatThrownBy(() -> useCase.execute(command))
                     .isInstanceOf(RuntimeException.class);

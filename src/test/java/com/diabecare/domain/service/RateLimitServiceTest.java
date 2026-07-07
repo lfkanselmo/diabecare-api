@@ -42,7 +42,7 @@ class RateLimitServiceTest {
         @DisplayName("no lanza excepción cuando el límite no se ha excedido")
         void doesNotThrowWhenWithinLimit() {
             when(systemConfig.getInt("rate_limit.glucose_per_hour")).thenReturn(20);
-            when(rateLimitPort.tryConsume("GLUCOSE", patientId, 20)).thenReturn(true);
+            when(rateLimitPort.tryConsume("GLUCOSE", patientId.toString(), 20)).thenReturn(true);
 
             assertThatCode(() -> service.checkGlucoseLimit(patientId)).doesNotThrowAnyException();
         }
@@ -51,7 +51,7 @@ class RateLimitServiceTest {
         @DisplayName("lanza RateLimitExceededException cuando el límite se excede")
         void throwsWhenLimitExceeded() {
             when(systemConfig.getInt("rate_limit.glucose_per_hour")).thenReturn(20);
-            when(rateLimitPort.tryConsume("GLUCOSE", patientId, 20)).thenReturn(false);
+            when(rateLimitPort.tryConsume("GLUCOSE", patientId.toString(), 20)).thenReturn(false);
 
             assertThatThrownBy(() -> service.checkGlucoseLimit(patientId))
                     .isInstanceOf(RateLimitExceededException.class)
@@ -78,19 +78,19 @@ class RateLimitServiceTest {
         @DisplayName("usa la clave de configuración y operación correctas")
         void usesCorrectKeyAndOperation() {
             when(systemConfig.getInt("rate_limit.meal_per_hour")).thenReturn(15);
-            when(rateLimitPort.tryConsume("MEAL", patientId, 15)).thenReturn(true);
+            when(rateLimitPort.tryConsume("MEAL", patientId.toString(), 15)).thenReturn(true);
 
             service.checkMealLimit(patientId);
 
             verify(systemConfig).getInt("rate_limit.meal_per_hour");
-            verify(rateLimitPort).tryConsume("MEAL", patientId, 15);
+            verify(rateLimitPort).tryConsume("MEAL", patientId.toString(), 15);
         }
 
         @Test
         @DisplayName("lanza excepción cuando el límite de comidas se excede")
         void throwsWhenMealLimitExceeded() {
             when(systemConfig.getInt("rate_limit.meal_per_hour")).thenReturn(15);
-            when(rateLimitPort.tryConsume("MEAL", patientId, 15)).thenReturn(false);
+            when(rateLimitPort.tryConsume("MEAL", patientId.toString(), 15)).thenReturn(false);
 
             assertThatThrownBy(() -> service.checkMealLimit(patientId))
                     .isInstanceOf(RateLimitExceededException.class)
@@ -106,23 +106,81 @@ class RateLimitServiceTest {
         @DisplayName("usa la clave de configuración y operación correctas")
         void usesCorrectKeyAndOperation() {
             when(systemConfig.getInt("rate_limit.exercise_per_hour")).thenReturn(10);
-            when(rateLimitPort.tryConsume("EXERCISE", patientId, 10)).thenReturn(true);
+            when(rateLimitPort.tryConsume("EXERCISE", patientId.toString(), 10)).thenReturn(true);
 
             service.checkExerciseLimit(patientId);
 
             verify(systemConfig).getInt("rate_limit.exercise_per_hour");
-            verify(rateLimitPort).tryConsume("EXERCISE", patientId, 10);
+            verify(rateLimitPort).tryConsume("EXERCISE", patientId.toString(), 10);
         }
 
         @Test
         @DisplayName("lanza excepción cuando el límite de ejercicio se excede")
         void throwsWhenExerciseLimitExceeded() {
             when(systemConfig.getInt("rate_limit.exercise_per_hour")).thenReturn(10);
-            when(rateLimitPort.tryConsume("EXERCISE", patientId, 10)).thenReturn(false);
+            when(rateLimitPort.tryConsume("EXERCISE", patientId.toString(), 10)).thenReturn(false);
 
             assertThatThrownBy(() -> service.checkExerciseLimit(patientId))
                     .isInstanceOf(RateLimitExceededException.class)
                     .hasMessageContaining("EXERCISE");
+        }
+    }
+
+    @Nested
+    @DisplayName("checkLoginLimit")
+    class CheckLoginLimit {
+
+        private final String clientIp = "203.0.113.7";
+
+        @Test
+        @DisplayName("usa la clave de configuración y operación correctas, por IP")
+        void usesCorrectKeyAndOperation() {
+            when(systemConfig.getInt("rate_limit.login_per_hour")).thenReturn(10);
+            when(rateLimitPort.tryConsume("LOGIN", clientIp, 10)).thenReturn(true);
+
+            service.checkLoginLimit(clientIp);
+
+            verify(rateLimitPort).tryConsume("LOGIN", clientIp, 10);
+        }
+
+        @Test
+        @DisplayName("lanza excepción cuando el límite de login se excede")
+        void throwsWhenLimitExceeded() {
+            when(systemConfig.getInt("rate_limit.login_per_hour")).thenReturn(10);
+            when(rateLimitPort.tryConsume("LOGIN", clientIp, 10)).thenReturn(false);
+
+            assertThatThrownBy(() -> service.checkLoginLimit(clientIp))
+                    .isInstanceOf(RateLimitExceededException.class)
+                    .hasMessageContaining("LOGIN");
+        }
+    }
+
+    @Nested
+    @DisplayName("checkRegisterLimit")
+    class CheckRegisterLimit {
+
+        private final String clientIp = "203.0.113.7";
+
+        @Test
+        @DisplayName("usa la clave de configuración y operación correctas, por IP")
+        void usesCorrectKeyAndOperation() {
+            when(systemConfig.getInt("rate_limit.register_per_hour")).thenReturn(5);
+            when(rateLimitPort.tryConsume("REGISTER", clientIp, 5)).thenReturn(true);
+
+            service.checkRegisterLimit(clientIp);
+
+            verify(rateLimitPort).tryConsume("REGISTER", clientIp, 5);
+        }
+
+        @Test
+        @DisplayName("lanza excepción cuando el límite de registro se excede")
+        void throwsWhenLimitExceeded() {
+            when(systemConfig.getInt("rate_limit.register_per_hour")).thenReturn(5);
+            when(rateLimitPort.tryConsume("REGISTER", clientIp, 5)).thenReturn(false);
+
+            assertThatThrownBy(() -> service.checkRegisterLimit(clientIp))
+                    .isInstanceOf(RateLimitExceededException.class)
+                    .hasMessageContaining("REGISTER");
         }
     }
 }

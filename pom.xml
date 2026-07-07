@@ -161,17 +161,11 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- PDF Generation -->
+		<!-- PDF Generation (OpenPDF: LGPL/MPL, sin la obligación de código abierto de iText AGPL) -->
 		<dependency>
-			<groupId>com.itextpdf</groupId>
-			<artifactId>itext-core</artifactId>
-			<version>8.0.4</version>
-			<type>pom</type>
-		</dependency>
-		<dependency>
-			<groupId>com.itextpdf</groupId>
-			<artifactId>layout</artifactId>
-			<version>8.0.4</version>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf</artifactId>
+			<version>3.0.5</version>
 		</dependency>
 
 		<!-- Cache -->

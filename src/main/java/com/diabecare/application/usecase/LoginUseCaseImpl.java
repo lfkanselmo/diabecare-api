@@ -6,6 +6,7 @@ import com.diabecare.application.port.out.GenerateTokenPort;
 import com.diabecare.application.port.out.LoadPatientPort;
 import com.diabecare.application.port.out.LoadUserPort;
 import com.diabecare.application.port.out.RefreshTokenPort;
+import com.diabecare.domain.service.RateLimitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +21,12 @@ public class LoginUseCaseImpl implements LoginUseCase {
     private final LoadPatientPort      loadPatientPort;
     private final GenerateTokenPort    generateTokenPort;
     private final RefreshTokenPort     refreshTokenPort;
+    private final RateLimitService     rateLimitService;
 
     @Override
     public Result execute(Command command) {
+        rateLimitService.checkLoginLimit(command.clientIp());
+
         authenticateUserPort.authenticate(command.email(), command.password());
 
         var userId = loadUserPort.findUserIdByEmail(command.email())

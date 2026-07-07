@@ -8,23 +8,21 @@ import io.github.bucket4j.Bucket;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Component
 public class RateLimitAdapter implements RateLimitPort {
 
-    private final Cache<UUID, Bucket> buckets = Caffeine.newBuilder()
+    private final Cache<String, Bucket> buckets = Caffeine.newBuilder()
             .expireAfterAccess(1, TimeUnit.HOURS)
             .maximumSize(1000)
             .build();
 
     @Override
-    public boolean tryConsume(String operationKey, UUID patientId, int limitPerHour) {
-        String cacheKey = patientId + ":" + operationKey;
-        UUID bucketKey = UUID.nameUUIDFromBytes(cacheKey.getBytes());
+    public boolean tryConsume(String operationKey, String subjectKey, int limitPerHour) {
+        String cacheKey = operationKey + ":" + subjectKey;
 
-        Bucket bucket = buckets.get(bucketKey, k -> buildBucket(limitPerHour));
+        Bucket bucket = buckets.get(cacheKey, k -> buildBucket(limitPerHour));
 
         return bucket.tryConsume(1);
     }

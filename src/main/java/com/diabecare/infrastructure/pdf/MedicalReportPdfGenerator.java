@@ -6,17 +6,22 @@ import com.diabecare.domain.model.ReportData;
 import com.diabecare.domain.model.VitalSign;
 import com.diabecare.domain.service.ExerciseLabelService;
 import com.diabecare.domain.service.MenstrualCycleGuidanceService;
-import com.itextpdf.kernel.colors.ColorConstants;
-import com.itextpdf.kernel.colors.DeviceRgb;
-import com.itextpdf.kernel.pdf.PdfDocument;
-import com.itextpdf.kernel.pdf.PdfWriter;
-import com.itextpdf.layout.Document;
-import com.itextpdf.layout.element.*;
-import com.itextpdf.layout.properties.TextAlignment;
-import com.itextpdf.layout.properties.UnitValue;
 import lombok.RequiredArgsConstructor;
+import org.openpdf.text.Chunk;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Element;
+import org.openpdf.text.Font;
+import org.openpdf.text.PageSize;
+import org.openpdf.text.Paragraph;
+import org.openpdf.text.Rectangle;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfWriter;
+import org.openpdf.text.pdf.draw.LineSeparator;
 import org.springframework.stereotype.Component;
 
+import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,6 +29,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
+/**
+ * Generador de PDF con OpenPDF (LGPL/MPL) — migrado desde iText 8 (AGPLv3) para evitar
+ * la obligación de liberar el código fuente que exige la edición community de iText.
+ */
 @Component
 @RequiredArgsConstructor
 public class MedicalReportPdfGenerator {
@@ -31,11 +40,11 @@ public class MedicalReportPdfGenerator {
     private final MenstrualCycleGuidanceService cycleGuidanceService;
     private final ExerciseLabelService exerciseLabelService;
 
-    private static final DeviceRgb PRIMARY     = new DeviceRgb(21, 101, 192);
-    private static final DeviceRgb LIGHT_GRAY  = new DeviceRgb(245, 247, 250);
-    private static final DeviceRgb SUCCESS     = new DeviceRgb(46, 125, 50);
-    private static final DeviceRgb WARNING     = new DeviceRgb(245, 127, 23);
-    private static final DeviceRgb DANGER      = new DeviceRgb(198, 40, 40);
+    private static final Color PRIMARY     = new Color(21, 101, 192);
+    private static final Color LIGHT_GRAY  = new Color(245, 247, 250);
+    private static final Color SUCCESS     = new Color(46, 125, 50);
+    private static final Color WARNING     = new Color(245, 127, 23);
+    private static final Color DANGER      = new Color(198, 40, 40);
     private static final DateTimeFormatter DATE_FMT =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter DATE_ONLY =
@@ -43,66 +52,76 @@ public class MedicalReportPdfGenerator {
 
     public byte[] generate(ReportData data, LocalDate from, LocalDate to) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PdfWriter writer = new PdfWriter(baos);
-        PdfDocument pdf = new PdfDocument(writer);
-        Document doc = new Document(pdf);
-        doc.setMargins(36, 36, 36, 36);
+        Document doc = new Document(PageSize.A4, 36, 36, 36, 36);
 
-        addHeader(doc, data, from, to);
-        addPatientInfo(doc, data);
-        addGlucoseSummary(doc, data);
-        addTirDetailed(doc, data);
-        addAverageByReadingType(doc, data);
-        addHypoglycemiaEvents(doc, data);
-        addAdherence(doc, data);
-        addGlucoseHistory(doc, data);
-        addTopImpactMeals(doc, data);
-        addExerciseSummary(doc, data);
-        addVitalSigns(doc, data);
-        addMedications(doc, data);
-        addMenstrualCycle(doc, data);
-        addFooter(doc);
+        try {
+            PdfWriter.getInstance(doc, baos);
+            doc.open();
 
-        doc.close();
+            addHeader(doc, data, from, to);
+            addPatientInfo(doc, data);
+            addGlucoseSummary(doc, data);
+            addTirDetailed(doc, data);
+            addAverageByReadingType(doc, data);
+            addHypoglycemiaEvents(doc, data);
+            addAdherence(doc, data);
+            addGlucoseHistory(doc, data);
+            addTopImpactMeals(doc, data);
+            addExerciseSummary(doc, data);
+            addVitalSigns(doc, data);
+            addMedications(doc, data);
+            addMenstrualCycle(doc, data);
+            addFooter(doc);
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Error generando el reporte PDF", e);
+        } finally {
+            doc.close();
+        }
+
         return baos.toByteArray();
     }
 
     private void addHeader(Document doc, ReportData data,
-                           LocalDate from, LocalDate to) {
-        Table header = new Table(UnitValue.createPercentArray(new float[]{70, 30}))
-                .setWidth(UnitValue.createPercentValue(100));
+                           LocalDate from, LocalDate to) throws DocumentException {
+        PdfPTable header = new PdfPTable(new float[]{70, 30});
+        header.setWidthPercentage(100);
 
-        Cell titleCell = new Cell()
-                .add(new Paragraph("DiabeCare")
-                        .setFontSize(24).setBold().setFontColor(PRIMARY))
-                .add(new Paragraph("Reporte Médico")
-                        .setFontSize(14).setFontColor(ColorConstants.DARK_GRAY))
-                .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER);
+        PdfPCell titleCell = new PdfPCell();
+        titleCell.setBorder(Rectangle.NO_BORDER);
+        titleCell.addElement(new Paragraph("DiabeCare", font(24, Font.BOLD, PRIMARY)));
+        titleCell.addElement(new Paragraph("Reporte Médico", font(14, Font.NORMAL, Color.DARK_GRAY)));
 
-        Cell dateCell = new Cell()
-                .add(new Paragraph("Período")
-                        .setFontSize(9).setFontColor(ColorConstants.GRAY)
-                        .setTextAlignment(TextAlignment.RIGHT))
-                .add(new Paragraph(from.format(DATE_ONLY) + " al " + to.format(DATE_ONLY))
-                        .setFontSize(10).setBold()
-                        .setTextAlignment(TextAlignment.RIGHT))
-                .add(new Paragraph("Generado: " + LocalDateTime.now().format(DATE_ONLY))
-                        .setFontSize(8).setFontColor(ColorConstants.GRAY)
-                        .setTextAlignment(TextAlignment.RIGHT))
-                .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER);
+        PdfPCell dateCell = new PdfPCell();
+        dateCell.setBorder(Rectangle.NO_BORDER);
+
+        Paragraph periodLabel = new Paragraph("Período", font(9, Font.NORMAL, Color.GRAY));
+        periodLabel.setAlignment(Element.ALIGN_RIGHT);
+        Paragraph periodValue = new Paragraph(
+                from.format(DATE_ONLY) + " al " + to.format(DATE_ONLY), font(10, Font.BOLD, Color.BLACK));
+        periodValue.setAlignment(Element.ALIGN_RIGHT);
+        Paragraph generated = new Paragraph(
+                "Generado: " + LocalDateTime.now().format(DATE_ONLY), font(8, Font.NORMAL, Color.GRAY));
+        generated.setAlignment(Element.ALIGN_RIGHT);
+
+        dateCell.addElement(periodLabel);
+        dateCell.addElement(periodValue);
+        dateCell.addElement(generated);
 
         header.addCell(titleCell);
         header.addCell(dateCell);
         doc.add(header);
-        doc.add(new LineSeparator(new com.itextpdf.kernel.pdf.canvas.draw.SolidLine(2f))
-                .setStrokeColor(PRIMARY).setMarginBottom(10));
+
+        Paragraph separator = new Paragraph(
+                new Chunk(new LineSeparator(2f, 100f, PRIMARY, Element.ALIGN_CENTER, -2f)));
+        separator.setSpacingAfter(10f);
+        doc.add(separator);
     }
 
-    private void addPatientInfo(Document doc, ReportData data) {
+    private void addPatientInfo(Document doc, ReportData data) throws DocumentException {
         doc.add(sectionTitle("Datos del Paciente"));
 
-        Table table = new Table(UnitValue.createPercentArray(new float[]{25, 25, 25, 25}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable table = new PdfPTable(new float[]{25, 25, 25, 25});
+        table.setWidthPercentage(100);
 
         addInfoCell(table, "Nombre", data.getPatient().getFullName());
         addInfoCell(table, "Edad", data.getPatient().getAge() + " años");
@@ -113,14 +132,14 @@ public class MedicalReportPdfGenerator {
                         data.getPatient().getTargetGlucoseMax() + " mg/dL");
 
         doc.add(table);
-        doc.add(new Paragraph("\n").setFontSize(4));
+        addSpacer(doc);
     }
 
-    private void addGlucoseSummary(Document doc, ReportData data) {
+    private void addGlucoseSummary(Document doc, ReportData data) throws DocumentException {
         doc.add(sectionTitle("Resumen Glucémico"));
 
-        Table table = new Table(UnitValue.createPercentArray(new float[]{25, 25, 25, 25}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable table = new PdfPTable(new float[]{25, 25, 25, 25});
+        table.setWidthPercentage(100);
 
         BigDecimal avg = data.getAverageGlucose();
         BigDecimal hba1c = data.getEstimatedHba1c();
@@ -144,44 +163,44 @@ public class MedicalReportPdfGenerator {
                 cv != null && cv.doubleValue() < 36 ? SUCCESS : WARNING);
 
         doc.add(table);
-        doc.add(new Paragraph("\n").setFontSize(4));
+        addSpacer(doc);
     }
 
-    private void addGlucoseHistory(Document doc, ReportData data) {
+    private void addGlucoseHistory(Document doc, ReportData data) throws DocumentException {
         if (data.getGlucoseReadings().isEmpty()) return;
 
         doc.add(sectionTitle("Historial de Glucosa (últimas 20 lecturas)"));
 
-        Table table = new Table(UnitValue.createPercentArray(new float[]{30, 20, 25, 25}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable table = new PdfPTable(new float[]{30, 20, 25, 25});
+        table.setWidthPercentage(100);
 
         addTableHeader(table, "Fecha y hora", "Valor", "Tipo", "Estado");
 
-        data.getGlucoseReadings().stream().limit(20).forEach(r -> {
+        for (var r : data.getGlucoseReadings().stream().limit(20).toList()) {
             table.addCell(bodyCell(r.getMeasuredAt().format(DATE_FMT)));
             table.addCell(bodyCell(r.getValueInMgDl() + " mg/dL"));
             table.addCell(bodyCell(formatReadingType(r.getReadingType().name())));
 
             String statusLabel = formatStatus(r.getStatus().name());
-            DeviceRgb statusColor = getStatusColor(r.getStatus().name());
-            table.addCell(new Cell()
-                    .add(new Paragraph(statusLabel).setFontSize(9).setFontColor(statusColor))
-                    .setBackgroundColor(LIGHT_GRAY)
-                    .setPadding(4));
-        });
+            Color statusColor = getStatusColor(r.getStatus().name());
+            PdfPCell statusCell = new PdfPCell(new Paragraph(statusLabel, font(9, Font.NORMAL, statusColor)));
+            statusCell.setBackgroundColor(LIGHT_GRAY);
+            statusCell.setPadding(4f);
+            table.addCell(statusCell);
+        }
 
         doc.add(table);
-        doc.add(new Paragraph("\n").setFontSize(4));
+        addSpacer(doc);
     }
 
-    private void addVitalSigns(Document doc, ReportData data) {
+    private void addVitalSigns(Document doc, ReportData data) throws DocumentException {
         if (data.getVitalSigns().isEmpty()) return;
 
         doc.add(sectionTitle("Último Registro de Signos Vitales"));
 
         VitalSign latest = data.getVitalSigns().get(0);
-        Table table = new Table(UnitValue.createPercentArray(new float[]{25, 25, 25, 25}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable table = new PdfPTable(new float[]{25, 25, 25, 25});
+        table.setWidthPercentage(100);
 
         if (latest.getWeightKg() != null)
             addInfoCell(table, "Peso", latest.getWeightKg() + " kg");
@@ -195,81 +214,97 @@ public class MedicalReportPdfGenerator {
             addInfoCell(table, "HbA1c medida", latest.getHba1c() + "%");
 
         doc.add(table);
-        doc.add(new Paragraph("\n").setFontSize(4));
+        addSpacer(doc);
     }
 
-    private void addMedications(Document doc, ReportData data) {
+    private void addMedications(Document doc, ReportData data) throws DocumentException {
         if (data.getMedications().isEmpty()) return;
 
         doc.add(sectionTitle("Medicamentos Activos"));
 
-        Table table = new Table(UnitValue.createPercentArray(new float[]{35, 20, 20, 25}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable table = new PdfPTable(new float[]{35, 20, 20, 25});
+        table.setWidthPercentage(100);
 
         addTableHeader(table, "Medicamento", "Tipo", "Dosis", "Frecuencia");
 
-        data.getMedications().forEach(m -> {
+        for (var m : data.getMedications()) {
             table.addCell(bodyCell(m.getName()));
             table.addCell(bodyCell(m.getType().name().replace("_", " ")));
             table.addCell(bodyCell(m.getDose() + " " + m.getDoseUnit().name()));
             table.addCell(bodyCell(formatFrequency(m.getFrequency().name())));
-        });
+        }
 
         doc.add(table);
     }
 
-    private void addFooter(Document doc) {
-        doc.add(new Paragraph("\n").setFontSize(8));
-        doc.add(new LineSeparator(new com.itextpdf.kernel.pdf.canvas.draw.SolidLine(1f))
-                .setStrokeColor(ColorConstants.LIGHT_GRAY));
-        doc.add(new Paragraph(
+    private void addFooter(Document doc) throws DocumentException {
+        addSpacer(doc);
+
+        Paragraph separator = new Paragraph(
+                new Chunk(new LineSeparator(1f, 100f, Color.LIGHT_GRAY, Element.ALIGN_CENTER, -2f)));
+        doc.add(separator);
+
+        Paragraph footerText = new Paragraph(
                 "Este reporte fue generado por DiabeCare. " +
                         "Los valores de HbA1c son estimados mediante la fórmula ADAG y no reemplazan " +
-                        "el análisis de laboratorio. Consulte siempre a su médico tratante.")
-                .setFontSize(8).setFontColor(ColorConstants.GRAY)
-                .setTextAlignment(TextAlignment.CENTER));
+                        "el análisis de laboratorio. Consulte siempre a su médico tratante.",
+                font(8, Font.NORMAL, Color.GRAY));
+        footerText.setAlignment(Element.ALIGN_CENTER);
+        doc.add(footerText);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    private Font font(float size, int style, Color color) {
+        return new Font(Font.HELVETICA, size, style, color);
+    }
+
+    private void addSpacer(Document doc) throws DocumentException {
+        Paragraph spacer = new Paragraph(" ", font(4, Font.NORMAL, Color.BLACK));
+        doc.add(spacer);
+    }
+
     private Paragraph sectionTitle(String title) {
-        return new Paragraph(title)
-                .setFontSize(13).setBold().setFontColor(PRIMARY)
-                .setMarginTop(8).setMarginBottom(6);
+        Paragraph p = new Paragraph(title, font(13, Font.BOLD, PRIMARY));
+        p.setSpacingBefore(8f);
+        p.setSpacingAfter(6f);
+        return p;
     }
 
-    private void addInfoCell(Table table, String label, String value) {
-        table.addCell(new Cell()
-                .add(new Paragraph(label).setFontSize(8).setFontColor(ColorConstants.GRAY))
-                .add(new Paragraph(value).setFontSize(10).setBold())
-                .setBackgroundColor(LIGHT_GRAY)
-                .setPadding(6)
-                .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+    private void addInfoCell(PdfPTable table, String label, String value) {
+        PdfPCell cell = new PdfPCell();
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setBackgroundColor(LIGHT_GRAY);
+        cell.setPadding(6f);
+        cell.addElement(new Paragraph(label, font(8, Font.NORMAL, Color.GRAY)));
+        cell.addElement(new Paragraph(value, font(10, Font.BOLD, Color.BLACK)));
+        table.addCell(cell);
     }
 
-    private void addMetricCell(Table table, String label, String value, DeviceRgb color) {
-        table.addCell(new Cell()
-                .add(new Paragraph(label).setFontSize(8).setFontColor(ColorConstants.GRAY))
-                .add(new Paragraph(value).setFontSize(14).setBold().setFontColor(color))
-                .setBackgroundColor(LIGHT_GRAY)
-                .setPadding(8)
-                .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+    private void addMetricCell(PdfPTable table, String label, String value, Color color) {
+        PdfPCell cell = new PdfPCell();
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setBackgroundColor(LIGHT_GRAY);
+        cell.setPadding(8f);
+        cell.addElement(new Paragraph(label, font(8, Font.NORMAL, Color.GRAY)));
+        cell.addElement(new Paragraph(value, font(14, Font.BOLD, color)));
+        table.addCell(cell);
     }
 
-    private void addTableHeader(Table table, String... headers) {
+    private void addTableHeader(PdfPTable table, String... headers) {
         for (String h : headers) {
-            table.addCell(new Cell()
-                    .add(new Paragraph(h).setFontSize(9).setBold().setFontColor(ColorConstants.WHITE))
-                    .setBackgroundColor(PRIMARY)
-                    .setPadding(5));
+            PdfPCell cell = new PdfPCell(new Paragraph(h, font(9, Font.BOLD, Color.WHITE)));
+            cell.setBackgroundColor(PRIMARY);
+            cell.setPadding(5f);
+            table.addCell(cell);
         }
     }
 
-    private Cell bodyCell(String text) {
-        return new Cell()
-                .add(new Paragraph(text).setFontSize(9))
-                .setBackgroundColor(LIGHT_GRAY)
-                .setPadding(4);
+    private PdfPCell bodyCell(String text) {
+        PdfPCell cell = new PdfPCell(new Paragraph(text, font(9, Font.NORMAL, Color.BLACK)));
+        cell.setBackgroundColor(LIGHT_GRAY);
+        cell.setPadding(4f);
+        return cell;
     }
 
     private String formatReadingType(String type) {
@@ -305,7 +340,7 @@ public class MedicalReportPdfGenerator {
         };
     }
 
-    private DeviceRgb getStatusColor(String status) {
+    private Color getStatusColor(String status) {
         return switch (status) {
             case "NORMAL"          -> SUCCESS;
             case "HIGH", "LOW"     -> WARNING;
@@ -313,13 +348,13 @@ public class MedicalReportPdfGenerator {
         };
     }
 
-    private void addTirDetailed(Document doc, ReportData data) {
+    private void addTirDetailed(Document doc, ReportData data) throws DocumentException {
         if (data.getTirDetailed().isEmpty()) return;
 
         doc.add(sectionTitle("Distribución del Tiempo en Rango (Consenso Internacional)"));
 
-        Table table = new Table(UnitValue.createPercentArray(new float[]{40, 20, 40}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable table = new PdfPTable(new float[]{40, 20, 40});
+        table.setWidthPercentage(100);
 
         addTableHeader(table, "Rango", "Porcentaje", "Objetivo ADA");
 
@@ -330,37 +365,41 @@ public class MedicalReportPdfGenerator {
         ranges.put("high",     new String[]{"Alto (180-250 mg/dL)",   "<25%" });
         ranges.put("veryHigh", new String[]{"Muy alto (>250 mg/dL)",  "<5%"  });
 
-        Map<String, DeviceRgb> rangeColors = Map.of(
+        Map<String, Color> rangeColors = Map.of(
                 "veryLow",  DANGER,
-                "low",      new DeviceRgb(255, 152, 0),
+                "low",      new Color(255, 152, 0),
                 "inRange",  SUCCESS,
-                "high",     new DeviceRgb(255, 152, 0),
+                "high",     new Color(255, 152, 0),
                 "veryHigh", DANGER
         );
 
-        data.getTirDetailed().forEach((key, value) -> {
-            if (ranges.containsKey(key)) {
-                String[] info = ranges.get(key);
-                DeviceRgb color = rangeColors.getOrDefault(key, SUCCESS);
-                table.addCell(bodyCell(info[0]));
-                table.addCell(new Cell()
-                        .add(new Paragraph(value + "%").setFontSize(10).setBold().setFontColor(color))
-                        .setBackgroundColor(LIGHT_GRAY).setPadding(4));
-                table.addCell(bodyCell(info[1]));
-            }
-        });
+        for (var entry : data.getTirDetailed().entrySet()) {
+            String key = entry.getKey();
+            if (!ranges.containsKey(key)) continue;
+
+            String[] info = ranges.get(key);
+            Color color = rangeColors.getOrDefault(key, SUCCESS);
+            table.addCell(bodyCell(info[0]));
+
+            PdfPCell valueCell = new PdfPCell(new Paragraph(entry.getValue() + "%", font(10, Font.BOLD, color)));
+            valueCell.setBackgroundColor(LIGHT_GRAY);
+            valueCell.setPadding(4f);
+            table.addCell(valueCell);
+
+            table.addCell(bodyCell(info[1]));
+        }
 
         doc.add(table);
-        doc.add(new Paragraph("\n").setFontSize(4));
+        addSpacer(doc);
     }
 
-    private void addAverageByReadingType(Document doc, ReportData data) {
+    private void addAverageByReadingType(Document doc, ReportData data) throws DocumentException {
         if (data.getAverageByReadingType().isEmpty()) return;
 
         doc.add(sectionTitle("Promedio de Glucosa por Período del Día"));
 
-        Table table = new Table(UnitValue.createPercentArray(new float[]{50, 50}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable table = new PdfPTable(new float[]{50, 50});
+        table.setWidthPercentage(100);
 
         addTableHeader(table, "Tipo de lectura", "Promedio (mg/dL)");
 
@@ -372,61 +411,72 @@ public class MedicalReportPdfGenerator {
                 "RANDOM",    "Aleatoria"
         );
 
-        data.getAverageByReadingType().forEach((type, avg) -> {
+        for (var entry : data.getAverageByReadingType().entrySet()) {
+            String type = entry.getKey();
+            BigDecimal avg = entry.getValue();
             table.addCell(bodyCell(typeLabels.getOrDefault(type, type)));
-            DeviceRgb color = avg.doubleValue() > 180 ? WARNING :
+
+            Color color = avg.doubleValue() > 180 ? WARNING :
                     avg.doubleValue() < 70  ? DANGER  : SUCCESS;
-            table.addCell(new Cell()
-                    .add(new Paragraph(avg + " mg/dL").setFontSize(10).setBold().setFontColor(color))
-                    .setBackgroundColor(LIGHT_GRAY).setPadding(4));
-        });
+            PdfPCell cell = new PdfPCell(new Paragraph(avg + " mg/dL", font(10, Font.BOLD, color)));
+            cell.setBackgroundColor(LIGHT_GRAY);
+            cell.setPadding(4f);
+            table.addCell(cell);
+        }
 
         doc.add(table);
-        doc.add(new Paragraph("\n").setFontSize(4));
+        addSpacer(doc);
     }
 
-    private void addHypoglycemiaEvents(Document doc, ReportData data) {
+    private void addHypoglycemiaEvents(Document doc, ReportData data) throws DocumentException {
         doc.add(sectionTitle("Episodios de Hipoglucemia (<70 mg/dL)"));
 
         if (data.getHypoglycemiaEvents().isEmpty()) {
-            doc.add(new Paragraph("✓ Sin episodios de hipoglucemia en el período.")
-                    .setFontSize(10).setFontColor(SUCCESS).setMarginBottom(8));
+            Paragraph ok = new Paragraph(
+                    "Sin episodios de hipoglucemia en el período.", font(10, Font.NORMAL, SUCCESS));
+            ok.setSpacingAfter(8f);
+            doc.add(ok);
             return;
         }
 
-        doc.add(new Paragraph("⚠ Se registraron " + data.getHypoglycemiaEvents().size() +
-                " episodios de hipoglucemia.")
-                .setFontSize(10).setFontColor(DANGER).setMarginBottom(6));
+        Paragraph warning = new Paragraph(
+                "Se registraron " + data.getHypoglycemiaEvents().size() +
+                        " episodios de hipoglucemia.", font(10, Font.NORMAL, DANGER));
+        warning.setSpacingAfter(6f);
+        doc.add(warning);
 
-        Table table = new Table(UnitValue.createPercentArray(new float[]{35, 20, 25, 20}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable table = new PdfPTable(new float[]{35, 20, 25, 20});
+        table.setWidthPercentage(100);
 
         addTableHeader(table, "Fecha y hora", "Valor", "Tipo", "Estado");
 
-        data.getHypoglycemiaEvents().stream().limit(10).forEach(r -> {
+        for (var r : data.getHypoglycemiaEvents().stream().limit(10).toList()) {
             table.addCell(bodyCell(r.getMeasuredAt().format(DATE_FMT)));
-            table.addCell(new Cell()
-                    .add(new Paragraph(r.getValueInMgDl() + " mg/dL")
-                            .setFontSize(9).setBold().setFontColor(DANGER))
-                    .setBackgroundColor(LIGHT_GRAY).setPadding(4));
+
+            PdfPCell valueCell = new PdfPCell(
+                    new Paragraph(r.getValueInMgDl() + " mg/dL", font(9, Font.BOLD, DANGER)));
+            valueCell.setBackgroundColor(LIGHT_GRAY);
+            valueCell.setPadding(4f);
+            table.addCell(valueCell);
+
             table.addCell(bodyCell(formatReadingType(r.getReadingType().name())));
             table.addCell(bodyCell(formatStatus(r.getStatus().name())));
-        });
+        }
 
         doc.add(table);
-        doc.add(new Paragraph("\n").setFontSize(4));
+        addSpacer(doc);
     }
 
-    private void addAdherence(Document doc, ReportData data) {
+    private void addAdherence(Document doc, ReportData data) throws DocumentException {
         doc.add(sectionTitle("Adherencia al Monitoreo"));
 
         double adherence = data.getAdherencePercent();
-        DeviceRgb color  = adherence >= 80 ? SUCCESS : adherence >= 50 ? WARNING : DANGER;
-        String label     = adherence >= 80 ? "Buena adherencia" :
+        Color color   = adherence >= 80 ? SUCCESS : adherence >= 50 ? WARNING : DANGER;
+        String label  = adherence >= 80 ? "Buena adherencia" :
                 adherence >= 50 ? "Adherencia moderada" : "Baja adherencia";
 
-        Table table = new Table(UnitValue.createPercentArray(new float[]{33, 33, 33}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable table = new PdfPTable(new float[]{33, 33, 33});
+        table.setWidthPercentage(100);
 
         addInfoCell(table, "Días con registro",
                 data.getGlucoseReadings().stream()
@@ -436,41 +486,42 @@ public class MedicalReportPdfGenerator {
         addInfoCell(table, "Total de lecturas",
                 data.getGlucoseReadings().size() + " lecturas");
 
-        table.addCell(new Cell()
-                .add(new Paragraph("Adherencia").setFontSize(8).setFontColor(ColorConstants.GRAY))
-                .add(new Paragraph(String.format("%.1f%%", adherence))
-                        .setFontSize(14).setBold().setFontColor(color))
-                .add(new Paragraph(label).setFontSize(8).setFontColor(color))
-                .setBackgroundColor(LIGHT_GRAY).setPadding(6)
-                .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+        PdfPCell adherenceCell = new PdfPCell();
+        adherenceCell.setBorder(Rectangle.NO_BORDER);
+        adherenceCell.setBackgroundColor(LIGHT_GRAY);
+        adherenceCell.setPadding(6f);
+        adherenceCell.addElement(new Paragraph("Adherencia", font(8, Font.NORMAL, Color.GRAY)));
+        adherenceCell.addElement(new Paragraph(String.format("%.1f%%", adherence), font(14, Font.BOLD, color)));
+        adherenceCell.addElement(new Paragraph(label, font(8, Font.NORMAL, color)));
+        table.addCell(adherenceCell);
 
         doc.add(table);
-        doc.add(new Paragraph("\n").setFontSize(4));
+        addSpacer(doc);
     }
 
-    private void addTopImpactMeals(Document doc, ReportData data) {
+    private void addTopImpactMeals(Document doc, ReportData data) throws DocumentException {
         if (data.getTopImpactMeals().isEmpty()) return;
 
         doc.add(sectionTitle("Comidas con Mayor Impacto Calórico"));
 
-        Table table = new Table(UnitValue.createPercentArray(new float[]{30, 17, 17, 17, 19}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable table = new PdfPTable(new float[]{30, 17, 17, 17, 19});
+        table.setWidthPercentage(100);
 
         addTableHeader(table, "Fecha", "Tipo", "Calorías", "Carbohidratos", "Proteínas");
 
-        data.getTopImpactMeals().forEach(m -> {
+        for (var m : data.getTopImpactMeals()) {
             table.addCell(bodyCell(m.getConsumedAt().format(DATE_FMT)));
             table.addCell(bodyCell(formatMealType(m.getMealType().name())));
             table.addCell(bodyCell(m.getTotalCalories() + " kcal"));
             table.addCell(bodyCell(m.getTotalCarbohydrates() + " g"));
             table.addCell(bodyCell(m.getTotalProteins() + " g"));
-        });
+        }
 
         doc.add(table);
-        doc.add(new Paragraph("\n").setFontSize(4));
+        addSpacer(doc);
     }
 
-    private void addExerciseSummary(Document doc, ReportData data) {
+    private void addExerciseSummary(Document doc, ReportData data) throws DocumentException {
         if (data.getExerciseLogs().isEmpty()) return;
 
         doc.add(sectionTitle("Actividad Física en el Período"));
@@ -483,33 +534,33 @@ public class MedicalReportPdfGenerator {
                         e.getCaloriesBurned().doubleValue() : 0)
                 .sum();
 
-        Table summary = new Table(UnitValue.createPercentArray(new float[]{33, 33, 33}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable summary = new PdfPTable(new float[]{33, 33, 33});
+        summary.setWidthPercentage(100);
 
         addInfoCell(summary, "Sesiones totales", totalSessions + " sesiones");
         addInfoCell(summary, "Tiempo total", totalMinutes + " minutos");
         addInfoCell(summary, "Calorías quemadas", String.format("%.0f kcal", totalCalories));
 
         doc.add(summary);
-        doc.add(new Paragraph("\n").setFontSize(4));
+        addSpacer(doc);
 
-        Table detail = new Table(UnitValue.createPercentArray(new float[]{30, 25, 20, 25}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable detail = new PdfPTable(new float[]{30, 25, 20, 25});
+        detail.setWidthPercentage(100);
 
         addTableHeader(detail, "Fecha", "Ejercicio", "Duración", "Intensidad");
 
-        data.getExerciseLogs().stream().limit(10).forEach(e -> {
+        for (var e : data.getExerciseLogs().stream().limit(10).toList()) {
             detail.addCell(bodyCell(e.getPerformedAt().format(DATE_FMT)));
             detail.addCell(bodyCell(exerciseLabelService.resolveTypeLabel(e.getExerciseType())));
             detail.addCell(bodyCell(e.getDurationMinutes() + " min"));
             detail.addCell(bodyCell(exerciseLabelService.resolveIntensityLabel(e.getIntensity())));
-        });
+        }
 
         doc.add(detail);
-        doc.add(new Paragraph("\n").setFontSize(4));
+        addSpacer(doc);
     }
 
-    private void addMenstrualCycle(Document doc, ReportData data) {
+    private void addMenstrualCycle(Document doc, ReportData data) throws DocumentException {
         if (data.getLatestMenstrualCycle() == null) return;
 
         doc.add(sectionTitle("Ciclo Menstrual"));
@@ -518,8 +569,8 @@ public class MedicalReportPdfGenerator {
         LocalDate today = LocalDate.now();
         var currentPhase = cycle.calculateCurrentPhase(
                 today, data.getAverageCycleLength(), data.getAveragePeriodLength());
-        Table table = new Table(UnitValue.createPercentArray(new float[]{25, 25, 25, 25}))
-                .setWidth(UnitValue.createPercentValue(100));
+        PdfPTable table = new PdfPTable(new float[]{25, 25, 25, 25});
+        table.setWidthPercentage(100);
 
         addInfoCell(table, "Inicio del ciclo",
                 cycle.getStartDate().format(DATE_ONLY));
@@ -532,13 +583,21 @@ public class MedicalReportPdfGenerator {
 
         doc.add(table);
 
-        doc.add(new Paragraph(cycleGuidanceService.resolveGuidance(currentPhase))
-                .setFontSize(9).setFontColor(ColorConstants.DARK_GRAY)
-                .setBackgroundColor(LIGHT_GRAY)
-                .setPadding(8).setMarginTop(6).setMarginBottom(8));
+        PdfPCell guidanceCell = new PdfPCell(
+                new Paragraph(cycleGuidanceService.resolveGuidance(currentPhase),
+                        font(9, Font.NORMAL, Color.DARK_GRAY)));
+        guidanceCell.setBorder(Rectangle.NO_BORDER);
+        guidanceCell.setBackgroundColor(LIGHT_GRAY);
+        guidanceCell.setPadding(8f);
+
+        PdfPTable guidanceTable = new PdfPTable(new float[]{100});
+        guidanceTable.setWidthPercentage(100);
+        guidanceTable.setSpacingBefore(6f);
+        guidanceTable.addCell(guidanceCell);
+        doc.add(guidanceTable);
     }
 
-// ── Helpers adicionales ───────────────────────────────────────────────────
+    // ── Helpers adicionales ───────────────────────────────────────────────────
 
     private String formatMealType(String type) {
         return switch (type) {
