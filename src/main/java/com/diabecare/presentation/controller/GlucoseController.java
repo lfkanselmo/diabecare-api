@@ -5,6 +5,7 @@ import com.diabecare.domain.model.GlucoseReading;
 import com.diabecare.domain.model.GlucoseUnit;
 import com.diabecare.domain.model.ReadingType;
 import com.diabecare.presentation.dto.request.RegisterGlucoseRequest;
+import com.diabecare.presentation.dto.response.AgpBucketResponse;
 import com.diabecare.presentation.dto.response.GlucoseCorrelationResponse;
 import com.diabecare.presentation.dto.response.GlucoseReadingResponse;
 import com.diabecare.presentation.dto.response.GlucoseStatsResponse;
@@ -33,6 +34,7 @@ public class GlucoseController {
     private final GetGlucoseStatsUseCase getGlucoseStatsUseCase;
     private final GetLatestGlucoseReadingUseCase getLatestGlucoseReadingUseCase;
     private final DeleteGlucoseReadingUseCase deleteGlucoseReadingUseCase;
+    private final GetAgpProfileUseCase getAgpProfileUseCase;
     private final GlucoseReadingPresentationMapper readingMapper;
     private final GlucoseStatsPresentationMapper statsMapper;
     private final ExportGlucoseDataUseCase exportGlucoseDataUseCase;
@@ -110,6 +112,24 @@ public class GlucoseController {
         return getLatestGlucoseReadingUseCase.getLatest(patientId)
                 .map(reading -> ResponseEntity.ok(readingMapper.toResponse(reading)))
                 .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    @GetMapping("/{patientId}/agp-profile")
+    public ResponseEntity<List<AgpBucketResponse>> getAgpProfile(
+            @PathVariable UUID patientId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            Authentication authentication) {
+
+        currentUserResolver.verifyCanReadPatient(patientId, authentication);
+
+        List<AgpBucketResponse> buckets = getAgpProfileUseCase.execute(patientId, from, to).stream()
+                .map(b -> new AgpBucketResponse(
+                        b.getHour(), b.getP10(), b.getP25(), b.getMedian(), b.getP75(), b.getP90(),
+                        b.getReadingCount()))
+                .toList();
+
+        return ResponseEntity.ok(buckets);
     }
 
     @DeleteMapping("/{patientId}/{readingId}")

@@ -2,6 +2,7 @@ package com.diabecare.presentation.controller;
 
 import com.diabecare.application.dto.GlucoseStatsRecord;
 import com.diabecare.application.port.in.*;
+import com.diabecare.domain.model.AgpHourlyBucket;
 import com.diabecare.domain.model.GlucoseReading;
 import com.diabecare.domain.model.GlucoseUnit;
 import com.diabecare.domain.model.ReadingType;
@@ -46,6 +47,8 @@ class GlucoseControllerTest {
     @Mock
     private DeleteGlucoseReadingUseCase deleteGlucoseReadingUseCase;
     @Mock
+    private GetAgpProfileUseCase getAgpProfileUseCase;
+    @Mock
     private ExportGlucoseDataUseCase exportGlucoseDataUseCase;
     @Mock
     private CurrentUserResolver currentUserResolver;
@@ -57,7 +60,7 @@ class GlucoseControllerTest {
     void setUp() {
         GlucoseController controller = new GlucoseController(
                 registerGlucoseReadingUseCase, getGlucoseHistoryUseCase, getGlucoseStatsUseCase,
-                getLatestGlucoseReadingUseCase, deleteGlucoseReadingUseCase,
+                getLatestGlucoseReadingUseCase, deleteGlucoseReadingUseCase, getAgpProfileUseCase,
                 new GlucoseReadingPresentationMapperImpl(), new GlucoseStatsPresentationMapperImpl(),
                 exportGlucoseDataUseCase, currentUserResolver);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
@@ -172,6 +175,38 @@ class GlucoseControllerTest {
 
             mockMvc.perform(get("/api/v1/glucose/{patientId}/latest", patientId))
                     .andExpect(status().isNoContent());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/glucose/{patientId}/agp-profile")
+    class GetAgpProfile {
+
+        @Test
+        @DisplayName("retorna 200 con los buckets horarios mapeados correctamente")
+        void returns200WithHourlyBucketsMappedCorrectly() throws Exception {
+            LocalDateTime from = LocalDateTime.now().minusDays(14);
+            LocalDateTime to = LocalDateTime.now();
+
+            AgpHourlyBucket bucket = AgpHourlyBucket.builder()
+                    .hour(8)
+                    .p10(BigDecimal.valueOf(80))
+                    .p25(BigDecimal.valueOf(95))
+                    .median(BigDecimal.valueOf(110))
+                    .p75(BigDecimal.valueOf(130))
+                    .p90(BigDecimal.valueOf(150))
+                    .readingCount(6)
+                    .build();
+
+            when(getAgpProfileUseCase.execute(patientId, from, to)).thenReturn(List.of(bucket));
+
+            mockMvc.perform(get("/api/v1/glucose/{patientId}/agp-profile", patientId)
+                            .param("from", from.toString())
+                            .param("to", to.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].hour").value(8))
+                    .andExpect(jsonPath("$[0].median").value(110))
+                    .andExpect(jsonPath("$[0].readingCount").value(6));
         }
     }
 
