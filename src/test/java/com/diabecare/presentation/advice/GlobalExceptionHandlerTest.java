@@ -160,6 +160,17 @@ class GlobalExceptionHandlerTest {
             // El mensaje debe ser genérico, sin filtrar detalles internos de la excepción real
             assertThat(response.getBody().message()).doesNotContain("BD");
         }
+
+        @Test
+        @DisplayName("handleAccessDenied retorna 403 con código ACCESS_DENIED (evita el 500 que daba un @PreAuthorize denegado)")
+        void handleAccessDeniedReturns403() {
+            var ex = new org.springframework.security.access.AccessDeniedException("Access Denied");
+
+            ResponseEntity<ApiError> response = handler.handleAccessDenied(ex, request);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getBody().code()).isEqualTo("ACCESS_DENIED");
+        }
     }
 
     @Nested

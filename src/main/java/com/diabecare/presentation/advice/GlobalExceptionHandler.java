@@ -83,6 +83,13 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, "UNAUTHORIZED_RESOURCE_ACCESS", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, "ACCESS_DENIED",
+                "No tienes permiso para realizar esta acción.", request);
+    }
+
     @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
     public ResponseEntity<ApiError> handleDisabled(
             org.springframework.security.authentication.DisabledException ex,
