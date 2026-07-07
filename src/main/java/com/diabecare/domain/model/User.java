@@ -16,6 +16,8 @@ public class User {
     private LocalDateTime suspendedAt;
     private LocalDateTime deletedAt;
     private LocalDateTime createdAt;
+    private LocalDateTime termsAcceptedAt;
+    private String        termsVersion;
 
     public boolean isSuspended() { return suspendedAt != null; }
     public boolean isDeleted()   { return deletedAt   != null; }

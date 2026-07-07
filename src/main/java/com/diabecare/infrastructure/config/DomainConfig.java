@@ -2,6 +2,7 @@ package com.diabecare.infrastructure.config;
 
 import com.diabecare.application.port.out.MessageResolverPort;
 import com.diabecare.application.port.out.SystemConfigPort;
+import com.diabecare.domain.service.AccountExportService;
 import com.diabecare.domain.service.AgpProfileService;
 import com.diabecare.domain.service.AuditService;
 import com.diabecare.domain.service.CycleLabelService;
@@ -77,5 +78,10 @@ public class DomainConfig {
     @Bean
     public AgpProfileService agpProfileService() {
         return new AgpProfileService();
+    }
+
+    @Bean
+    public AccountExportService accountExportService() {
+        return new AccountExportService();
     }
 }

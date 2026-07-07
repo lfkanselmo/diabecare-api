@@ -85,6 +85,8 @@ public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
                 .suspendedAt(entity.getSuspendedAt())
                 .deletedAt(entity.getDeletedAt())
                 .createdAt(entity.getCreatedAt())
+                .termsAcceptedAt(entity.getTermsAcceptedAt())
+                .termsVersion(entity.getTermsVersion())
                 .build();
     }
 }
