@@ -1,5 +1,6 @@
 package com.diabecare.presentation.dto.request;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -27,5 +28,8 @@ public record RegisterRequest(
         String heightCm,
 
         @NotBlank
-        String biologicalSex
+        String biologicalSex,
+
+        @AssertTrue(message = "Debes aceptar la política de tratamiento de datos personales")
+        boolean termsAccepted
 ) {}

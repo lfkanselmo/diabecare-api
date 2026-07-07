@@ -41,13 +41,14 @@ class RegisterUserUseCaseTest {
 
             when(saveUserPort.existsByEmail("ana@example.com")).thenReturn(false);
             when(passwordEncoder.encode("password123")).thenReturn("hashed-password");
-            when(saveUserPort.save("ana@example.com", "hashed-password", "PATIENT")).thenReturn(expected);
+            when(saveUserPort.save(eq("ana@example.com"), eq("hashed-password"), eq("PATIENT"), any(), eq("2026-07")))
+                    .thenReturn(expected);
 
             UserRecord result = useCase.execute(
-                    new RegisterUserUseCase.Command("ana@example.com", "password123"));
+                    new RegisterUserUseCase.Command("ana@example.com", "password123", "2026-07"));
 
             assertThat(result).isEqualTo(expected);
-            verify(saveUserPort).save("ana@example.com", "hashed-password", "PATIENT");
+            verify(saveUserPort).save(eq("ana@example.com"), eq("hashed-password"), eq("PATIENT"), any(), eq("2026-07"));
         }
 
         @Test
@@ -56,12 +57,12 @@ class RegisterUserUseCaseTest {
             when(saveUserPort.existsByEmail("ana@example.com")).thenReturn(true);
 
             assertThatThrownBy(() -> useCase.execute(
-                    new RegisterUserUseCase.Command("ana@example.com", "password123")))
+                    new RegisterUserUseCase.Command("ana@example.com", "password123", "2026-07")))
                     .isInstanceOf(InvalidPatientDataException.class)
                     .hasMessageContaining("ana@example.com");
 
             verifyNoInteractions(passwordEncoder);
-            verify(saveUserPort, never()).save(any(), any(), any());
+            verify(saveUserPort, never()).save(any(), any(), any(), any(), any());
         }
 
         @Test
@@ -69,13 +70,13 @@ class RegisterUserUseCaseTest {
         void neverSavesPlaintextPassword() {
             when(saveUserPort.existsByEmail(any())).thenReturn(false);
             when(passwordEncoder.encode("password123")).thenReturn("hashed-password");
-            when(saveUserPort.save(any(), any(), any()))
+            when(saveUserPort.save(any(), any(), any(), any(), any()))
                     .thenReturn(new UserRecord(UUID.randomUUID(), "ana@example.com", "PATIENT"));
 
-            useCase.execute(new RegisterUserUseCase.Command("ana@example.com", "password123"));
+            useCase.execute(new RegisterUserUseCase.Command("ana@example.com", "password123", "2026-07"));
 
-            verify(saveUserPort, never()).save(any(), eq("password123"), any());
-            verify(saveUserPort).save(any(), eq("hashed-password"), any());
+            verify(saveUserPort, never()).save(any(), eq("password123"), any(), any(), any());
+            verify(saveUserPort).save(any(), eq("hashed-password"), any(), any(), any());
         }
     }
 }

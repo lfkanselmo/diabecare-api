@@ -82,7 +82,8 @@ class UserPersistenceAdapterTest {
                 return e;
             });
 
-            UserRecord result = adapter.save("ana@example.com", "hashed-password", "PATIENT");
+            LocalDateTime termsAcceptedAt = LocalDateTime.now();
+            UserRecord result = adapter.save("ana@example.com", "hashed-password", "PATIENT", termsAcceptedAt, "2026-07");
 
             assertThat(result.id()).isEqualTo(userId);
             assertThat(result.email()).isEqualTo("ana@example.com");
@@ -92,6 +93,8 @@ class UserPersistenceAdapterTest {
             verify(userJpaRepository).save(captor.capture());
             assertThat(captor.getValue().isEnabled()).isTrue();
             assertThat(captor.getValue().getPassword()).isEqualTo("hashed-password");
+            assertThat(captor.getValue().getTermsAcceptedAt()).isEqualTo(termsAcceptedAt);
+            assertThat(captor.getValue().getTermsVersion()).isEqualTo("2026-07");
         }
     }
 

@@ -83,7 +83,7 @@ class AuthControllerTest {
             String body = """
                     {"email":"ana@example.com","password":"password123","fullName":"Ana García",
                      "dateOfBirth":"1990-05-10","diabetesType":"TYPE_1","diagnosisDate":"2010-01-01",
-                     "heightCm":"165","biologicalSex":"FEMALE"}
+                     "heightCm":"165","biologicalSex":"FEMALE","termsAccepted":true}
                     """;
 
             mockMvc.perform(post("/api/v1/auth/register")
@@ -101,7 +101,7 @@ class AuthControllerTest {
             String body = """
                     {"email":"no-es-un-email","password":"password123","fullName":"Ana García",
                      "dateOfBirth":"1990-05-10","diabetesType":"TYPE_1","diagnosisDate":"2010-01-01",
-                     "heightCm":"165","biologicalSex":"FEMALE"}
+                     "heightCm":"165","biologicalSex":"FEMALE","termsAccepted":true}
                     """;
 
             mockMvc.perform(post("/api/v1/auth/register")
@@ -118,13 +118,30 @@ class AuthControllerTest {
             String body = """
                     {"email":"ana@example.com","password":"corta","fullName":"Ana García",
                      "dateOfBirth":"1990-05-10","diabetesType":"TYPE_1","diagnosisDate":"2010-01-01",
-                     "heightCm":"165","biologicalSex":"FEMALE"}
+                     "heightCm":"165","biologicalSex":"FEMALE","termsAccepted":true}
                     """;
 
             mockMvc.perform(post("/api/v1/auth/register")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("retorna 400 cuando no se acepta la politica de tratamiento de datos")
+        void returns400WhenTermsNotAccepted() throws Exception {
+            String body = """
+                    {"email":"ana@example.com","password":"password123","fullName":"Ana García",
+                     "dateOfBirth":"1990-05-10","diabetesType":"TYPE_1","diagnosisDate":"2010-01-01",
+                     "heightCm":"165","biologicalSex":"FEMALE","termsAccepted":false}
+                    """;
+
+            mockMvc.perform(post("/api/v1/auth/register")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest());
+
+            verifyNoInteractions(registerUseCase);
         }
     }
 

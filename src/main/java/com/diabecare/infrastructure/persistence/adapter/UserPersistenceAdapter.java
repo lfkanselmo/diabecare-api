@@ -37,12 +37,15 @@ public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
     }
 
     @Override
-    public UserRecord save(String email, String encodedPassword, String role) {
+    public UserRecord save(String email, String encodedPassword, String role,
+                            LocalDateTime termsAcceptedAt, String termsVersion) {
         UserEntity entity = UserEntity.builder()
                 .email(email)
                 .password(encodedPassword)
                 .role(role)
                 .enabled(true)
+                .termsAcceptedAt(termsAcceptedAt)
+                .termsVersion(termsVersion)
                 .build();
 
         UserEntity saved = userJpaRepository.save(entity);

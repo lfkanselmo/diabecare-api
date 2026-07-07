@@ -66,7 +66,7 @@ class RegisterUseCaseTest {
             RegisterUseCase.Command command = new RegisterUseCase.Command(
                     "ana@example.com", "password123", "Ana García",
                     LocalDate.of(1990, 5, 10), DiabetesType.TYPE_1, LocalDate.of(2010, 1, 1),
-                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone", "127.0.0.1");
+                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone", "127.0.0.1", "2026-07");
 
             RegisterUseCase.Result result = useCase.execute(command);
 
@@ -84,7 +84,7 @@ class RegisterUseCaseTest {
             RegisterUseCase.Command command = new RegisterUseCase.Command(
                     "ana@example.com", "password123", "Ana García",
                     LocalDate.of(1990, 5, 10), DiabetesType.TYPE_1, LocalDate.of(2010, 1, 1),
-                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone", "127.0.0.1");
+                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone", "127.0.0.1", "2026-07");
 
             useCase.execute(command);
 
@@ -104,7 +104,7 @@ class RegisterUseCaseTest {
             RegisterUseCase.Command command = new RegisterUseCase.Command(
                     "ana@example.com", "password123", "Ana García",
                     LocalDate.of(1990, 5, 10), DiabetesType.TYPE_1, LocalDate.of(2010, 1, 1),
-                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone", "127.0.0.1");
+                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone", "127.0.0.1", "2026-07");
 
             useCase.execute(command);
 
@@ -127,7 +127,7 @@ class RegisterUseCaseTest {
             RegisterUseCase.Command command = new RegisterUseCase.Command(
                     "ana@example.com", "password123", "Ana García",
                     LocalDate.of(1990, 5, 10), DiabetesType.TYPE_1, LocalDate.of(2010, 1, 1),
-                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone", "127.0.0.1");
+                    BigDecimal.valueOf(165), BiologicalSex.FEMALE, "iPhone", "127.0.0.1", "2026-07");
 
             assertThatThrownBy(() -> useCase.execute(command))
                     .isInstanceOf(RuntimeException.class);

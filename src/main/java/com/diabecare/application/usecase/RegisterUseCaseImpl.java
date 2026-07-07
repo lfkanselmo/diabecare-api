@@ -26,7 +26,7 @@ public class RegisterUseCaseImpl implements RegisterUseCase {
         rateLimitService.checkRegisterLimit(command.clientIp());
 
         var user = registerUserUseCase.execute(
-                new RegisterUserUseCase.Command(command.email(), command.password()));
+                new RegisterUserUseCase.Command(command.email(), command.password(), command.termsVersion()));
 
         var patient = registerPatientUseCase.execute(
                 new RegisterPatientUseCase.Command(

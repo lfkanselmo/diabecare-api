@@ -44,6 +44,11 @@ public class AuthController {
     private static final String USER_AGENT_HEADER = "User-Agent";
     private static final String FORWARDED_FOR_HEADER = "X-Forwarded-For";
 
+    // Versión de la política de tratamiento de datos vigente al momento del
+    // registro (Ley 1581 de 2012) — súbela si el texto de la política cambia
+    // de forma sustancial, para poder distinguir quién aceptó qué versión.
+    private static final String CURRENT_TERMS_VERSION = "2026-07";
+
     private final LoginUseCase                loginUseCase;
     private final RegisterUseCase             registerUseCase;
     private final RefreshAccessTokenUseCase   refreshAccessTokenUseCase;
@@ -70,7 +75,8 @@ public class AuthController {
                         request.heightCm() != null ? new BigDecimal(request.heightCm()) : null,
                         BiologicalSex.valueOf(request.biologicalSex()),
                         deviceLabel(httpRequest),
-                        clientIp(httpRequest)
+                        clientIp(httpRequest),
+                        CURRENT_TERMS_VERSION
                 ));
 
         var patient = getPatientUseCase.getByUserId(UUID.fromString(result.userId()));

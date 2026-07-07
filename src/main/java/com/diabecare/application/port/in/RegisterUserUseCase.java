@@ -6,7 +6,8 @@ public interface RegisterUserUseCase {
 
     record Command(
             String email,
-            String password
+            String password,
+            String termsVersion
     ) {}
 
     UserRecord execute(Command command);

@@ -18,7 +18,8 @@ public interface RegisterUseCase {
             BigDecimal   heightCm,
             BiologicalSex biologicalSex,
             String       deviceLabel,
-            String       clientIp
+            String       clientIp,
+            String       termsVersion
     ) {}
 
     record Result(

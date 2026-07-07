@@ -9,6 +9,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -26,7 +28,9 @@ public class RegisterUserUseCaseImpl implements RegisterUserUseCase {
         return saveUserPort.save(
                 command.email(),
                 passwordEncoder.encode(command.password()),
-                "PATIENT"
+                "PATIENT",
+                LocalDateTime.now(),
+                command.termsVersion()
         );
     }
 }
