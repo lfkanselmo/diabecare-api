@@ -15,6 +15,11 @@ import java.util.UUID;
  * {@code push_subscriptions} y {@code audit_log}, ya tienen ON DELETE CASCADE
  * y se limpian solas al borrar el paciente), luego el propio paciente, y por
  * último los datos colgados directamente de {@code users}.
+ * <p>
+ * <b>Mantenimiento:</b> toda tabla nueva con una FK a {@code patients(id)} o
+ * {@code users(id)} sin ON DELETE CASCADE debe agregarse aquí explícitamente
+ * — de lo contrario, el borrado del paciente/usuario falla por violación de
+ * llave foránea, o peor, la fila queda huérfana si la FK es nullable.
  */
 @Component
 @RequiredArgsConstructor
