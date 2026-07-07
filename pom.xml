@@ -152,6 +152,11 @@
 			<version>${testcontainers.version}</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
 
 		<!-- ArchUnit -->
 		<dependency>
@@ -268,6 +273,25 @@
 						<phase>test</phase>
 						<goals>
 							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!--
+				Maven Failsafe: ejecuta los tests de integración (**/*IT.java, requieren Docker
+				para Testcontainers) en la fase verify — separados de "mvn test" (Surefire, rápido,
+				sin Docker) para no romper el ciclo de desarrollo normal ni el CI cuando Docker
+				no está disponible. Correr explícitamente con "mvn verify".
+			-->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
 						</goals>
 					</execution>
 				</executions>
