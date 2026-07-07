@@ -77,7 +77,7 @@ public class PatientController {
     public ResponseEntity<PatientResponse> getById(
             @PathVariable UUID patientId, Authentication authentication) {
 
-        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+        currentUserResolver.verifyCanReadPatient(patientId, authentication);
 
         return loadPatientPort.findById(patientId)
                 .map(mapper::toResponse)

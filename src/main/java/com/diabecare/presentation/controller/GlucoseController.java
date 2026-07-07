@@ -66,7 +66,7 @@ public class GlucoseController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             Authentication authentication) {
 
-        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+        currentUserResolver.verifyCanReadPatient(patientId, authentication);
 
         GetGlucoseHistoryUseCase.Result result =
                 getGlucoseHistoryUseCase.getByPatientAndDateRange(patientId, from, to);
@@ -94,7 +94,7 @@ public class GlucoseController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             Authentication authentication) {
 
-        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+        currentUserResolver.verifyCanReadPatient(patientId, authentication);
 
         return ResponseEntity.ok(statsMapper.toResponse(
                 getGlucoseStatsUseCase.getStats(patientId, from, to)));
@@ -105,7 +105,7 @@ public class GlucoseController {
             @PathVariable UUID patientId,
             Authentication authentication) {
 
-        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+        currentUserResolver.verifyCanReadPatient(patientId, authentication);
 
         return getLatestGlucoseReadingUseCase.getLatest(patientId)
                 .map(reading -> ResponseEntity.ok(readingMapper.toResponse(reading)))

@@ -23,7 +23,7 @@ public class AlertController {
     public ResponseEntity<List<AlertResponse>> getAlerts(
             @PathVariable UUID patientId, Authentication authentication) {
 
-        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+        currentUserResolver.verifyCanReadPatient(patientId, authentication);
 
         return ResponseEntity.ok(
                 getAlertsUseCase.getAlerts(patientId).stream()

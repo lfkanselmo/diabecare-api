@@ -1,5 +1,6 @@
 package com.diabecare.presentation.util;
 
+import com.diabecare.application.port.out.LoadCaregiverLinkPort;
 import com.diabecare.application.port.out.LoadPatientPort;
 import com.diabecare.application.port.out.LoadUserPort;
 import com.diabecare.domain.exception.UnauthorizedResourceAccessException;
@@ -34,13 +35,15 @@ class CurrentUserResolverTest {
     private LoadUserPort loadUserPort;
     @Mock
     private LoadPatientPort loadPatientPort;
+    @Mock
+    private LoadCaregiverLinkPort loadCaregiverLinkPort;
 
     private CurrentUserResolver resolver;
     private final UUID userId = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
-        resolver = new CurrentUserResolver(loadUserPort, loadPatientPort);
+        resolver = new CurrentUserResolver(loadUserPort, loadPatientPort, loadCaregiverLinkPort);
     }
 
     @Nested
@@ -123,6 +126,55 @@ class CurrentUserResolverTest {
             when(loadPatientPort.findById(nonExistentPatientId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> resolver.verifyOwnsPatient(nonExistentPatientId, auth))
+                    .isInstanceOf(UnauthorizedResourceAccessException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("verifyCanReadPatient")
+    class VerifyCanReadPatient {
+
+        @Test
+        @DisplayName("no lanza excepción cuando el paciente pertenece al usuario autenticado")
+        void doesNotThrowWhenPatientBelongsToAuthenticatedUser() {
+            Authentication auth = authenticationWithUserDetails("ana@example.com");
+            when(loadUserPort.findUserIdByEmail("ana@example.com")).thenReturn(Optional.of(userId));
+
+            Patient patient = validPatient(userId);
+            when(loadPatientPort.findById(patient.getPatientId())).thenReturn(Optional.of(patient));
+
+            assertThatCode(() -> resolver.verifyCanReadPatient(patient.getPatientId(), auth))
+                    .doesNotThrowAnyException();
+            verifyNoInteractions(loadCaregiverLinkPort);
+        }
+
+        @Test
+        @DisplayName("no lanza excepción cuando el usuario tiene un enlace de cuidador activo")
+        void doesNotThrowWhenUserHasActiveCaregiverLink() {
+            Authentication auth = authenticationWithUserDetails("ana@example.com");
+            when(loadUserPort.findUserIdByEmail("ana@example.com")).thenReturn(Optional.of(userId));
+
+            UUID otherUserId = UUID.randomUUID();
+            Patient patient = validPatient(otherUserId);
+            when(loadPatientPort.findById(patient.getPatientId())).thenReturn(Optional.of(patient));
+            when(loadCaregiverLinkPort.existsActive(patient.getPatientId(), userId)).thenReturn(true);
+
+            assertThatCode(() -> resolver.verifyCanReadPatient(patient.getPatientId(), auth))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("lanza UnauthorizedResourceAccessException cuando no es dueño ni cuidador activo")
+        void throwsWhenNeitherOwnerNorActiveCaregiver() {
+            Authentication auth = authenticationWithUserDetails("ana@example.com");
+            when(loadUserPort.findUserIdByEmail("ana@example.com")).thenReturn(Optional.of(userId));
+
+            UUID otherUserId = UUID.randomUUID();
+            Patient patient = validPatient(otherUserId);
+            when(loadPatientPort.findById(patient.getPatientId())).thenReturn(Optional.of(patient));
+            when(loadCaregiverLinkPort.existsActive(patient.getPatientId(), userId)).thenReturn(false);
+
+            assertThatThrownBy(() -> resolver.verifyCanReadPatient(patient.getPatientId(), auth))
                     .isInstanceOf(UnauthorizedResourceAccessException.class);
         }
     }

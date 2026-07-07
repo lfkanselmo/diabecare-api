@@ -1,5 +1,6 @@
 package com.diabecare.presentation.util;
 
+import com.diabecare.application.port.out.LoadCaregiverLinkPort;
 import com.diabecare.application.port.out.LoadPatientPort;
 import com.diabecare.application.port.out.LoadUserPort;
 import com.diabecare.domain.exception.UnauthorizedResourceAccessException;
@@ -14,8 +15,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CurrentUserResolver {
 
+    private static final String NO_ACCESS_MESSAGE = "No tienes permiso para acceder a este recurso";
+
     private final LoadUserPort loadUserPort;
     private final LoadPatientPort loadPatientPort;
+    private final LoadCaregiverLinkPort loadCaregiverLinkPort;
 
     public UUID resolveUserId(Authentication authentication) {
         String email = extractEmail(authentication);
@@ -28,13 +32,32 @@ public class CurrentUserResolver {
         UUID currentUserId = resolveUserId(authentication);
 
         UUID patientOwnerId = loadPatientPort.findById(patientId)
-                .orElseThrow(() -> new UnauthorizedResourceAccessException(
-                        "No tienes permiso para acceder a este recurso"))
+                .orElseThrow(() -> new UnauthorizedResourceAccessException(NO_ACCESS_MESSAGE))
                 .getUserId();
 
         if (!patientOwnerId.equals(currentUserId)) {
-            throw new UnauthorizedResourceAccessException(
-                    "No tienes permiso para acceder a este recurso");
+            throw new UnauthorizedResourceAccessException(NO_ACCESS_MESSAGE);
+        }
+    }
+
+    /**
+     * Permite el acceso de solo lectura al dueño del paciente O a un cuidador con
+     * un enlace activo (ver Fase 3: compartir con cuidadores) — a diferencia de
+     * {@link #verifyOwnsPatient}, que solo debe usarse en endpoints de escritura.
+     */
+    public void verifyCanReadPatient(UUID patientId, Authentication authentication) {
+        UUID currentUserId = resolveUserId(authentication);
+
+        UUID patientOwnerId = loadPatientPort.findById(patientId)
+                .orElseThrow(() -> new UnauthorizedResourceAccessException(NO_ACCESS_MESSAGE))
+                .getUserId();
+
+        if (patientOwnerId.equals(currentUserId)) {
+            return;
+        }
+
+        if (!loadCaregiverLinkPort.existsActive(patientId, currentUserId)) {
+            throw new UnauthorizedResourceAccessException(NO_ACCESS_MESSAGE);
         }
     }
 

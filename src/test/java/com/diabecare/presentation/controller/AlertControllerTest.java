@@ -79,7 +79,7 @@ class AlertControllerTest {
         @DisplayName("retorna 403 cuando el paciente no pertenece al usuario autenticado")
         void returns403WhenPatientDoesNotBelongToAuthenticatedUser() throws Exception {
             doThrow(new UnauthorizedResourceAccessException("sin permiso"))
-                    .when(currentUserResolver).verifyOwnsPatient(eq(patientId), any());
+                    .when(currentUserResolver).verifyCanReadPatient(eq(patientId), any());
 
             mockMvc.perform(get("/api/v1/alerts/{patientId}", patientId))
                     .andExpect(status().isForbidden());
