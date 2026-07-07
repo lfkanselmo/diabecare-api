@@ -14,6 +14,8 @@ class PublicEndpointsTest {
     @ValueSource(strings = {
             "/api/v1/auth/login",
             "/api/v1/auth/register",
+            "/api/v1/metadata/diabetes-types",
+            "/api/v1/metadata/activity-levels",
             "/swagger-ui/index.html",
             "/swagger-ui",
             "/v3/api-docs/swagger-config",
@@ -32,7 +34,8 @@ class PublicEndpointsTest {
             "/api/v1/glucose",
             "/actuator/info",
             "/actuator/health/extra",
-            "/api/v1/auth-fake/login"
+            "/api/v1/auth-fake/login",
+            "/api/v1/metadata-fake/diabetes-types"
     })
     @DisplayName("matches retorna false para rutas privadas o que solo coinciden parcialmente")
     void matchesReturnsFalseForPrivateOrPartiallyMatchingRoutes(String path) {
