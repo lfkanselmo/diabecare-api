@@ -17,4 +17,8 @@ public interface CaregiverLinkJpaRepository extends JpaRepository<CaregiverLinkE
     List<CaregiverLinkEntity> findByPatientIdAndStatus(UUID patientId, String status);
 
     List<CaregiverLinkEntity> findByCaregiverUserIdAndStatus(UUID caregiverUserId, String status);
+
+    void deleteByPatientId(UUID patientId);
+
+    void deleteByCaregiverUserId(UUID caregiverUserId);
 }

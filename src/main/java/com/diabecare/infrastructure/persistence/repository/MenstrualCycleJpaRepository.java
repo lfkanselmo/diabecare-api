@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface MenstrualCycleJpaRepository extends JpaRepository<MenstrualCycleEntity, UUID> {
     List<MenstrualCycleEntity> findByPatientIdOrderByStartDateDesc(UUID patientId);
     Optional<MenstrualCycleEntity> findFirstByPatientIdOrderByStartDateDesc(UUID patientId);
+    void deleteByPatientId(UUID patientId);
 }

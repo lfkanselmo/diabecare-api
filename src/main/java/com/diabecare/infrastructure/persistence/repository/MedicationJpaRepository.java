@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface MedicationJpaRepository extends JpaRepository<MedicationEntity, UUID> {
     List<MedicationEntity> findByPatientIdAndActiveTrue(UUID patientId);
     List<MedicationEntity> findByPatientId(UUID patientId);
+    void deleteByPatientId(UUID patientId);
 }

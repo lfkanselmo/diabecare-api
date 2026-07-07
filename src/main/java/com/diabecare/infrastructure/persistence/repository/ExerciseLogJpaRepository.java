@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface ExerciseLogJpaRepository extends JpaRepository<ExerciseLogEntity, UUID> {
     List<ExerciseLogEntity> findByPatientIdAndPerformedAtBetweenOrderByPerformedAtDesc(
             UUID patientId, LocalDateTime from, LocalDateTime to);
+    void deleteByPatientId(UUID patientId);
 }

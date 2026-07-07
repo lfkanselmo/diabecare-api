@@ -12,4 +12,5 @@ public interface GlucoseReadingJpaRepository extends JpaRepository<GlucoseReadin
     List<GlucoseReadingEntity> findByPatientIdAndMeasuredAtBetweenOrderByMeasuredAtDesc(
             UUID patientId, LocalDateTime from, LocalDateTime to);
     Optional<GlucoseReadingEntity> findFirstByPatientIdOrderByMeasuredAtDesc(UUID patientId);
+    void deleteByPatientId(UUID patientId);
 }

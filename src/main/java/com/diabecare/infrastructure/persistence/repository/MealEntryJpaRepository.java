@@ -18,4 +18,6 @@ public interface MealEntryJpaRepository extends JpaRepository<MealEntryEntity, U
             @Param("patientId") UUID patientId,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to);
+
+    void deleteByPatientId(UUID patientId);
 }

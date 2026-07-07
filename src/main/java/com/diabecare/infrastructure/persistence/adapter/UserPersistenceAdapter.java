@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,6 +29,11 @@ public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
     @Override
     public Optional<User> findById(UUID userId) {
         return userJpaRepository.findById(userId).map(this::toDomain);
+    }
+
+    @Override
+    public List<UUID> findIdsDeletedBefore(LocalDateTime cutoff) {
+        return userJpaRepository.findIdsDeletedBefore(cutoff);
     }
 
     @Override
