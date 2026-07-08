@@ -49,7 +49,8 @@ public class GlobalExceptionHandler {
             InvalidMedicationException.class,
             InvalidExerciseLogException.class,
             InvalidCaregiverInviteException.class,
-            InvalidRoleException.class
+            InvalidRoleException.class,
+            InvalidPasswordResetTokenException.class
     })
     public ResponseEntity<ApiError> handleDomainValidation(
             DomainException ex, HttpServletRequest request) {

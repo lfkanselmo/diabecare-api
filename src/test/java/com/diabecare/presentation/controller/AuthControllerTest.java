@@ -49,6 +49,10 @@ class AuthControllerTest {
     @Mock
     private GetPatientUseCase getPatientUseCase;
     @Mock
+    private RequestPasswordResetUseCase requestPasswordResetUseCase;
+    @Mock
+    private ResetPasswordUseCase resetPasswordUseCase;
+    @Mock
     private CurrentUserResolver currentUserResolver;
 
     private MockMvc mockMvc;
@@ -59,7 +63,8 @@ class AuthControllerTest {
         AuthController controller = new AuthController(
                 loginUseCase, registerUseCase, refreshAccessTokenUseCase,
                 logoutCurrentSessionUseCase, logoutAllSessionsUseCase, getActiveSessionsUseCase,
-                getPatientUseCase, new PatientPresentationMapperImpl(), currentUserResolver);
+                getPatientUseCase, requestPasswordResetUseCase, resetPasswordUseCase,
+                new PatientPresentationMapperImpl(), currentUserResolver);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -200,6 +205,78 @@ class AuthControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/auth/forgot-password")
+    class ForgotPassword {
+
+        @Test
+        @DisplayName("retorna 200 y ejecuta el caso de uso con el correo y la IP del cliente")
+        void returns200AndExecutesUseCaseWithEmailAndClientIp() throws Exception {
+            String body = """
+                    {"email":"ana@example.com"}
+                    """;
+
+            mockMvc.perform(post("/api/v1/auth/forgot-password")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk());
+
+            verify(requestPasswordResetUseCase).execute(
+                    new RequestPasswordResetUseCase.Command("ana@example.com", "127.0.0.1"));
+        }
+
+        @Test
+        @DisplayName("retorna 400 cuando el correo no tiene formato válido")
+        void returns400WhenEmailIsNotValid() throws Exception {
+            String body = """
+                    {"email":"no-es-un-correo"}
+                    """;
+
+            mockMvc.perform(post("/api/v1/auth/forgot-password")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest());
+
+            verifyNoInteractions(requestPasswordResetUseCase);
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/auth/reset-password")
+    class ResetPassword {
+
+        @Test
+        @DisplayName("retorna 200 y ejecuta el caso de uso con el token y la nueva contraseña")
+        void returns200AndExecutesUseCaseWithTokenAndNewPassword() throws Exception {
+            String body = """
+                    {"token":"raw-token-123","newPassword":"nueva-contraseña-segura"}
+                    """;
+
+            mockMvc.perform(post("/api/v1/auth/reset-password")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk());
+
+            verify(resetPasswordUseCase).execute(
+                    new ResetPasswordUseCase.Command("raw-token-123", "nueva-contraseña-segura"));
+        }
+
+        @Test
+        @DisplayName("retorna 400 cuando la nueva contraseña es muy corta")
+        void returns400WhenNewPasswordTooShort() throws Exception {
+            String body = """
+                    {"token":"raw-token-123","newPassword":"corta"}
+                    """;
+
+            mockMvc.perform(post("/api/v1/auth/reset-password")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest());
+
+            verifyNoInteractions(resetPasswordUseCase);
         }
     }
 

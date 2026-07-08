@@ -47,7 +47,8 @@ class PushControllerTest {
     void setUp() {
         DiabeCareProperties properties = new DiabeCareProperties(
                 new DiabeCareProperties.Security(new String[]{"http://localhost:4200"}, 10),
-                new DiabeCareProperties.Push("test-vapid-public-key", "test-vapid-private-key", "mailto:test@test.com"));
+                new DiabeCareProperties.Push("test-vapid-public-key", "test-vapid-private-key", "mailto:test@test.com"),
+                new DiabeCareProperties.Mail("", "DiabeCare <onboarding@resend.dev>", "http://localhost:4200"));
         PushController controller = new PushController(pushService, loadUserPort, loadPatientPort, properties);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())

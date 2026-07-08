@@ -91,6 +91,14 @@ public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
         return userJpaRepository.findAll(pageable).map(this::toDomain);
     }
 
+    @Override
+    public void updatePassword(UUID userId, String encodedPassword) {
+        userJpaRepository.findById(userId).ifPresent(entity -> {
+            entity.setPassword(encodedPassword);
+            userJpaRepository.save(entity);
+        });
+    }
+
     private User toDomain(UserEntity entity) {
         return User.builder()
                 .id(entity.getId())

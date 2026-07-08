@@ -7,13 +7,17 @@ import com.diabecare.application.port.in.LogoutAllSessionsUseCase;
 import com.diabecare.application.port.in.LogoutCurrentSessionUseCase;
 import com.diabecare.application.port.in.RefreshAccessTokenUseCase;
 import com.diabecare.application.port.in.RegisterUseCase;
+import com.diabecare.application.port.in.RequestPasswordResetUseCase;
+import com.diabecare.application.port.in.ResetPasswordUseCase;
 import com.diabecare.domain.model.BiologicalSex;
 import com.diabecare.domain.model.DiabetesType;
+import com.diabecare.presentation.dto.request.ForgotPasswordRequest;
 import com.diabecare.presentation.dto.request.LoginRequest;
 import com.diabecare.presentation.dto.request.LogoutCurrentSessionRequest;
 import com.diabecare.presentation.dto.request.LogoutRequest;
 import com.diabecare.presentation.dto.request.RefreshTokenRequest;
 import com.diabecare.presentation.dto.request.RegisterRequest;
+import com.diabecare.presentation.dto.request.ResetPasswordRequest;
 import com.diabecare.presentation.dto.response.ActiveSessionResponse;
 import com.diabecare.presentation.dto.response.AuthResponse;
 import com.diabecare.presentation.dto.response.RefreshTokenResponse;
@@ -56,6 +60,8 @@ public class AuthController {
     private final LogoutAllSessionsUseCase    logoutAllSessionsUseCase;
     private final GetActiveSessionsUseCase    getActiveSessionsUseCase;
     private final GetPatientUseCase           getPatientUseCase;
+    private final RequestPasswordResetUseCase requestPasswordResetUseCase;
+    private final ResetPasswordUseCase        resetPasswordUseCase;
     private final PatientPresentationMapper   patientMapper;
     private final CurrentUserResolver         currentUserResolver;
 
@@ -140,6 +146,23 @@ public class AuthController {
         currentUserResolver.verifyIsCurrentUser(request.userId(), authentication);
         logoutAllSessionsUseCase.execute(new LogoutAllSessionsUseCase.Command(request.userId()));
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Solicitar un enlace de recuperación de contraseña por correo")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request,
+                                               HttpServletRequest httpRequest) {
+        requestPasswordResetUseCase.execute(
+                new RequestPasswordResetUseCase.Command(request.email(), clientIp(httpRequest)));
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Restablecer la contraseña a partir de un token de recuperación válido")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        resetPasswordUseCase.execute(
+                new ResetPasswordUseCase.Command(request.token(), request.newPassword()));
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/sessions/{userId}")

@@ -35,6 +35,7 @@ public class AccountPurgeAdapter implements PurgeAccountDataPort {
     private final CaregiverLinkJpaRepository caregiverLinkJpaRepository;
     private final PatientJpaRepository patientJpaRepository;
     private final RefreshTokenJpaRepository refreshTokenJpaRepository;
+    private final PasswordResetTokenJpaRepository passwordResetTokenJpaRepository;
     private final UserJpaRepository userJpaRepository;
 
     @Override
@@ -61,6 +62,7 @@ public class AccountPurgeAdapter implements PurgeAccountDataPort {
         }
 
         refreshTokenJpaRepository.deleteByUserId(userId);
+        passwordResetTokenJpaRepository.deleteByUserId(userId);
         userJpaRepository.deleteById(userId);
     }
 }

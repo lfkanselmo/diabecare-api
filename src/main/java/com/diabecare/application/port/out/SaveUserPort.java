@@ -13,4 +13,5 @@ public interface SaveUserPort {
     void       suspend(User user);
     void       delete(User user);
     void       updateRole(UUID userId, String role);
+    void       updatePassword(UUID userId, String encodedPassword);
 }

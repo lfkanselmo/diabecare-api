@@ -42,6 +42,11 @@ public class RateLimitService {
                 systemConfig.getInt("rate_limit.register_per_hour"));
     }
 
+    public void checkForgotPasswordLimit(String clientIp) {
+        checkLimit(clientIp, "FORGOT_PASSWORD",
+                systemConfig.getInt("rate_limit.forgot_password_per_hour"));
+    }
+
     private void checkLimit(String subjectKey, String operation, int limit) {
         boolean allowed = rateLimitPort.tryConsume(operation, subjectKey, limit);
 

@@ -54,6 +54,10 @@ diabecare:
     vapid-public-key: ${VAPID_PUBLIC_KEY}
     vapid-private-key: ${VAPID_PRIVATE_KEY}
     vapid-subject: ${VAPID_SUBJECT:mailto:admin@diabecare.com}
+  mail:
+    resend-api-key: ${RESEND_API_KEY:}
+    from-address: ${RESEND_FROM_ADDRESS:DiabeCare <onboarding@resend.dev>}
+    frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:4200}
 
 ---
 spring:

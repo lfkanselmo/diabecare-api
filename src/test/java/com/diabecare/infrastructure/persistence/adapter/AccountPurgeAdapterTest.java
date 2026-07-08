@@ -26,6 +26,7 @@ class AccountPurgeAdapterTest {
     @Mock private CaregiverLinkJpaRepository caregiverLinkJpaRepository;
     @Mock private PatientJpaRepository patientJpaRepository;
     @Mock private RefreshTokenJpaRepository refreshTokenJpaRepository;
+    @Mock private PasswordResetTokenJpaRepository passwordResetTokenJpaRepository;
     @Mock private UserJpaRepository userJpaRepository;
 
     private AccountPurgeAdapter adapter;
@@ -36,7 +37,7 @@ class AccountPurgeAdapterTest {
                 glucoseReadingJpaRepository, mealEntryJpaRepository, vitalSignJpaRepository,
                 medicationJpaRepository, exerciseLogJpaRepository, menstrualCycleJpaRepository,
                 caregiverInviteJpaRepository, caregiverLinkJpaRepository, patientJpaRepository,
-                refreshTokenJpaRepository, userJpaRepository);
+                refreshTokenJpaRepository, passwordResetTokenJpaRepository, userJpaRepository);
     }
 
     @Test
@@ -60,6 +61,7 @@ class AccountPurgeAdapterTest {
         verify(caregiverLinkJpaRepository).deleteByCaregiverUserId(userId);
         verify(caregiverInviteJpaRepository).clearRedeemedByUserId(userId);
         verify(refreshTokenJpaRepository).deleteByUserId(userId);
+        verify(passwordResetTokenJpaRepository).deleteByUserId(userId);
         verify(userJpaRepository).deleteById(userId);
     }
 
@@ -79,6 +81,7 @@ class AccountPurgeAdapterTest {
         verify(caregiverLinkJpaRepository).deleteByCaregiverUserId(userId);
         verify(caregiverInviteJpaRepository).clearRedeemedByUserId(userId);
         verify(refreshTokenJpaRepository).deleteByUserId(userId);
+        verify(passwordResetTokenJpaRepository).deleteByUserId(userId);
         verify(userJpaRepository).deleteById(userId);
     }
 }
