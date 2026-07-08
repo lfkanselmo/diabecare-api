@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -73,17 +75,20 @@ class VitalSignControllerTest {
 
     @Nested @DisplayName("GET /api/v1/vitals/{patientId}")
     class GetAll {
-        @Test @DisplayName("retorna 200 con todos los signos vitales mapeados correctamente")
+        @Test @DisplayName("retorna 200 con la página de signos vitales mapeada correctamente")
         void returns200WithAllVitalSignsMappedCorrectly() throws Exception {
             VitalSign vitalSign = VitalSign.builder()
                     .vitalId(UUID.randomUUID()).patientId(patientId)
                     .weightKg(BigDecimal.valueOf(68)).measuredAt(LocalDateTime.now().minusDays(1)).build();
+            var pageable = PageRequest.of(0, 20);
 
-            when(getVitalSignsUseCase.getByPatientId(patientId)).thenReturn(List.of(vitalSign));
+            when(getVitalSignsUseCase.getByPatientId(patientId, pageable))
+                    .thenReturn(new PageImpl<>(List.of(vitalSign), pageable, 1));
 
             mockMvc.perform(get("/api/v1/vitals/{patientId}", patientId))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$[0].weightKg").value(68));
+                    .andExpect(jsonPath("$.content[0].weightKg").value(68))
+                    .andExpect(jsonPath("$.totalElements").value(1));
         }
     }
 

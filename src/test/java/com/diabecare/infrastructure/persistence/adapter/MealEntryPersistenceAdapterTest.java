@@ -14,6 +14,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -134,6 +138,23 @@ class MealEntryPersistenceAdapterTest {
 
             verify(repository).findByPatientIdAndConsumedAtBetweenOrderByConsumedAtDesc(
                     patientId, from.atStartOfDay(), to.atTime(23, 59, 59));
+        }
+
+        @Test
+        @DisplayName("consulta paginada usando el inicio del primer día y el final del último día del rango")
+        void queriesPagedUsingStartOfFirstDayAndEndOfLastDay() {
+            LocalDate from = LocalDate.of(2026, 6, 1);
+            LocalDate to = LocalDate.of(2026, 6, 7);
+            Pageable pageable = PageRequest.of(0, 20);
+            Page<MealEntryEntity> entityPage = new PageImpl<>(List.of(validEntity()), pageable, 1);
+
+            when(repository.findByPatientIdAndConsumedAtBetweenOrderByConsumedAtDesc(
+                    patientId, from.atStartOfDay(), to.atTime(23, 59, 59), pageable))
+                    .thenReturn(entityPage);
+
+            Page<MealEntry> result = adapter.findByPatientIdAndDateRange(patientId, from, to, pageable);
+
+            assertThat(result.getContent()).hasSize(1);
         }
     }
 

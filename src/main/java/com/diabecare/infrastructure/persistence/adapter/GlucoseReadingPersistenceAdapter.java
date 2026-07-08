@@ -6,6 +6,8 @@ import com.diabecare.domain.model.GlucoseReading;
 import com.diabecare.infrastructure.persistence.mapper.GlucoseReadingPersistenceMapper;
 import com.diabecare.infrastructure.persistence.repository.GlucoseReadingJpaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -43,6 +45,16 @@ public class GlucoseReadingPersistenceAdapter implements SaveGlucoseReadingPort,
         return repository.findByPatientIdAndMeasuredAtBetweenOrderByMeasuredAtDesc(
                         patientId, from, to)
                 .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public Page<GlucoseReading> findByPatientIdAndDateRange(UUID patientId,
+                                                            LocalDateTime from,
+                                                            LocalDateTime to,
+                                                            Pageable pageable) {
+        return repository.findByPatientIdAndMeasuredAtBetweenOrderByMeasuredAtDesc(
+                        patientId, from, to, pageable)
+                .map(mapper::toDomain);
     }
 
     @Override

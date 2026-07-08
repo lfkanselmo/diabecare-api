@@ -9,6 +9,8 @@ import com.diabecare.infrastructure.persistence.entity.MealItemEntity;
 import com.diabecare.infrastructure.persistence.mapper.MealEntryPersistenceMapper;
 import com.diabecare.infrastructure.persistence.repository.MealEntryJpaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -55,6 +57,16 @@ public class MealEntryPersistenceAdapter implements SaveMealEntryPort, LoadMealE
         return repository.findByPatientIdAndConsumedAtBetweenOrderByConsumedAtDesc(
                         patientId, from.atStartOfDay(), to.atTime(23, 59, 59))
                 .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public Page<MealEntry> findByPatientIdAndDateRange(UUID patientId,
+                                                       LocalDate from,
+                                                       LocalDate to,
+                                                       Pageable pageable) {
+        return repository.findByPatientIdAndConsumedAtBetweenOrderByConsumedAtDesc(
+                        patientId, from.atStartOfDay(), to.atTime(23, 59, 59), pageable)
+                .map(mapper::toDomain);
     }
 
     @Override

@@ -10,6 +10,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,6 +39,8 @@ class GetMealHistoryUseCaseTest {
     @DisplayName("getHistory")
     class GetHistory {
 
+        private final Pageable pageable = PageRequest.of(0, 20);
+
         @Test
         @DisplayName("retorna el historial de comidas del rango indicado")
         void returnsHistoryForGivenRange() {
@@ -43,26 +49,26 @@ class GetMealHistoryUseCaseTest {
             MealEntry meal = MealEntry.create(
                     patientId, MealType.LUNCH, LocalDateTime.of(2026, 6, 3, 13, 0), null);
 
-            when(loadMealEntryPort.findByPatientIdAndDateRange(patientId, from, to))
-                    .thenReturn(List.of(meal));
+            when(loadMealEntryPort.findByPatientIdAndDateRange(patientId, from, to, pageable))
+                    .thenReturn(new PageImpl<>(List.of(meal), pageable, 1));
 
-            List<MealEntry> result = useCase.getHistory(patientId, from, to);
+            Page<MealEntry> result = useCase.getHistory(patientId, from, to, pageable);
 
-            assertThat(result).containsExactly(meal);
+            assertThat(result.getContent()).containsExactly(meal);
         }
 
         @Test
-        @DisplayName("retorna lista vacía cuando no hay comidas en el rango")
+        @DisplayName("retorna página vacía cuando no hay comidas en el rango")
         void returnsEmptyListWhenNoMeals() {
             LocalDate from = LocalDate.of(2026, 6, 1);
             LocalDate to = LocalDate.of(2026, 6, 7);
 
-            when(loadMealEntryPort.findByPatientIdAndDateRange(patientId, from, to))
-                    .thenReturn(List.of());
+            when(loadMealEntryPort.findByPatientIdAndDateRange(patientId, from, to, pageable))
+                    .thenReturn(Page.empty(pageable));
 
-            List<MealEntry> result = useCase.getHistory(patientId, from, to);
+            Page<MealEntry> result = useCase.getHistory(patientId, from, to, pageable);
 
-            assertThat(result).isEmpty();
+            assertThat(result.getContent()).isEmpty();
         }
     }
 }

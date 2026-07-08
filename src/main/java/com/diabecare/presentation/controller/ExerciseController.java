@@ -7,9 +7,11 @@ import com.diabecare.domain.model.ExerciseLog;
 import com.diabecare.domain.model.ExerciseType;
 import com.diabecare.presentation.dto.request.RegisterExerciseRequest;
 import com.diabecare.presentation.dto.response.ExerciseLogResponse;
+import com.diabecare.presentation.dto.response.PageResponse;
 import com.diabecare.presentation.util.CurrentUserResolver;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +19,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -55,18 +56,19 @@ public class ExerciseController {
     }
 
     @GetMapping("/{patientId}/history")
-    public ResponseEntity<List<ExerciseLogResponse>> getHistory(
+    public ResponseEntity<PageResponse<ExerciseLogResponse>> getHistory(
             @PathVariable UUID patientId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
 
         currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
-        return ResponseEntity.ok(
-                getExerciseHistoryUseCase.getHistory(patientId, from, to)
-                        .stream().map(this::toResponse).toList()
-        );
+        return ResponseEntity.ok(PageResponse.of(
+                getExerciseHistoryUseCase.getHistory(patientId, from, to, PageRequest.of(page, size)),
+                this::toResponse));
     }
 
     private ExerciseLogResponse toResponse(ExerciseLog log) {

@@ -4,10 +4,11 @@ import com.diabecare.application.port.in.GetVitalSignsUseCase;
 import com.diabecare.application.port.out.LoadVitalSignPort;
 import com.diabecare.domain.model.VitalSign;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,8 +20,8 @@ public class GetVitalSignsUseCaseImpl implements GetVitalSignsUseCase {
     private final LoadVitalSignPort loadVitalSignPort;
 
     @Override
-    public List<VitalSign> getByPatientId(UUID patientId) {
-        return loadVitalSignPort.findByPatientId(patientId);
+    public Page<VitalSign> getByPatientId(UUID patientId, Pageable pageable) {
+        return loadVitalSignPort.findByPatientId(patientId, pageable);
     }
 
     @Override

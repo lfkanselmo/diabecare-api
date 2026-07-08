@@ -9,6 +9,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -36,24 +40,28 @@ class GetVitalSignsUseCaseTest {
     class GetByPatientId {
 
         @Test
-        @DisplayName("retorna todos los signos vitales del paciente")
+        @DisplayName("retorna la página de signos vitales del paciente")
         void returnsAllVitalSignsForPatient() {
             VitalSign vital = vitalWith(BigDecimal.valueOf(70));
-            when(loadVitalSignPort.findByPatientId(patientId)).thenReturn(List.of(vital));
+            Pageable pageable = PageRequest.of(0, 20);
+            when(loadVitalSignPort.findByPatientId(patientId, pageable))
+                    .thenReturn(new PageImpl<>(List.of(vital), pageable, 1));
 
-            List<VitalSign> result = useCase.getByPatientId(patientId);
+            Page<VitalSign> result = useCase.getByPatientId(patientId, pageable);
 
-            assertThat(result).containsExactly(vital);
+            assertThat(result.getContent()).containsExactly(vital);
         }
 
         @Test
-        @DisplayName("retorna lista vacía cuando el paciente no tiene signos vitales registrados")
+        @DisplayName("retorna página vacía cuando el paciente no tiene signos vitales registrados")
         void returnsEmptyListWhenNoVitalSigns() {
-            when(loadVitalSignPort.findByPatientId(patientId)).thenReturn(List.of());
+            Pageable pageable = PageRequest.of(0, 20);
+            when(loadVitalSignPort.findByPatientId(patientId, pageable))
+                    .thenReturn(Page.empty(pageable));
 
-            List<VitalSign> result = useCase.getByPatientId(patientId);
+            Page<VitalSign> result = useCase.getByPatientId(patientId, pageable);
 
-            assertThat(result).isEmpty();
+            assertThat(result.getContent()).isEmpty();
         }
     }
 

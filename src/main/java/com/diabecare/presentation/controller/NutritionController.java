@@ -8,11 +8,13 @@ import com.diabecare.domain.model.MealType;
 import com.diabecare.presentation.dto.request.RegisterMealRequest;
 import com.diabecare.presentation.dto.response.DailySummaryResponse;
 import com.diabecare.presentation.dto.response.MealEntryResponse;
+import com.diabecare.presentation.dto.response.PageResponse;
 import com.diabecare.presentation.mapper.DailySummaryPresentationMapper;
 import com.diabecare.presentation.mapper.MealEntryPresentationMapper;
 import com.diabecare.presentation.util.CurrentUserResolver;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -72,17 +74,18 @@ public class NutritionController {
     }
 
     @GetMapping("/{patientId}/meals")
-    public ResponseEntity<List<MealEntryResponse>> getHistory(
+    public ResponseEntity<PageResponse<MealEntryResponse>> getHistory(
             @PathVariable UUID patientId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
 
         currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
-        return ResponseEntity.ok(
-                getMealHistoryUseCase.getHistory(patientId, from, to).stream()
-                        .map(mealMapper::toResponse)
-                        .toList());
+        return ResponseEntity.ok(PageResponse.of(
+                getMealHistoryUseCase.getHistory(patientId, from, to, PageRequest.of(page, size)),
+                mealMapper::toResponse));
     }
 }

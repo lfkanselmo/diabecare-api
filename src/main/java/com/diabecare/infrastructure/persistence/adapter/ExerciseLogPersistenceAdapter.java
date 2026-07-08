@@ -7,6 +7,8 @@ import com.diabecare.infrastructure.persistence.entity.ExerciseLogEntity;
 import com.diabecare.infrastructure.persistence.mapper.ExerciseLogPersistenceMapper;
 import com.diabecare.infrastructure.persistence.repository.ExerciseLogJpaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -33,5 +35,15 @@ public class ExerciseLogPersistenceAdapter implements SaveExerciseLogPort, LoadE
         return repository
                 .findByPatientIdAndPerformedAtBetweenOrderByPerformedAtDesc(patientId, from, to)
                 .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public Page<ExerciseLog> findByPatientIdAndDateRange(UUID patientId,
+                                                         LocalDateTime from,
+                                                         LocalDateTime to,
+                                                         Pageable pageable) {
+        return repository
+                .findByPatientIdAndPerformedAtBetweenOrderByPerformedAtDesc(patientId, from, to, pageable)
+                .map(mapper::toDomain);
     }
 }

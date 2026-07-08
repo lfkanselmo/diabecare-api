@@ -2,6 +2,7 @@ package com.diabecare.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -36,8 +37,12 @@ public class MealEntryEntity {
     @Column(length = 500)
     private String notes;
 
+    // BatchSize evita N+1 al paginar: la consulta paginada no puede usar JOIN
+    // FETCH (Hibernate paginaría en memoria), así que items se carga en un
+    // segundo SELECT por lote en vez de uno por cada meal_entry de la página.
     @OneToMany(mappedBy = "mealEntry", cascade = CascadeType.ALL,
             orphanRemoval = true, fetch = FetchType.EAGER)
+    @BatchSize(size = 50)
     @Builder.Default
     private List<MealItemEntity> items = new ArrayList<>();
 

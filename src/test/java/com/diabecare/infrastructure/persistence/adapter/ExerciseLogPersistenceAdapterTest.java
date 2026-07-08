@@ -13,6 +13,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -99,6 +103,32 @@ class ExerciseLogPersistenceAdapterTest {
             List<ExerciseLog> result = adapter.findByPatientIdAndDateRange(patientId, from, to);
 
             assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("retorna una página de ejercicios del rango convertidos a dominio")
+        void returnsPagedExercisesInRangeConvertedToDomain() {
+            LocalDateTime from = LocalDateTime.now().minusDays(7);
+            LocalDateTime to = LocalDateTime.now();
+            Pageable pageable = PageRequest.of(0, 20);
+
+            ExerciseLogEntity entity = ExerciseLogEntity.builder()
+                    .id(UUID.randomUUID())
+                    .patientId(patientId)
+                    .exerciseType("WALKING")
+                    .intensity("LOW")
+                    .durationMinutes(30)
+                    .caloriesBurned(BigDecimal.valueOf(100))
+                    .performedAt(LocalDateTime.now().minusDays(1))
+                    .build();
+
+            when(repository.findByPatientIdAndPerformedAtBetweenOrderByPerformedAtDesc(
+                    patientId, from, to, pageable))
+                    .thenReturn(new PageImpl<>(List.of(entity), pageable, 1));
+
+            Page<ExerciseLog> result = adapter.findByPatientIdAndDateRange(patientId, from, to, pageable);
+
+            assertThat(result.getContent()).hasSize(1);
         }
     }
 }

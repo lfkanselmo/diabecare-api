@@ -5,10 +5,12 @@ import com.diabecare.application.port.in.GetVitalSignsUseCase;
 import com.diabecare.application.port.in.RegisterVitalSignUseCase;
 import com.diabecare.presentation.dto.request.RegisterVitalSignRequest;
 import com.diabecare.presentation.dto.response.Hba1cTrendResponse;
+import com.diabecare.presentation.dto.response.PageResponse;
 import com.diabecare.presentation.dto.response.VitalSignResponse;
 import com.diabecare.presentation.mapper.VitalSignPresentationMapper;
 import com.diabecare.presentation.util.CurrentUserResolver;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -52,13 +54,17 @@ public class VitalSignController {
     }
 
     @GetMapping("/{patientId}")
-    public ResponseEntity<List<VitalSignResponse>> getAll(
-            @PathVariable UUID patientId, Authentication authentication) {
+    public ResponseEntity<PageResponse<VitalSignResponse>> getAll(
+            @PathVariable UUID patientId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
 
         currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
-        return ResponseEntity.ok(getVitalSignsUseCase.getByPatientId(patientId)
-                .stream().map(mapper::toResponse).toList());
+        return ResponseEntity.ok(PageResponse.of(
+                getVitalSignsUseCase.getByPatientId(patientId, PageRequest.of(page, size)),
+                mapper::toResponse));
     }
 
     @GetMapping("/{patientId}/latest")

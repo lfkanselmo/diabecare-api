@@ -15,6 +15,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -42,6 +46,8 @@ class GetGlucoseHistoryUseCaseTest {
     @DisplayName("getByPatientAndDateRange")
     class GetByPatientAndDateRange {
 
+        private final Pageable pageable = PageRequest.of(0, 50);
+
         @Test
         @DisplayName("combina lecturas y comidas del mismo rango en el resultado")
         void combinesReadingsAndMealsFromSameRange() {
@@ -51,16 +57,16 @@ class GetGlucoseHistoryUseCaseTest {
             GlucoseReading reading = readingAt(LocalDateTime.of(2026, 6, 3, 8, 0));
             MealEntry meal = mealAt(LocalDateTime.of(2026, 6, 3, 8, 30));
 
-            when(loadGlucoseReadingPort.findByPatientIdAndDateRange(patientId, from, to))
-                    .thenReturn(List.of(reading));
+            when(loadGlucoseReadingPort.findByPatientIdAndDateRange(patientId, from, to, pageable))
+                    .thenReturn(new PageImpl<>(List.of(reading), pageable, 1));
             when(loadMealEntryPort.findByPatientIdAndDateRange(
                     patientId, from.toLocalDate(), to.toLocalDate()))
                     .thenReturn(List.of(meal));
 
             GetGlucoseHistoryUseCase.Result result =
-                    useCase.getByPatientAndDateRange(patientId, from, to);
+                    useCase.getByPatientAndDateRange(patientId, from, to, pageable);
 
-            assertThat(result.readings()).containsExactly(reading);
+            assertThat(result.readings().getContent()).containsExactly(reading);
             assertThat(result.mealEntries()).containsExactly(meal);
         }
 
@@ -70,12 +76,12 @@ class GetGlucoseHistoryUseCaseTest {
             LocalDateTime from = LocalDateTime.of(2026, 6, 1, 14, 30);
             LocalDateTime to = LocalDateTime.of(2026, 6, 7, 9, 15);
 
-            when(loadGlucoseReadingPort.findByPatientIdAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
+            when(loadGlucoseReadingPort.findByPatientIdAndDateRange(any(), any(), any(), any()))
+                    .thenReturn(Page.empty(pageable));
             when(loadMealEntryPort.findByPatientIdAndDateRange(any(), any(), any()))
                     .thenReturn(List.of());
 
-            useCase.getByPatientAndDateRange(patientId, from, to);
+            useCase.getByPatientAndDateRange(patientId, from, to, pageable);
 
             verify(loadMealEntryPort).findByPatientIdAndDateRange(
                     patientId, from.toLocalDate(), to.toLocalDate());
@@ -87,15 +93,15 @@ class GetGlucoseHistoryUseCaseTest {
             LocalDateTime from = LocalDateTime.now().minusDays(7);
             LocalDateTime to = LocalDateTime.now();
 
-            when(loadGlucoseReadingPort.findByPatientIdAndDateRange(any(), any(), any()))
-                    .thenReturn(List.of());
+            when(loadGlucoseReadingPort.findByPatientIdAndDateRange(any(), any(), any(), any()))
+                    .thenReturn(Page.empty(pageable));
             when(loadMealEntryPort.findByPatientIdAndDateRange(any(), any(), any()))
                     .thenReturn(List.of());
 
             GetGlucoseHistoryUseCase.Result result =
-                    useCase.getByPatientAndDateRange(patientId, from, to);
+                    useCase.getByPatientAndDateRange(patientId, from, to, pageable);
 
-            assertThat(result.readings()).isEmpty();
+            assertThat(result.readings().getContent()).isEmpty();
             assertThat(result.mealEntries()).isEmpty();
         }
     }

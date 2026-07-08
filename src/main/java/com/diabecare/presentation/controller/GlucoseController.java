@@ -9,11 +9,13 @@ import com.diabecare.presentation.dto.response.AgpBucketResponse;
 import com.diabecare.presentation.dto.response.GlucoseCorrelationResponse;
 import com.diabecare.presentation.dto.response.GlucoseReadingResponse;
 import com.diabecare.presentation.dto.response.GlucoseStatsResponse;
+import com.diabecare.presentation.dto.response.PageResponse;
 import com.diabecare.presentation.mapper.GlucoseReadingPresentationMapper;
 import com.diabecare.presentation.mapper.GlucoseStatsPresentationMapper;
 import com.diabecare.presentation.util.CurrentUserResolver;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -66,15 +68,17 @@ public class GlucoseController {
             @PathVariable UUID patientId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
             Authentication authentication) {
 
         currentUserResolver.verifyCanReadPatient(patientId, authentication);
 
-        GetGlucoseHistoryUseCase.Result result =
-                getGlucoseHistoryUseCase.getByPatientAndDateRange(patientId, from, to);
+        GetGlucoseHistoryUseCase.Result result = getGlucoseHistoryUseCase
+                .getByPatientAndDateRange(patientId, from, to, PageRequest.of(page, size));
 
-        List<GlucoseReadingResponse> readings = result.readings()
-                .stream().map(readingMapper::toResponse).toList();
+        PageResponse<GlucoseReadingResponse> readings =
+                PageResponse.of(result.readings(), readingMapper::toResponse);
 
         List<GlucoseCorrelationResponse.MealMarkerResponse> markers = result.mealEntries()
                 .stream()

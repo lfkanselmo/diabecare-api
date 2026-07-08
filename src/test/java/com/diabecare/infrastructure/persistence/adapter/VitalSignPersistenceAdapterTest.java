@@ -11,6 +11,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -104,6 +108,20 @@ class VitalSignPersistenceAdapterTest {
             List<VitalSign> result = adapter.findByPatientId(patientId);
 
             assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("retorna una página de signos vitales del paciente convertidos a dominio")
+        void returnsPagedPatientVitalSignsConvertedToDomain() {
+            Pageable pageable = PageRequest.of(0, 20);
+            Page<VitalSignEntity> entityPage = new PageImpl<>(List.of(validEntity()), pageable, 1);
+            when(repository.findByPatientIdOrderByMeasuredAtDesc(patientId, pageable))
+                    .thenReturn(entityPage);
+
+            Page<VitalSign> result = adapter.findByPatientId(patientId, pageable);
+
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getTotalElements()).isEqualTo(1);
         }
     }
 

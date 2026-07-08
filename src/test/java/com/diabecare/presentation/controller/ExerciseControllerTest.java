@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -104,14 +106,15 @@ class ExerciseControllerTest {
                     patientId, ExerciseType.WALKING, ExerciseIntensity.LOW,
                     30, null, LocalDateTime.now().minusDays(1), BigDecimal.valueOf(100));
 
-            when(getExerciseHistoryUseCase.getHistory(eq(patientId), any(), any()))
-                    .thenReturn(List.of(log));
+            var pageable = PageRequest.of(0, 20);
+            when(getExerciseHistoryUseCase.getHistory(eq(patientId), any(), any(), eq(pageable)))
+                    .thenReturn(new PageImpl<>(List.of(log), pageable, 1));
 
             mockMvc.perform(get("/api/v1/exercise/{patientId}/history", patientId)
                             .param("from", "2026-06-01T00:00:00")
                             .param("to", "2026-06-07T23:59:59"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$[0].exerciseType").value("WALKING"));
+                    .andExpect(jsonPath("$.content[0].exerciseType").value("WALKING"));
         }
 
         @Test

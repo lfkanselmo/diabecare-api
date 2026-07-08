@@ -3,7 +3,7 @@ package com.diabecare.presentation.dto.response;
 import java.util.List;
 
 public record GlucoseCorrelationResponse(
-        List<GlucoseReadingResponse> readings,
+        PageResponse<GlucoseReadingResponse> readings,
         List<MealMarkerResponse> mealMarkers
 ) {
     public record MealMarkerResponse(

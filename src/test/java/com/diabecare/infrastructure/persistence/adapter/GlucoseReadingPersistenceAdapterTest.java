@@ -13,6 +13,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -118,6 +122,23 @@ class GlucoseReadingPersistenceAdapterTest {
             List<GlucoseReading> result = adapter.findByPatientIdAndDateRange(patientId, from, to);
 
             assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("retorna una página de lecturas del rango convertidas a dominio")
+        void returnsPagedReadingsInRangeConvertedToDomain() {
+            LocalDateTime from = LocalDateTime.now().minusDays(7);
+            LocalDateTime to = LocalDateTime.now();
+            Pageable pageable = PageRequest.of(0, 50);
+            Page<GlucoseReadingEntity> entityPage = new PageImpl<>(List.of(validEntity()), pageable, 1);
+
+            when(repository.findByPatientIdAndMeasuredAtBetweenOrderByMeasuredAtDesc(
+                    patientId, from, to, pageable)).thenReturn(entityPage);
+
+            Page<GlucoseReading> result = adapter.findByPatientIdAndDateRange(patientId, from, to, pageable);
+
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getTotalElements()).isEqualTo(1);
         }
     }
 

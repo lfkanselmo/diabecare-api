@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -115,14 +116,14 @@ class GlucoseControllerTest {
         @Test
         @DisplayName("retorna 200 con readings y mealMarkers vacíos cuando no hay datos")
         void returns200WithEmptyReadingsAndMealMarkersWhenNoData() throws Exception {
-            when(getGlucoseHistoryUseCase.getByPatientAndDateRange(eq(patientId), any(), any()))
-                    .thenReturn(new GetGlucoseHistoryUseCase.Result(List.of(), List.of()));
+            when(getGlucoseHistoryUseCase.getByPatientAndDateRange(eq(patientId), any(), any(), any()))
+                    .thenReturn(new GetGlucoseHistoryUseCase.Result(Page.empty(), List.of()));
 
             mockMvc.perform(get("/api/v1/glucose/{patientId}/history", patientId)
                             .param("from", "2026-06-01T00:00:00")
                             .param("to", "2026-06-07T23:59:59"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.readings").isEmpty())
+                    .andExpect(jsonPath("$.readings.content").isEmpty())
                     .andExpect(jsonPath("$.mealMarkers").isEmpty());
         }
     }

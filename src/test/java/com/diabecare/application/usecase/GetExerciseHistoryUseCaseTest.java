@@ -11,6 +11,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,6 +39,8 @@ class GetExerciseHistoryUseCaseTest {
     @DisplayName("getHistory")
     class GetHistory {
 
+        private final Pageable pageable = PageRequest.of(0, 20);
+
         @Test
         @DisplayName("retorna el historial de ejercicios del rango indicado")
         void returnsHistoryForGivenRange() {
@@ -44,26 +50,26 @@ class GetExerciseHistoryUseCaseTest {
                     patientId, ExerciseType.WALKING, ExerciseIntensity.MODERATE,
                     30, null, LocalDateTime.now().minusDays(1), null);
 
-            when(loadExerciseLogPort.findByPatientIdAndDateRange(patientId, from, to))
-                    .thenReturn(List.of(log));
+            when(loadExerciseLogPort.findByPatientIdAndDateRange(patientId, from, to, pageable))
+                    .thenReturn(new PageImpl<>(List.of(log), pageable, 1));
 
-            List<ExerciseLog> result = useCase.getHistory(patientId, from, to);
+            Page<ExerciseLog> result = useCase.getHistory(patientId, from, to, pageable);
 
-            assertThat(result).containsExactly(log);
+            assertThat(result.getContent()).containsExactly(log);
         }
 
         @Test
-        @DisplayName("retorna lista vacía cuando no hay ejercicios en el rango")
+        @DisplayName("retorna página vacía cuando no hay ejercicios en el rango")
         void returnsEmptyListWhenNoExercises() {
             LocalDateTime from = LocalDateTime.now().minusDays(7);
             LocalDateTime to = LocalDateTime.now();
 
-            when(loadExerciseLogPort.findByPatientIdAndDateRange(patientId, from, to))
-                    .thenReturn(List.of());
+            when(loadExerciseLogPort.findByPatientIdAndDateRange(patientId, from, to, pageable))
+                    .thenReturn(Page.empty(pageable));
 
-            List<ExerciseLog> result = useCase.getHistory(patientId, from, to);
+            Page<ExerciseLog> result = useCase.getHistory(patientId, from, to, pageable);
 
-            assertThat(result).isEmpty();
+            assertThat(result.getContent()).isEmpty();
         }
     }
 }

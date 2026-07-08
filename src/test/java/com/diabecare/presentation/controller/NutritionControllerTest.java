@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -110,12 +112,14 @@ class NutritionControllerTest {
         void returns200WithMealHistoryMappedCorrectly() throws Exception {
             MealEntry entry = MealEntry.create(patientId, MealType.LUNCH,
                     LocalDateTime.of(2026, 6, 15, 13, 0), null);
+            var pageable = PageRequest.of(0, 20);
             when(getMealHistoryUseCase.getHistory(patientId,
-                    LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 15))).thenReturn(List.of(entry));
+                    LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 15), pageable))
+                    .thenReturn(new PageImpl<>(List.of(entry), pageable, 1));
             mockMvc.perform(get("/api/v1/nutrition/{patientId}/meals", patientId)
                             .param("from", "2026-06-01").param("to", "2026-06-15"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$[0].mealType").value("LUNCH"));
+                    .andExpect(jsonPath("$.content[0].mealType").value("LUNCH"));
         }
     }
 }

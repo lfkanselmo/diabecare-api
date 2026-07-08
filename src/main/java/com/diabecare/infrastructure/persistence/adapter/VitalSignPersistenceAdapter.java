@@ -6,6 +6,8 @@ import com.diabecare.domain.model.VitalSign;
 import com.diabecare.infrastructure.persistence.mapper.VitalSignPersistenceMapper;
 import com.diabecare.infrastructure.persistence.repository.VitalSignJpaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -39,5 +41,11 @@ public class VitalSignPersistenceAdapter implements SaveVitalSignPort, LoadVital
     public List<VitalSign> findByPatientId(UUID patientId) {
         return repository.findFirst500ByPatientIdOrderByMeasuredAtDesc(patientId)
                 .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public Page<VitalSign> findByPatientId(UUID patientId, Pageable pageable) {
+        return repository.findByPatientIdOrderByMeasuredAtDesc(patientId, pageable)
+                .map(mapper::toDomain);
     }
 }

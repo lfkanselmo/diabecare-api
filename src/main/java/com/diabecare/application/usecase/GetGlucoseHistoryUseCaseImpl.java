@@ -6,6 +6,8 @@ import com.diabecare.application.port.out.LoadMealEntryPort;
 import com.diabecare.domain.model.GlucoseReading;
 import com.diabecare.domain.model.MealEntry;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,9 +26,10 @@ public class GetGlucoseHistoryUseCaseImpl implements GetGlucoseHistoryUseCase {
     @Override
     public Result getByPatientAndDateRange(UUID patientId,
                                            LocalDateTime from,
-                                           LocalDateTime to) {
-        List<GlucoseReading> readings = loadGlucoseReadingPort
-                .findByPatientIdAndDateRange(patientId, from, to);
+                                           LocalDateTime to,
+                                           Pageable pageable) {
+        Page<GlucoseReading> readings = loadGlucoseReadingPort
+                .findByPatientIdAndDateRange(patientId, from, to, pageable);
 
         List<MealEntry> meals = loadMealEntryPort
                 .findByPatientIdAndDateRange(patientId, from.toLocalDate(), to.toLocalDate());
