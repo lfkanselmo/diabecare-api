@@ -48,7 +48,8 @@ public class RegisterUseCaseImpl implements RegisterUseCase {
                 refreshToken.rawToken(),
                 refreshToken.expiresInMs(),
                 patient.getPatientId().toString(),
-                user.id().toString()
+                user.id().toString(),
+                user.role()
         );
     }
 }

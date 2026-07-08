@@ -74,7 +74,7 @@ class AuthControllerTest {
         void returns201WithCompleteAuthResponseOnSuccessfulRegistration() throws Exception {
             var result = new RegisterUseCase.Result(
                     "access-token", 3600L, "refresh-token", 604800000L,
-                    UUID.randomUUID().toString(), userId.toString());
+                    UUID.randomUUID().toString(), userId.toString(), "PATIENT");
 
             when(registerUseCase.execute(any())).thenReturn(result);
             when(getPatientUseCase.getByUserId(userId))
@@ -92,7 +92,8 @@ class AuthControllerTest {
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.accessToken").value("access-token"))
                     .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                    .andExpect(jsonPath("$.patient.fullName").value("Ana García"));
+                    .andExpect(jsonPath("$.patient.fullName").value("Ana García"))
+                    .andExpect(jsonPath("$.role").value("PATIENT"));
         }
 
         @Test
@@ -154,7 +155,7 @@ class AuthControllerTest {
         void returns200WithAuthResponseOnSuccessfulLogin() throws Exception {
             var result = new LoginUseCase.Result(
                     "access-token", 3600L, "refresh-token", 604800000L,
-                    UUID.randomUUID().toString(), userId.toString());
+                    UUID.randomUUID().toString(), userId.toString(), "PATIENT");
 
             when(loginUseCase.execute(any())).thenReturn(result);
             when(getPatientUseCase.getByUserId(userId))

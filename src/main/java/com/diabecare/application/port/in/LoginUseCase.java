@@ -15,7 +15,8 @@ public interface LoginUseCase {
             String refreshToken,
             long   refreshExpiresIn,
             String patientId,
-            String userId
+            String userId,
+            String role
     ) {}
 
     Result execute(Command command);

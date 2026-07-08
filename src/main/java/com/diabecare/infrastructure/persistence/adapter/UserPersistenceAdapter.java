@@ -7,6 +7,8 @@ import com.diabecare.domain.model.User;
 import com.diabecare.infrastructure.persistence.entity.UserEntity;
 import com.diabecare.infrastructure.persistence.repository.UserJpaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -74,6 +76,19 @@ public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
             entity.setEmail("deleted_" + user.getId() + "@diabecare.deleted");
             userJpaRepository.save(entity);
         });
+    }
+
+    @Override
+    public void updateRole(UUID userId, String role) {
+        userJpaRepository.findById(userId).ifPresent(entity -> {
+            entity.setRole(role);
+            userJpaRepository.save(entity);
+        });
+    }
+
+    @Override
+    public Page<User> findAll(Pageable pageable) {
+        return userJpaRepository.findAll(pageable).map(this::toDomain);
     }
 
     private User toDomain(UserEntity entity) {

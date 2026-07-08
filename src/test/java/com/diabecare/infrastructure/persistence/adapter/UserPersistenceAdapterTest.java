@@ -12,8 +12,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -167,6 +172,51 @@ class UserPersistenceAdapterTest {
             adapter.delete(domainUser());
 
             verify(userJpaRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("updateRole")
+    class UpdateRole {
+
+        @Test
+        @DisplayName("actualiza el rol del usuario cuando existe")
+        void updatesUserRoleWhenExists() {
+            UserEntity entity = validEntity();
+            when(userJpaRepository.findById(userId)).thenReturn(Optional.of(entity));
+
+            adapter.updateRole(userId, "ADMIN");
+
+            assertThat(entity.getRole()).isEqualTo("ADMIN");
+            verify(userJpaRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("no hace nada cuando el usuario no existe")
+        void doesNothingWhenUserDoesNotExist() {
+            when(userJpaRepository.findById(userId)).thenReturn(Optional.empty());
+
+            adapter.updateRole(userId, "ADMIN");
+
+            verify(userJpaRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("findAll")
+    class FindAll {
+
+        @Test
+        @DisplayName("retorna una página de usuarios convertidos a dominio")
+        void returnsPagedUsersConvertedToDomain() {
+            Pageable pageable = PageRequest.of(0, 20);
+            Page<UserEntity> entityPage = new PageImpl<>(List.of(validEntity()), pageable, 1);
+            when(userJpaRepository.findAll(pageable)).thenReturn(entityPage);
+
+            Page<User> result = adapter.findAll(pageable);
+
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getTotalElements()).isEqualTo(1);
         }
     }
 

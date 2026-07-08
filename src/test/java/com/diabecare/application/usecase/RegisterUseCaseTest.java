@@ -74,6 +74,7 @@ class RegisterUseCaseTest {
             assertThat(result.refreshToken()).isEqualTo("refresh-token");
             assertThat(result.patientId()).isEqualTo(patient.getPatientId().toString());
             assertThat(result.userId()).isEqualTo(userId.toString());
+            assertThat(result.role()).isEqualTo("PATIENT");
         }
 
         @Test

@@ -29,6 +29,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, "GLUCOSE_READING_NOT_FOUND", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ApiError> handleUserNotFound(
+            UserNotFoundException ex, HttpServletRequest request) {
+        return build(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", ex.getMessage(), request);
+    }
+
     @ExceptionHandler(OpenCycleConflictException.class)
     public ResponseEntity<ApiError> handleOpenCycleConflict(
             OpenCycleConflictException ex, HttpServletRequest request) {
@@ -42,7 +48,8 @@ public class GlobalExceptionHandler {
             InvalidVitalSignException.class,
             InvalidMedicationException.class,
             InvalidExerciseLogException.class,
-            InvalidCaregiverInviteException.class
+            InvalidCaregiverInviteException.class,
+            InvalidRoleException.class
     })
     public ResponseEntity<ApiError> handleDomainValidation(
             DomainException ex, HttpServletRequest request) {

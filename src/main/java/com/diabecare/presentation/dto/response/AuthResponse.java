@@ -6,10 +6,11 @@ public record AuthResponse(
         long expiresIn,
         String refreshToken,
         long refreshExpiresIn,
-        PatientResponse patient
+        PatientResponse patient,
+        String role
 ) {
     public static AuthResponse of(String token, long expiresIn, String refreshToken,
-                                  long refreshExpiresIn, PatientResponse patient) {
-        return new AuthResponse(token, "Bearer", expiresIn, refreshToken, refreshExpiresIn, patient);
+                                  long refreshExpiresIn, PatientResponse patient, String role) {
+        return new AuthResponse(token, "Bearer", expiresIn, refreshToken, refreshExpiresIn, patient, role);
     }
 }

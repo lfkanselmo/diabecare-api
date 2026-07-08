@@ -32,6 +32,9 @@ public class LoginUseCaseImpl implements LoginUseCase {
         var userId = loadUserPort.findUserIdByEmail(command.email())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+        var user = loadUserPort.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
         var patient = loadPatientPort.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Perfil no encontrado"));
 
@@ -44,7 +47,8 @@ public class LoginUseCaseImpl implements LoginUseCase {
                 refreshToken.rawToken(),
                 refreshToken.expiresInMs(),
                 patient.getPatientId().toString(),
-                userId.toString()
+                userId.toString(),
+                user.getRole()
         );
     }
 }

@@ -8,6 +8,7 @@ import com.diabecare.application.port.out.LoadUserPort;
 import com.diabecare.application.port.out.RefreshTokenPort;
 import com.diabecare.domain.model.DiabetesType;
 import com.diabecare.domain.model.Patient;
+import com.diabecare.domain.model.User;
 import com.diabecare.domain.service.RateLimitService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -58,6 +59,7 @@ class LoginUseCaseTest {
             Patient patient = validPatient();
 
             when(loadUserPort.findUserIdByEmail(email)).thenReturn(Optional.of(userId));
+            when(loadUserPort.findById(userId)).thenReturn(Optional.of(validUser()));
             when(loadPatientPort.findByUserId(userId)).thenReturn(Optional.of(patient));
             when(generateTokenPort.generateToken(email, userId)).thenReturn("access-token");
             when(generateTokenPort.getExpiresIn()).thenReturn(3600L);
@@ -73,6 +75,7 @@ class LoginUseCaseTest {
             assertThat(result.refreshExpiresIn()).isEqualTo(604800000L);
             assertThat(result.patientId()).isEqualTo(patient.getPatientId().toString());
             assertThat(result.userId()).isEqualTo(userId.toString());
+            assertThat(result.role()).isEqualTo("PATIENT");
         }
 
         @Test
@@ -80,6 +83,7 @@ class LoginUseCaseTest {
         void authenticatesBeforeAnythingElse() {
             Patient patient = validPatient();
             when(loadUserPort.findUserIdByEmail(email)).thenReturn(Optional.of(userId));
+            when(loadUserPort.findById(userId)).thenReturn(Optional.of(validUser()));
             when(loadPatientPort.findByUserId(userId)).thenReturn(Optional.of(patient));
             when(generateTokenPort.generateToken(any(), any())).thenReturn("token");
             when(refreshTokenPort.issue(any(), any()))
@@ -121,6 +125,7 @@ class LoginUseCaseTest {
         @DisplayName("lanza excepción cuando el perfil de paciente no existe")
         void throwsWhenPatientProfileNotFound() {
             when(loadUserPort.findUserIdByEmail(email)).thenReturn(Optional.of(userId));
+            when(loadUserPort.findById(userId)).thenReturn(Optional.of(validUser()));
             when(loadPatientPort.findByUserId(userId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> useCase.execute(
@@ -138,5 +143,9 @@ class LoginUseCaseTest {
         return Patient.create(
                 userId, "Ana García", LocalDate.of(1990, 5, 10),
                 DiabetesType.TYPE_1, LocalDate.of(2010, 1, 1), BigDecimal.valueOf(165));
+    }
+
+    private User validUser() {
+        return User.builder().id(userId).email(email).role("PATIENT").enabled(true).build();
     }
 }

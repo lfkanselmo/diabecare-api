@@ -87,7 +87,8 @@ public class AuthController {
                         result.expiresIn(),
                         result.refreshToken(),
                         result.refreshExpiresIn(),
-                        patientMapper.toResponse(patient.patient())
+                        patientMapper.toResponse(patient.patient()),
+                        result.role()
                 ));
     }
 
@@ -106,7 +107,8 @@ public class AuthController {
                 result.expiresIn(),
                 result.refreshToken(),
                 result.refreshExpiresIn(),
-                patientMapper.toResponse(patient.patient())
+                patientMapper.toResponse(patient.patient()),
+                result.role()
         ));
     }
 
