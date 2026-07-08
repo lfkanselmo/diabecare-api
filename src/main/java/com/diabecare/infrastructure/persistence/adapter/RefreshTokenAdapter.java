@@ -4,7 +4,9 @@ import com.diabecare.application.port.out.RefreshTokenPort;
 import com.diabecare.infrastructure.config.JwtProperties;
 import com.diabecare.infrastructure.persistence.entity.RefreshTokenEntity;
 import com.diabecare.infrastructure.persistence.repository.RefreshTokenJpaRepository;
+import com.diabecare.infrastructure.persistence.support.RefreshTokenReuseResponder;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class RefreshTokenAdapter implements RefreshTokenPort {
@@ -26,6 +29,7 @@ public class RefreshTokenAdapter implements RefreshTokenPort {
 
     private final RefreshTokenJpaRepository refreshTokenJpaRepository;
     private final JwtProperties jwtProperties;
+    private final RefreshTokenReuseResponder reuseResponder;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Override
@@ -52,14 +56,32 @@ public class RefreshTokenAdapter implements RefreshTokenPort {
     @Override
     @Transactional
     public Optional<RedeemedToken> redeem(String rawToken) {
-        return refreshTokenJpaRepository.findByTokenHash(hash(rawToken))
-                .filter(entity -> entity.getRevokedAt() == null)
-                .filter(entity -> entity.getExpiresAt().isAfter(LocalDateTime.now()))
-                .map(entity -> {
-                    entity.setRevokedAt(LocalDateTime.now());
-                    refreshTokenJpaRepository.save(entity);
-                    return new RedeemedToken(entity.getUserId(), entity.getDeviceLabel());
-                });
+        Optional<RefreshTokenEntity> found = refreshTokenJpaRepository.findByTokenHash(hash(rawToken));
+        if (found.isEmpty()) {
+            return Optional.empty();
+        }
+
+        RefreshTokenEntity entity = found.get();
+
+        // Un token ya revocado que vuelve a presentarse es la señal clásica de
+        // robo bajo rotación de refresh tokens: el dueño legítimo ya lo rotó,
+        // así que esta copia solo puede venir de un atacante con una copia vieja
+        // (o, más raro, una carrera de red). No hay forma de saber qué sesión
+        // está comprometida, así que se revocan todas por seguridad.
+        if (entity.getRevokedAt() != null) {
+            log.warn("Reutilización de refresh token detectada para userId={}: revocando todas sus sesiones activas",
+                    entity.getUserId());
+            reuseResponder.revokeAllForUser(entity.getUserId());
+            return Optional.empty();
+        }
+
+        if (entity.getExpiresAt().isBefore(LocalDateTime.now())) {
+            return Optional.empty();
+        }
+
+        entity.setRevokedAt(LocalDateTime.now());
+        refreshTokenJpaRepository.save(entity);
+        return Optional.of(new RedeemedToken(entity.getUserId(), entity.getDeviceLabel()));
     }
 
     @Override

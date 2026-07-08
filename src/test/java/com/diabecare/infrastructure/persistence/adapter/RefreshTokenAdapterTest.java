@@ -4,6 +4,7 @@ import com.diabecare.application.port.out.RefreshTokenPort;
 import com.diabecare.infrastructure.config.JwtProperties;
 import com.diabecare.infrastructure.persistence.entity.RefreshTokenEntity;
 import com.diabecare.infrastructure.persistence.repository.RefreshTokenJpaRepository;
+import com.diabecare.infrastructure.persistence.support.RefreshTokenReuseResponder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -29,13 +30,15 @@ class RefreshTokenAdapterTest {
     private RefreshTokenJpaRepository repository;
     @Mock
     private JwtProperties jwtProperties;
+    @Mock
+    private RefreshTokenReuseResponder reuseResponder;
 
     private RefreshTokenAdapter adapter;
     private final UUID userId = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
-        adapter = new RefreshTokenAdapter(repository, jwtProperties);
+        adapter = new RefreshTokenAdapter(repository, jwtProperties, reuseResponder);
     }
 
     @Nested
@@ -126,6 +129,26 @@ class RefreshTokenAdapterTest {
 
             assertThat(result).isEmpty();
             verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("detecta reutilización de un token ya revocado y delega la revocación masiva "
+                + "a una transacción independiente (REQUIRES_NEW) para que sobreviva el rollback "
+                + "del InvalidRefreshTokenException que lanzará el caller")
+        void detectsReuseOfAlreadyRevokedTokenAndRevokesAllUserSessions() {
+            RefreshTokenEntity entity = RefreshTokenEntity.builder()
+                    .id(UUID.randomUUID())
+                    .userId(userId)
+                    .expiresAt(LocalDateTime.now().plusDays(1))
+                    .revokedAt(LocalDateTime.now().minusHours(1))
+                    .build();
+
+            when(repository.findByTokenHash(any())).thenReturn(Optional.of(entity));
+
+            adapter.redeem("stolen-and-already-rotated-token");
+
+            verify(reuseResponder).revokeAllForUser(userId);
+            verify(repository, never()).revokeAllActiveByUserId(any(), any());
         }
 
         @Test
