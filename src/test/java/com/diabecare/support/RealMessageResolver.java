@@ -20,6 +20,9 @@ public final class RealMessageResolver implements MessageResolverPort {
         this.source = new ResourceBundleMessageSource();
         this.source.setBasename("messages");
         this.source.setDefaultEncoding("UTF-8");
+        // Sin esto, el resultado depende del locale por defecto de la JVM que corre
+        // el test (pasa en local con default es_CO, fallaba en CI con default en_US).
+        this.source.setFallbackToSystemLocale(false);
     }
 
     public static RealMessageResolver spanish() {
