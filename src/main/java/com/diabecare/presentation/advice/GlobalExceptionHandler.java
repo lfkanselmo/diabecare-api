@@ -85,6 +85,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(InvalidDeviceApiKeyException.class)
+    public ResponseEntity<ApiError> handleInvalidDeviceApiKey(
+            InvalidDeviceApiKeyException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, "INVALID_DEVICE_API_KEY", ex.getMessage(), request);
+    }
+
     @ExceptionHandler(UnauthorizedResourceAccessException.class)
     public ResponseEntity<ApiError> handleUnauthorizedResourceAccess(
             UnauthorizedResourceAccessException ex, HttpServletRequest request) {

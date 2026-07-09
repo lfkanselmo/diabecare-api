@@ -47,6 +47,17 @@ public class RateLimitService {
                 systemConfig.getInt("rate_limit.forgot_password_per_hour"));
     }
 
+    /**
+     * Clave por API key de dispositivo, no por paciente — un bridge externo (CGM,
+     * Nightscout) puede enviar muchas más lecturas por hora que un registro manual,
+     * y lo que se quiere frenar es una key comprometida/mal configurada, no el uso
+     * legítimo de un sensor continuo.
+     */
+    public void checkDeviceImportLimit(UUID apiKeyId) {
+        checkLimit(apiKeyId.toString(), "DEVICE_IMPORT",
+                systemConfig.getInt("rate_limit.device_import_per_hour"));
+    }
+
     private void checkLimit(String subjectKey, String operation, int limit) {
         boolean allowed = rateLimitPort.tryConsume(operation, subjectKey, limit);
 

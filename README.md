@@ -86,7 +86,7 @@ mvn test
 mvn test -Dtest=MedicalCalculatorServiceTest
 ```
 
-Suite completa verificada: **1035 tests en 173 clases, 0 fallos, 0 errores, 0 omitidos** (`mvn test` limpio). Incluye:
+Suite completa verificada: **1059 tests en 180 clases, 0 fallos, 0 errores, 0 omitidos** (`mvn test` limpio). Incluye:
 
 - Tests unitarios (JUnit 5 + Mockito + AssertJ) de use cases, servicios de dominio y calculadoras
 - Tests de arquitectura con **ArchUnit** (14 reglas)
@@ -118,10 +118,12 @@ com.diabecare
 │   │                       #   Medication, ExerciseLog, MenstrualCycle + CycleDayEntry,
 │   │                       #   Alert, AuditLog, SystemConfig, RefreshToken,
 │   │                       #   CaregiverInvite, CaregiverLink, PasswordResetToken,
-│   │                       #   GlucoseReminder, AgpHourlyBucket, AccountExportData, ReportData
+│   │                       #   GlucoseReminder, AgpHourlyBucket, AccountExportData, ReportData,
+│   │                       #   DeviceApiKey
 │   ├── exception/          # Excepciones de dominio (InvalidRefreshTokenException,
 │   │                       #   InvalidCaregiverInviteException, InvalidPasswordResetTokenException,
 │   │                       #   InvalidRoleException, OpenCycleConflictException,
+│   │                       #   InvalidDeviceApiKeyException,
 │   │                       #   UnauthorizedResourceAccessException, UserNotFoundException...)
 │   └── service/             # MedicalCalculatorService, PatternDetectorService,
 │                            #   WeeklySummaryService, GlucoseExportService, AuditService,
@@ -132,7 +134,8 @@ com.diabecare
 │   │                        #   cuidadores, recordatorios, ciclo menstrual, admin, etc.
 │   ├── port/out/             # Puertos de salida — Load*/Save*Port, GenerateTokenPort,
 │   │                         #   RefreshTokenPort, CaregiverInvitePort, PasswordResetTokenPort,
-│   │                         #   SendEmailPort, MessageResolverPort, SystemConfigPort
+│   │                         #   SendEmailPort, MessageResolverPort, SystemConfigPort,
+│   │                         #   DeviceApiKeyPort
 │   └── usecase/              # Implementaciones (1 clase por operación)
 ├── infrastructure/
 │   ├── persistence/         # JPA, repositorios, adaptadores, mappers
@@ -148,7 +151,7 @@ com.diabecare
 │   └── scheduler/             # WeeklySummaryScheduler, GlucoseReminderScheduler,
 │                              #   MedicationReminderScheduler, AccountPurgeScheduler
 └── presentation/
-    ├── controller/           # 21 Controllers REST (ver módulos abajo)
+    ├── controller/           # 23 Controllers REST (ver módulos abajo)
     ├── dto/                   # Requests y responses
     ├── util/                  # DeviceLabelResolver
     └── advice/                # GlobalExceptionHandler
@@ -183,6 +186,7 @@ Las reglas de arquitectura se verifican automáticamente con **ArchUnit**.
 | Consentimiento | Registro de aceptación de la política de tratamiento de datos (Ley 1581 de 2012, Habeas Data) |
 | Panel de administración | Listado de usuarios y asignación de rol `ADMIN`, protegido con `@PreAuthorize` |
 | Internacionalización | `messages.properties` (español) + `messages_en.properties` (inglés), resueltos automáticamente según el header `Accept-Language` |
+| Importación de dispositivos | API key opaca por paciente (revocable) para que un bridge externo (CGM, Nightscout, un glucómetro) importe lecturas sin login interactivo — ver sección dedicada |
 
 ---
 
@@ -212,6 +216,7 @@ Las reglas de arquitectura se verifican automáticamente con **ArchUnit**.
 | V21 | Tabla `password_reset_tokens` |
 | V22 | Parámetro `rate_limit.forgot_password_per_hour` |
 | V23 | Tabla `glucose_reminders` |
+| V24 | Tabla `device_api_keys` + parámetro `rate_limit.device_import_per_hour` |
 
 *No existe V14 — durante el desarrollo se generó una migración adicional de alimentos que se fusionó dentro de V13 antes de aplicarse; Flyway no exige numeración consecutiva, solo orden creciente.*
 
@@ -290,6 +295,22 @@ GET    /api/v1/caregivers/my-patients                  # Lista los pacientes a l
 ```
 
 El código de invitación sigue el mismo patrón que el refresh token: valor aleatorio, hash SHA-256 persistido, el valor crudo nunca se guarda.
+
+---
+
+## Importación de lecturas por dispositivo (API key)
+
+Groundwork preparado para automatizar la carga de glucosa desde CGMs/glucómetros a futuro (Dexcom API, un puente con Nightscout, un glucómetro Bluetooth, etc.) sin tener todavía una integración con ningún fabricante específico — ver la investigación de mercado que originó esto para el detalle de las opciones evaluadas (Dexcom API, Web Bluetooth Glucose Service, Nightscout, Terra).
+
+```
+POST   /api/v1/device-keys/{patientId}        # Genera una API key (JWT, la revela una sola vez)
+GET    /api/v1/device-keys/{patientId}        # Lista las keys del paciente (sin exponer el hash)
+DELETE /api/v1/device-keys/{patientId}/{keyId} # Revoca una key
+
+POST   /api/v1/glucose/import                  # Importa lecturas — SIN JWT, header X-Device-Api-Key
+```
+
+`/api/v1/glucose/import` es pública a nivel del filtro de Spring Security (igual que `/auth/**`) porque un bridge externo desatendido no puede hacer login interactivo — se autentica con la API key, validada manualmente dentro de `ImportGlucoseReadingsUseCase`. Cada lectura importada queda marcada con `deviceSource` = el label de la key (ej. "Dexcom G6"), reutilizando el campo que ya usa el registro manual. Rate limit propio y más generoso que el manual (`rate_limit.device_import_per_hour` = 300, contado por key, no por paciente) para no asfixiar un CGM real que reporta cada 5 minutos.
 
 ---
 

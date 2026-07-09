@@ -9,7 +9,7 @@
 | Arquitectura | Hexagonal + Clean Architecture |
 | Base de datos | PostgreSQL 15+ |
 | Documentación API | OpenAPI 3.0 / Swagger UI |
-| Tests | 1035 tests, 173 clases, 0 fallos (`mvn test`) |
+| Tests | 1059 tests, 180 clases, 0 fallos (`mvn test`) |
 
 ---
 
@@ -37,6 +37,7 @@
 20. [Estrategia de Testing](#20-estrategia-de-testing)
 21. [Dependencias Principales](#21-dependencias-principales)
 22. [Configuración y Despliegue](#22-configuración-y-despliegue)
+23. [Importación de Lecturas por Dispositivo (API Key)](#23-importación-de-lecturas-por-dispositivo-api-key)
 
 ---
 
@@ -1186,9 +1187,9 @@ alert.pattern.fasting-high.message={0} de tus últimas {1} lecturas de ayuno sup
 | Architecture Tests | ArchUnit | Dependencias entre capas (14 reglas) |
 | Smoke Test | `@SpringBootTest` | Arranque del contexto completo |
 
-### 20.2 Estado actual: 1035 tests, 173 clases, 0 fallos
+### 20.2 Estado actual: 1059 tests, 180 clases, 0 fallos
 
-Verificado con `mvn test` (Surefire + JaCoCo instrumentando la ejecución): **1035 tests ejecutados en 173 clases de test, 0 fallos, 0 errores, 0 omitidos** — número tomado del resumen agregado que imprime Maven al final de la ejecución (`Tests run: 1035, Failures: 0, Errors: 0, Skipped: 0`). Cobertura visible en `target/site/jacoco/index.html` tras `mvn verify`.
+Verificado con `mvn test` (Surefire + JaCoCo instrumentando la ejecución): **1059 tests ejecutados en 180 clases de test, 0 fallos, 0 errores, 0 omitidos** — número tomado del resumen agregado que imprime Maven al final de la ejecución (`Tests run: 1059, Failures: 0, Errors: 0, Skipped: 0`). Cobertura visible en `target/site/jacoco/index.html` tras `mvn verify`.
 
 > Nota de diagnóstico: el atributo `tests` de los XML individuales en `target/surefire-reports/TEST-*.xml` subestima el total (suma 1006) para clases que agrupan tests dentro de `@Nested` — no lo uses como fuente; el conteo agregado que imprime Maven en consola es el confiable.
 
@@ -1293,6 +1294,43 @@ services:
     ports: ['5432:5432']
     volumes: ['postgres_data:/var/lib/postgresql/data']
 ```
+
+---
+
+## 23. Importación de Lecturas por Dispositivo (API Key)
+
+### 23.1 Por qué existe
+
+Ninguna integración con un fabricante específico (Dexcom, Abbott/Libre) está implementada todavía — no hay usuarios reales para justificar el costo de un partnership o un acuerdo comercial. Lo que sí se dejó construido es el *groundwork* para que, cuando haga falta, conectar un CGM/glucómetro sea solo cuestión de escribir un adaptador, no de rediseñar la autenticación. Investigación previa evaluó Dexcom API (requiere partnership), Abbott/Libre (sin API pública oficial), Web Bluetooth + Glucose Service estándar (gratis, ya viable con la PWA actual — ver frontend), y un puente con Nightscout (cubre indirectamente tanto Dexcom como Libre sin negociar con ninguno).
+
+### 23.2 Modelo: `DeviceApiKey`
+
+Mismo patrón que `RefreshToken`/`CaregiverInvite`: secreto aleatorio con prefijo `dbc_` (32 bytes, Base64 URL-safe), solo se persiste su hash SHA-256, el valor crudo se revela una única vez al generarla.
+
+```
+device_api_keys: id, patient_id, label, key_hash, created_at, last_used_at, revoked_at
+```
+
+### 23.3 Gestión (JWT, patient-scoped)
+
+```
+POST   /api/v1/device-keys/{patientId}         # Genera — GenerateDeviceApiKeyUseCase
+GET    /api/v1/device-keys/{patientId}         # Lista — ListDeviceApiKeysUseCase
+DELETE /api/v1/device-keys/{patientId}/{keyId} # Revoca — RevokeDeviceApiKeyUseCase
+```
+
+### 23.4 Importación (sin JWT)
+
+```
+POST /api/v1/glucose/import
+X-Device-Api-Key: dbc_...
+```
+
+Pública a nivel de `PublicEndpoints`/filtro JWT — igual que `/api/v1/auth/**`, un bridge desatendido no puede hacer login interactivo. `ImportGlucoseReadingsUseCaseImpl` valida la key manualmente (existe, no revocada), resuelve el `patientId` a partir de ella (nunca viaja en el request, evitando que una key robada de un paciente sirva para inyectar datos en otro), aplica un rate limit propio por key (`rate_limit.device_import_per_hour` = 300, mucho más generoso que el límite manual de 20/hora — un CGM real reporta cada 5 minutos) y construye cada `GlucoseReading` directamente con `GlucoseReading.create(...)` (no reutiliza `RegisterGlucoseReadingUseCase` a propósito, para no heredar su rate limit pensado para entrada manual). Cada lectura queda con `deviceSource` = el label de la key.
+
+### 23.5 Limitación conocida
+
+No hay ningún bridge real (Nightscout, Dexcom, etc.) que efectivamente use esta API todavía — es infraestructura preparada, validada end-to-end con `curl` simulando un dispositivo, pero sin una integración real conectada al otro extremo.
 
 ---
 
