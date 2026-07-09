@@ -10,6 +10,7 @@ import com.diabecare.domain.service.CycleStatisticsService;
 import com.diabecare.domain.service.ExerciseLabelService;
 import com.diabecare.domain.service.GlucoseExportService;
 import com.diabecare.domain.service.MedicalCalculatorService;
+import com.diabecare.domain.service.MedicationReminderTimeResolver;
 import com.diabecare.domain.service.MenstrualCycleGuidanceService;
 import com.diabecare.domain.service.MetadataLabelService;
 import com.diabecare.domain.service.PatternDetectorService;
@@ -83,5 +84,10 @@ public class DomainConfig {
     @Bean
     public AccountExportService accountExportService() {
         return new AccountExportService();
+    }
+
+    @Bean
+    public MedicationReminderTimeResolver medicationReminderTimeResolver() {
+        return new MedicationReminderTimeResolver();
     }
 }

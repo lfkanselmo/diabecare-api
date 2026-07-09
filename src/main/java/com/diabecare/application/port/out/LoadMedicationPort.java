@@ -10,4 +10,7 @@ public interface LoadMedicationPort {
     Optional<Medication> findById(UUID medicationId);
     List<Medication> findActiveByPatientId(UUID patientId);
     List<Medication> findAllByPatientId(UUID patientId);
+    // Cruza todos los pacientes: usado por el job de recordatorios, no por endpoints
+    // por-paciente.
+    List<Medication> findAllActive();
 }

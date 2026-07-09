@@ -40,4 +40,10 @@ public class MedicationPersistenceAdapter implements SaveMedicationPort, LoadMed
         return repository.findByPatientId(patientId)
                 .stream().map(mapper::toDomain).toList();
     }
+
+    @Override
+    public List<Medication> findAllActive() {
+        return repository.findByActiveTrue()
+                .stream().map(mapper::toDomain).toList();
+    }
 }
