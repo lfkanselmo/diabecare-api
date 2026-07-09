@@ -23,17 +23,28 @@ public class RegisterVitalSignUseCaseImpl implements RegisterVitalSignUseCase {
                 .orElseThrow(() -> new PatientNotFoundException(
                         command.patientId().toString()));
 
-        VitalSign vitalSign = VitalSign.create(
-                command.patientId(),
-                command.weightKg(),
-                command.heightCm(),
-                command.systolicBp(),
-                command.diastolicBp(),
-                command.heartRate(),
-                command.hba1c(),
-                command.measuredAt(),
-                command.notes()
-        );
+        VitalSign vitalSign = command.clientVitalId() != null
+                ? VitalSign.createWithId(
+                        command.clientVitalId(),
+                        command.patientId(),
+                        command.weightKg(),
+                        command.heightCm(),
+                        command.systolicBp(),
+                        command.diastolicBp(),
+                        command.heartRate(),
+                        command.hba1c(),
+                        command.measuredAt(),
+                        command.notes())
+                : VitalSign.create(
+                        command.patientId(),
+                        command.weightKg(),
+                        command.heightCm(),
+                        command.systolicBp(),
+                        command.diastolicBp(),
+                        command.heartRate(),
+                        command.hba1c(),
+                        command.measuredAt(),
+                        command.notes());
         return saveVitalSignPort.save(vitalSign);
     }
 }

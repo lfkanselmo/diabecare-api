@@ -12,5 +12,6 @@ public record GlucoseReadingResponse(
         String status,
         LocalDateTime measuredAt,
         String notes,
-        String deviceSource
+        String deviceSource,
+        LocalDateTime updatedAt
 ) {}

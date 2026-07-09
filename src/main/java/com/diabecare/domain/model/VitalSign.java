@@ -35,13 +35,30 @@ public class VitalSign {
             LocalDateTime measuredAt,
             String notes
     ) {
+        return createWithId(UUID.randomUUID(), patientId, weightKg, heightCm, systolicBp,
+                diastolicBp, heartRate, hba1c, measuredAt, notes);
+    }
+
+    /** Igual que {@link #create}, honrando un ID provisto por el cliente — ver {@link GlucoseReading#createWithId}. */
+    public static VitalSign createWithId(
+            UUID vitalId,
+            UUID patientId,
+            BigDecimal weightKg,
+            BigDecimal heightCm,
+            Integer systolicBp,
+            Integer diastolicBp,
+            Integer heartRate,
+            BigDecimal hba1c,
+            LocalDateTime measuredAt,
+            String notes
+    ) {
         validateWeight(weightKg);
         validateBloodPressure(systolicBp, diastolicBp);
         validateHeartRate(heartRate);
         validateHba1c(hba1c);
 
         return VitalSign.builder()
-                .vitalId(UUID.randomUUID())
+                .vitalId(vitalId)
                 .patientId(patientId)
                 .weightKg(weightKg)
                 .heightCm(heightCm)

@@ -46,8 +46,11 @@ public class NutritionController {
         currentUserResolver.verifyOwnsPatient(patientId, authentication);
 
         List<MealItem> items = request.items().stream()
-                .map(i -> MealItem.create(i.foodName(), i.quantityGrams(),
-                        i.calories(), i.carbohydrates(), i.proteins(), i.fats(), i.foodCode()))
+                .map(i -> i.mealItemId() != null
+                        ? MealItem.createWithId(i.mealItemId(), i.foodName(), i.quantityGrams(),
+                                i.calories(), i.carbohydrates(), i.proteins(), i.fats(), i.foodCode())
+                        : MealItem.create(i.foodName(), i.quantityGrams(),
+                                i.calories(), i.carbohydrates(), i.proteins(), i.fats(), i.foodCode()))
                 .toList();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(
@@ -57,7 +60,8 @@ public class NutritionController {
                                 MealType.valueOf(request.mealType()),
                                 request.consumedAt(),
                                 request.notes(),
-                                items
+                                items,
+                                request.mealId()
                         ))));
     }
 

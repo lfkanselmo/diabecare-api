@@ -17,7 +17,8 @@ public interface RegisterGlucoseReadingUseCase {
             ReadingType readingType,
             LocalDateTime measuredAt,
             String notes,
-            String deviceSource
+            String deviceSource,
+            UUID clientReadingId
     ) {}
 
     GlucoseReading execute(Command command);

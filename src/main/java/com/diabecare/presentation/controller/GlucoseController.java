@@ -40,6 +40,7 @@ public class GlucoseController {
     private final GlucoseReadingPresentationMapper readingMapper;
     private final GlucoseStatsPresentationMapper statsMapper;
     private final ExportGlucoseDataUseCase exportGlucoseDataUseCase;
+    private final SyncGlucoseReadingsUseCase syncGlucoseReadingsUseCase;
     private final CurrentUserResolver currentUserResolver;
 
     @PostMapping("/{patientId}")
@@ -58,7 +59,8 @@ public class GlucoseController {
                         ReadingType.valueOf(request.readingType()),
                         request.measuredAt(),
                         request.notes(),
-                        request.deviceSource()
+                        request.deviceSource(),
+                        request.readingId()
                 ));
         return ResponseEntity.status(HttpStatus.CREATED).body(readingMapper.toResponse(reading));
     }
@@ -91,6 +93,26 @@ public class GlucoseController {
                 .toList();
 
         return ResponseEntity.ok(new GlucoseCorrelationResponse(readings, markers));
+    }
+
+    /**
+     * Cursor de sincronización incremental para el motor offline-first del móvil —
+     * distinto de /history (que pagina por fecha de medición para la UI web).
+     * {@code since} ausente trae el historial completo (primera sincronización).
+     */
+    @GetMapping("/{patientId}/sync")
+    public ResponseEntity<List<GlucoseReadingResponse>> sync(
+            @PathVariable UUID patientId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime since,
+            Authentication authentication) {
+
+        currentUserResolver.verifyCanReadPatient(patientId, authentication);
+
+        List<GlucoseReadingResponse> readings = syncGlucoseReadingsUseCase.execute(patientId, since).stream()
+                .map(readingMapper::toResponse)
+                .toList();
+
+        return ResponseEntity.ok(readings);
     }
 
     @GetMapping("/{patientId}/stats")

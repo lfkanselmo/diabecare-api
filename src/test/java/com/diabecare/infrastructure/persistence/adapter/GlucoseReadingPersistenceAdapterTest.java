@@ -157,6 +157,23 @@ class GlucoseReadingPersistenceAdapterTest {
         }
     }
 
+    @Nested
+    @DisplayName("findByPatientIdUpdatedAfter")
+    class FindByPatientIdUpdatedAfter {
+
+        @Test
+        @DisplayName("delega al repositorio y mapea el resultado a dominio")
+        void delegatesToRepositoryAndMapsResultToDomain() {
+            LocalDateTime since = LocalDateTime.now().minusDays(1);
+            when(repository.findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc(patientId, since))
+                    .thenReturn(List.of(validEntity()));
+
+            List<GlucoseReading> result = adapter.findByPatientIdUpdatedAfter(patientId, since);
+
+            assertThat(result).hasSize(1);
+        }
+    }
+
     // ── Helper ───────────────────────────────────────────────────────────────
 
     private GlucoseReadingEntity validEntity() {

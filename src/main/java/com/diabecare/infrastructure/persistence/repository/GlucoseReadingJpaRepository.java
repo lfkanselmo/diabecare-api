@@ -19,4 +19,11 @@ public interface GlucoseReadingJpaRepository extends JpaRepository<GlucoseReadin
             UUID patientId, LocalDateTime from, LocalDateTime to, Pageable pageable);
     Optional<GlucoseReadingEntity> findFirstByPatientIdOrderByMeasuredAtDesc(UUID patientId);
     void deleteByPatientId(UUID patientId);
+
+    // Cursor de sincronización incremental para el móvil offline-first: todo lo
+    // que cambió (creado o editado) desde la última vez que el cliente sincronizó,
+    // sin importar measuredAt — a diferencia del historial, que filtra por fecha
+    // de medición para la UI, esto filtra por fecha de modificación.
+    List<GlucoseReadingEntity> findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc(
+            UUID patientId, LocalDateTime since);
 }

@@ -56,7 +56,7 @@ class RegisterExerciseUseCaseTest {
 
             RegisterExerciseUseCase.Command command = new RegisterExerciseUseCase.Command(
                     patientId, ExerciseType.WALKING, ExerciseIntensity.MODERATE,
-                    30, null, LocalDateTime.now().minusMinutes(5), null);
+                    30, null, LocalDateTime.now().minusMinutes(5), null, null);
 
             assertThatThrownBy(() -> useCase.execute(command))
                     .isInstanceOf(RateLimitExceededException.class);
@@ -71,7 +71,7 @@ class RegisterExerciseUseCaseTest {
 
             RegisterExerciseUseCase.Command command = new RegisterExerciseUseCase.Command(
                     patientId, ExerciseType.WALKING, ExerciseIntensity.MODERATE,
-                    30, null, LocalDateTime.now().minusMinutes(5), null);
+                    30, null, LocalDateTime.now().minusMinutes(5), null, null);
 
             assertThatThrownBy(() -> useCase.execute(command))
                     .isInstanceOf(PatientNotFoundException.class);
@@ -87,13 +87,29 @@ class RegisterExerciseUseCaseTest {
 
             RegisterExerciseUseCase.Command command = new RegisterExerciseUseCase.Command(
                     patientId, ExerciseType.WALKING, ExerciseIntensity.MODERATE,
-                    60, "caminata en el parque", LocalDateTime.now().minusMinutes(5), null);
+                    60, "caminata en el parque", LocalDateTime.now().minusMinutes(5), null, null);
 
             ExerciseLog result = useCase.execute(command);
 
             assertThat(result.getExerciseType()).isEqualTo(ExerciseType.WALKING);
             assertThat(result.getDurationMinutes()).isEqualTo(60);
             assertThat(result.getCaloriesBurned()).isEqualByComparingTo(BigDecimal.valueOf(245));
+        }
+
+        @Test
+        @DisplayName("honra el ID provisto por el cliente en vez de generar uno nuevo")
+        void honorsClientProvidedId() {
+            when(loadPatientPort.findById(patientId)).thenReturn(Optional.of(validPatient()));
+            when(saveExerciseLogPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            UUID clientExerciseId = UUID.randomUUID();
+
+            RegisterExerciseUseCase.Command command = new RegisterExerciseUseCase.Command(
+                    patientId, ExerciseType.WALKING, ExerciseIntensity.MODERATE,
+                    60, null, LocalDateTime.now().minusMinutes(5), null, clientExerciseId);
+
+            ExerciseLog result = useCase.execute(command);
+
+            assertThat(result.getExerciseId()).isEqualTo(clientExerciseId);
         }
 
         @Test
@@ -104,7 +120,7 @@ class RegisterExerciseUseCaseTest {
 
             RegisterExerciseUseCase.Command command = new RegisterExerciseUseCase.Command(
                     patientId, ExerciseType.RUNNING, ExerciseIntensity.HIGH,
-                    45, null, LocalDateTime.now().minusMinutes(5), BigDecimal.valueOf(500));
+                    45, null, LocalDateTime.now().minusMinutes(5), BigDecimal.valueOf(500), null);
 
             ExerciseLog result = useCase.execute(command);
 

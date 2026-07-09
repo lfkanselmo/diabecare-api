@@ -49,7 +49,8 @@ public class VitalSignController {
                                 request.heartRate(),
                                 request.hba1c(),
                                 request.measuredAt(),
-                                request.notes()
+                                request.notes(),
+                                request.vitalId()
                         ))));
     }
 

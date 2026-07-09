@@ -49,7 +49,7 @@ class RegisterVitalSignUseCaseTest {
 
             RegisterVitalSignUseCase.Command command = new RegisterVitalSignUseCase.Command(
                     patientId, BigDecimal.valueOf(70), BigDecimal.valueOf(170),
-                    120, 80, 70, BigDecimal.valueOf(6.5), LocalDateTime.now().minusMinutes(5), null);
+                    120, 80, 70, BigDecimal.valueOf(6.5), LocalDateTime.now().minusMinutes(5), null, null);
 
             assertThatThrownBy(() -> useCase.execute(command))
                     .isInstanceOf(PatientNotFoundException.class);
@@ -65,13 +65,30 @@ class RegisterVitalSignUseCaseTest {
 
             RegisterVitalSignUseCase.Command command = new RegisterVitalSignUseCase.Command(
                     patientId, BigDecimal.valueOf(70), BigDecimal.valueOf(170),
-                    120, 80, 70, BigDecimal.valueOf(6.5), LocalDateTime.now().minusMinutes(5), "control rutinario");
+                    120, 80, 70, BigDecimal.valueOf(6.5), LocalDateTime.now().minusMinutes(5), "control rutinario", null);
 
             VitalSign result = useCase.execute(command);
 
             assertThat(result.getWeightKg()).isEqualByComparingTo(BigDecimal.valueOf(70));
             assertThat(result.getSystolicBp()).isEqualTo(120);
             assertThat(result.getNotes()).isEqualTo("control rutinario");
+        }
+
+        @Test
+        @DisplayName("honra el ID provisto por el cliente en vez de generar uno nuevo")
+        void honorsClientProvidedId() {
+            when(loadPatientPort.findById(patientId)).thenReturn(Optional.of(validPatient()));
+            when(saveVitalSignPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            UUID clientVitalId = UUID.randomUUID();
+
+            RegisterVitalSignUseCase.Command command = new RegisterVitalSignUseCase.Command(
+                    patientId, BigDecimal.valueOf(70), BigDecimal.valueOf(170),
+                    120, 80, 70, BigDecimal.valueOf(6.5), LocalDateTime.now().minusMinutes(5),
+                    null, clientVitalId);
+
+            VitalSign result = useCase.execute(command);
+
+            assertThat(result.getVitalId()).isEqualTo(clientVitalId);
         }
 
         @Test
@@ -82,7 +99,7 @@ class RegisterVitalSignUseCaseTest {
 
             RegisterVitalSignUseCase.Command command = new RegisterVitalSignUseCase.Command(
                     patientId, BigDecimal.valueOf(70), null, null, null, null, null,
-                    LocalDateTime.now().minusMinutes(5), null);
+                    LocalDateTime.now().minusMinutes(5), null, null);
 
             VitalSign result = useCase.execute(command);
 

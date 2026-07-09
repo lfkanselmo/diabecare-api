@@ -56,7 +56,7 @@ class RegisterMealEntryUseCaseTest {
                     .when(rateLimitService).checkMealLimit(patientId);
 
             RegisterMealEntryUseCase.Command command = new RegisterMealEntryUseCase.Command(
-                    patientId, MealType.BREAKFAST, LocalDateTime.now().minusMinutes(5), null, List.of());
+                    patientId, MealType.BREAKFAST, LocalDateTime.now().minusMinutes(5), null, List.of(), null);
 
             assertThatThrownBy(() -> useCase.execute(command))
                     .isInstanceOf(RateLimitExceededException.class);
@@ -70,7 +70,7 @@ class RegisterMealEntryUseCaseTest {
             when(loadPatientPort.findById(patientId)).thenReturn(Optional.empty());
 
             RegisterMealEntryUseCase.Command command = new RegisterMealEntryUseCase.Command(
-                    patientId, MealType.BREAKFAST, LocalDateTime.now().minusMinutes(5), null, List.of());
+                    patientId, MealType.BREAKFAST, LocalDateTime.now().minusMinutes(5), null, List.of(), null);
 
             assertThatThrownBy(() -> useCase.execute(command))
                     .isInstanceOf(PatientNotFoundException.class);
@@ -91,7 +91,7 @@ class RegisterMealEntryUseCaseTest {
 
             RegisterMealEntryUseCase.Command command = new RegisterMealEntryUseCase.Command(
                     patientId, MealType.BREAKFAST, LocalDateTime.now().minusMinutes(5),
-                    "desayuno completo", List.of(item1, item2));
+                    "desayuno completo", List.of(item1, item2), null);
 
             MealEntry result = useCase.execute(command);
 
@@ -101,13 +101,28 @@ class RegisterMealEntryUseCaseTest {
         }
 
         @Test
+        @DisplayName("honra el ID provisto por el cliente en vez de generar uno nuevo")
+        void honorsClientProvidedId() {
+            when(loadPatientPort.findById(patientId)).thenReturn(Optional.of(validPatient()));
+            when(saveMealEntryPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            UUID clientMealId = UUID.randomUUID();
+
+            RegisterMealEntryUseCase.Command command = new RegisterMealEntryUseCase.Command(
+                    patientId, MealType.BREAKFAST, LocalDateTime.now().minusMinutes(5), null, List.of(), clientMealId);
+
+            MealEntry result = useCase.execute(command);
+
+            assertThat(result.getMealId()).isEqualTo(clientMealId);
+        }
+
+        @Test
         @DisplayName("registra correctamente una comida sin items")
         void registersMealWithoutItems() {
             when(loadPatientPort.findById(patientId)).thenReturn(Optional.of(validPatient()));
             when(saveMealEntryPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             RegisterMealEntryUseCase.Command command = new RegisterMealEntryUseCase.Command(
-                    patientId, MealType.SNACK, LocalDateTime.now().minusMinutes(5), null, List.of());
+                    patientId, MealType.SNACK, LocalDateTime.now().minusMinutes(5), null, List.of(), null);
 
             MealEntry result = useCase.execute(command);
 

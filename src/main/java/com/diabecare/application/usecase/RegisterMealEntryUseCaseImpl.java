@@ -27,12 +27,18 @@ public class RegisterMealEntryUseCaseImpl implements RegisterMealEntryUseCase {
                 .orElseThrow(() -> new PatientNotFoundException(
                         command.patientId().toString()));
 
-        MealEntry entry = MealEntry.create(
-                command.patientId(),
-                command.mealType(),
-                command.consumedAt(),
-                command.notes()
-        );
+        MealEntry entry = command.clientMealId() != null
+                ? MealEntry.createWithId(
+                        command.clientMealId(),
+                        command.patientId(),
+                        command.mealType(),
+                        command.consumedAt(),
+                        command.notes())
+                : MealEntry.create(
+                        command.patientId(),
+                        command.mealType(),
+                        command.consumedAt(),
+                        command.notes());
         command.items().forEach(entry::addItem);
         return saveMealEntryPort.save(entry);
     }

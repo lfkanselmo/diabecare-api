@@ -2,8 +2,10 @@ package com.diabecare.presentation.controller;
 
 import com.diabecare.application.port.out.LoadPatientPort;
 import com.diabecare.application.port.out.LoadUserPort;
+import com.diabecare.domain.model.MobilePlatform;
 import com.diabecare.infrastructure.push.PushNotificationService;
 import com.diabecare.infrastructure.config.DiabeCareProperties;
+import com.diabecare.presentation.dto.request.MobilePushTokenRequest;
 import com.diabecare.presentation.dto.request.PushSubscriptionRequest;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -51,6 +53,28 @@ public class PushController {
     @DeleteMapping("/unsubscribe")
     public ResponseEntity<Void> unsubscribe(@RequestBody Map<String, String> body) {
         pushService.unsubscribe(body.get("endpoint"));
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/mobile-token")
+    public ResponseEntity<Void> registerMobileToken(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody MobilePushTokenRequest request) {
+
+        loadUserPort.findUserIdByEmail(userDetails.getUsername())
+                .flatMap(loadPatientPort::findByUserId)
+                .ifPresent(patient -> pushService.registerMobileToken(
+                        patient.getPatientId(),
+                        request.deviceToken(),
+                        MobilePlatform.valueOf(request.platform())
+                ));
+
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/mobile-token")
+    public ResponseEntity<Void> unregisterMobileToken(@RequestBody Map<String, String> body) {
+        pushService.unregisterMobileToken(body.get("deviceToken"));
         return ResponseEntity.ok().build();
     }
 }

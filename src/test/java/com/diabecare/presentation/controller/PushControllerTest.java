@@ -3,6 +3,7 @@ package com.diabecare.presentation.controller;
 import com.diabecare.application.port.out.LoadPatientPort;
 import com.diabecare.application.port.out.LoadUserPort;
 import com.diabecare.domain.model.DiabetesType;
+import com.diabecare.domain.model.MobilePlatform;
 import com.diabecare.domain.model.Patient;
 import com.diabecare.infrastructure.config.DiabeCareProperties;
 import com.diabecare.infrastructure.push.PushNotificationService;
@@ -47,7 +48,7 @@ class PushControllerTest {
     void setUp() {
         DiabeCareProperties properties = new DiabeCareProperties(
                 new DiabeCareProperties.Security(new String[]{"http://localhost:4200"}, 10),
-                new DiabeCareProperties.Push("test-vapid-public-key", "test-vapid-private-key", "mailto:test@test.com"),
+                new DiabeCareProperties.Push("test-vapid-public-key", "test-vapid-private-key", "mailto:test@test.com", ""),
                 new DiabeCareProperties.Mail("", "DiabeCare <onboarding@resend.dev>", "http://localhost:4200"));
         PushController controller = new PushController(pushService, loadUserPort, loadPatientPort, properties);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
@@ -126,6 +127,51 @@ class PushControllerTest {
                     .andExpect(status().isOk());
 
             verify(pushService).unsubscribe("https://push.example.com/sub");
+        }
+    }
+
+    @Nested @DisplayName("POST /api/v1/push/mobile-token")
+    class RegisterMobileToken {
+        @Test @DisplayName("retorna 200 y delega el registro cuando el paciente existe")
+        void returns200AndDelegatesRegistrationWhenPatientExists() throws Exception {
+            UUID userId = UUID.randomUUID();
+            Patient patient = Patient.create(userId, "Ana García", LocalDate.of(1990, 5, 10),
+                    DiabetesType.TYPE_1, LocalDate.of(2010, 1, 1), BigDecimal.valueOf(165));
+            UUID realPatientId = patient.getPatientId();
+
+            when(loadUserPort.findUserIdByEmail("ana@example.com")).thenReturn(Optional.of(userId));
+            when(loadPatientPort.findByUserId(userId)).thenReturn(Optional.of(patient));
+            authenticateAs("ana@example.com");
+
+            mockMvc.perform(post("/api/v1/push/mobile-token")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"deviceToken\":\"fcm-token-1\",\"platform\":\"ANDROID\"}"))
+                    .andExpect(status().isOk());
+
+            verify(pushService).registerMobileToken(realPatientId, "fcm-token-1", MobilePlatform.ANDROID);
+        }
+
+        @Test @DisplayName("retorna 400 cuando el device token está en blanco")
+        void returns400WhenDeviceTokenIsBlank() throws Exception {
+            mockMvc.perform(post("/api/v1/push/mobile-token")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"deviceToken\":\"\",\"platform\":\"ANDROID\"}"))
+                    .andExpect(status().isBadRequest());
+
+            verifyNoInteractions(pushService);
+        }
+    }
+
+    @Nested @DisplayName("DELETE /api/v1/push/mobile-token")
+    class UnregisterMobileToken {
+        @Test @DisplayName("retorna 200 y delega la eliminación al servicio")
+        void returns200AndDelegatesUnregistration() throws Exception {
+            mockMvc.perform(delete("/api/v1/push/mobile-token")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"deviceToken\":\"fcm-token-1\"}"))
+                    .andExpect(status().isOk());
+
+            verify(pushService).unregisterMobileToken("fcm-token-1");
         }
     }
 }

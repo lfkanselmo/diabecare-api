@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public record RegisterGlucoseRequest(
         @NotNull @DecimalMin("20") @DecimalMax("600")
@@ -21,5 +22,10 @@ public record RegisterGlucoseRequest(
         LocalDateTime measuredAt,
 
         String notes,
-        String deviceSource
+        String deviceSource,
+
+        // Opcional — un cliente offline-first (app móvil) genera su propio UUID para
+        // poder mostrar el registro antes de sincronizar. Si no viene, el servidor
+        // genera uno (comportamiento actual, usado por el frontend web).
+        UUID readingId
 ) {}

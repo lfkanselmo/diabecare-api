@@ -65,7 +65,7 @@ class RegisterGlucoseReadingUseCaseTest {
                 GlucoseUnit.MG_DL,
                 ReadingType.FASTING,
                 LocalDateTime.now().minusMinutes(10),
-                null, null
+                null, null, null
         );
 
         GlucoseReading result = useCase.execute(command);
@@ -74,6 +74,27 @@ class RegisterGlucoseReadingUseCaseTest {
         assertThat(result.getValueInMgDl()).isEqualByComparingTo(new BigDecimal("120"));
         assertThat(result.getReadingType()).isEqualTo(ReadingType.FASTING);
         verify(saveGlucoseReadingPort, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("honra el ID provisto por el cliente en vez de generar uno nuevo")
+    void honorsClientProvidedId() {
+        when(loadPatientPort.findById(patientId)).thenReturn(Optional.of(patient));
+        when(saveGlucoseReadingPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        UUID clientId = UUID.randomUUID();
+
+        var command = new RegisterGlucoseReadingUseCaseImpl.Command(
+                patientId,
+                new BigDecimal("120"),
+                GlucoseUnit.MG_DL,
+                ReadingType.FASTING,
+                LocalDateTime.now().minusMinutes(10),
+                null, null, clientId
+        );
+
+        GlucoseReading result = useCase.execute(command);
+
+        assertThat(result.getReadingId()).isEqualTo(clientId);
     }
 
     @Test
@@ -87,7 +108,7 @@ class RegisterGlucoseReadingUseCaseTest {
                 GlucoseUnit.MG_DL,
                 ReadingType.FASTING,
                 LocalDateTime.now().minusMinutes(10),
-                null, null
+                null, null, null
         );
 
         assertThatThrownBy(() -> useCase.execute(command))
@@ -104,7 +125,7 @@ class RegisterGlucoseReadingUseCaseTest {
 
         var command = new RegisterGlucoseReadingUseCaseImpl.Command(
                 patientId, new BigDecimal("120"), GlucoseUnit.MG_DL,
-                ReadingType.RANDOM, LocalDateTime.now().minusMinutes(5), null, null
+                ReadingType.RANDOM, LocalDateTime.now().minusMinutes(5), null, null, null
         );
 
         GlucoseReading result = useCase.execute(command);
@@ -119,7 +140,7 @@ class RegisterGlucoseReadingUseCaseTest {
 
         var command = new RegisterGlucoseReadingUseCaseImpl.Command(
                 patientId, new BigDecimal("250"), GlucoseUnit.MG_DL,
-                ReadingType.RANDOM, LocalDateTime.now().minusMinutes(5), null, null
+                ReadingType.RANDOM, LocalDateTime.now().minusMinutes(5), null, null, null
         );
 
         GlucoseReading result = useCase.execute(command);
@@ -133,7 +154,7 @@ class RegisterGlucoseReadingUseCaseTest {
 
         var command = new RegisterGlucoseReadingUseCaseImpl.Command(
                 patientId, new BigDecimal("120"), GlucoseUnit.MG_DL,
-                ReadingType.RANDOM, LocalDateTime.now().plusHours(1), null, null
+                ReadingType.RANDOM, LocalDateTime.now().plusHours(1), null, null, null
         );
 
         assertThatThrownBy(() -> useCase.execute(command))

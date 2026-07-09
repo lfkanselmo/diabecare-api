@@ -61,4 +61,10 @@ public class GlucoseReadingPersistenceAdapter implements SaveGlucoseReadingPort,
     public void deleteById(UUID readingId) {
         repository.deleteById(readingId);
     }
+
+    @Override
+    public List<GlucoseReading> findByPatientIdUpdatedAfter(UUID patientId, LocalDateTime since) {
+        return repository.findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc(patientId, since)
+                .stream().map(mapper::toDomain).toList();
+    }
 }

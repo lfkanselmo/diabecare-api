@@ -29,6 +29,20 @@ public class MealItem {
             BigDecimal fats,
             String foodCode
     ) {
+        return createWithId(UUID.randomUUID(), foodName, quantityGrams, calories, carbohydrates, proteins, fats, foodCode);
+    }
+
+    /** Igual que {@link #create}, honrando un ID provisto por el cliente — ver {@link GlucoseReading#createWithId}. */
+    public static MealItem createWithId(
+            UUID mealItemId,
+            String foodName,
+            BigDecimal quantityGrams,
+            BigDecimal calories,
+            BigDecimal carbohydrates,
+            BigDecimal proteins,
+            BigDecimal fats,
+            String foodCode
+    ) {
         validateFoodName(foodName);
         validateQuantity(quantityGrams);
         validateRequiredNonNegative(calories, "Las calorías");
@@ -37,7 +51,7 @@ public class MealItem {
         validateOptionalNonNegative(fats, "Las grasas");
 
         return MealItem.builder()
-                .mealItemId(UUID.randomUUID())
+                .mealItemId(mealItemId)
                 .foodName(foodName)
                 .quantityGrams(quantityGrams)
                 .calories(calories)

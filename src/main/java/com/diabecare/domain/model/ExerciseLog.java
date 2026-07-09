@@ -29,6 +29,20 @@ public class ExerciseLog {
             String notes,
             LocalDateTime performedAt,
             BigDecimal caloriesBurnedOverride) {
+        return createWithId(UUID.randomUUID(), patientId, exerciseType, intensity,
+                durationMinutes, notes, performedAt, caloriesBurnedOverride);
+    }
+
+    /** Igual que {@link #create}, honrando un ID provisto por el cliente — ver {@link GlucoseReading#createWithId}. */
+    public static ExerciseLog createWithId(
+            UUID exerciseId,
+            UUID patientId,
+            ExerciseType exerciseType,
+            ExerciseIntensity intensity,
+            Integer durationMinutes,
+            String notes,
+            LocalDateTime performedAt,
+            BigDecimal caloriesBurnedOverride) {
 
         if (durationMinutes == null || durationMinutes <= 0) {
             throw new InvalidExerciseLogException("La duración debe ser mayor a 0 minutos");
@@ -48,7 +62,7 @@ public class ExerciseLog {
                 : estimateCalories(exerciseType, intensity, durationMinutes);
 
         return ExerciseLog.builder()
-                .exerciseId(UUID.randomUUID())
+                .exerciseId(exerciseId)
                 .patientId(patientId)
                 .exerciseType(exerciseType)
                 .intensity(intensity)

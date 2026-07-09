@@ -30,6 +30,17 @@ public class MealEntry {
             LocalDateTime consumedAt,
             String notes
     ) {
+        return createWithId(UUID.randomUUID(), patientId, mealType, consumedAt, notes);
+    }
+
+    /** Igual que {@link #create}, honrando un ID provisto por el cliente — ver {@link GlucoseReading#createWithId}. */
+    public static MealEntry createWithId(
+            UUID mealId,
+            UUID patientId,
+            MealType mealType,
+            LocalDateTime consumedAt,
+            String notes
+    ) {
         if (consumedAt == null) {
             throw new InvalidMealEntryException("La fecha de la comida es obligatoria");
         }
@@ -38,7 +49,7 @@ public class MealEntry {
         }
 
         return MealEntry.builder()
-                .mealId(UUID.randomUUID())
+                .mealId(mealId)
                 .patientId(patientId)
                 .mealType(mealType)
                 .consumedAt(consumedAt)

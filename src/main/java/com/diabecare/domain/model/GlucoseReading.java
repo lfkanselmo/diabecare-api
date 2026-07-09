@@ -23,8 +23,32 @@ public class GlucoseReading {
     private LocalDateTime measuredAt;
     private String notes;
     private String deviceSource;
+    // Solo poblado al leer desde persistencia (ver GlucoseReadingPersistenceMapper) —
+    // es el cursor que usa el motor de sync offline del móvil, no un dato de dominio
+    // que se establezca al crear una lectura nueva.
+    private LocalDateTime updatedAt;
 
     public static GlucoseReading create(
+            UUID patientId,
+            BigDecimal value,
+            GlucoseUnit unit,
+            ReadingType readingType,
+            LocalDateTime measuredAt,
+            String notes,
+            String deviceSource
+    ) {
+        return createWithId(UUID.randomUUID(), patientId, value, unit, readingType, measuredAt, notes, deviceSource);
+    }
+
+    /**
+     * Igual que {@link #create}, pero honra un ID provisto por el cliente en vez de
+     * generar uno nuevo — necesario para creación offline (el cliente móvil genera el
+     * UUID localmente para poder mostrar el registro antes de sincronizar; reenviar la
+     * misma creación tras un reintento de red debe ser un no-op idempotente, no un
+     * duplicado).
+     */
+    public static GlucoseReading createWithId(
+            UUID readingId,
             UUID patientId,
             BigDecimal value,
             GlucoseUnit unit,
@@ -37,7 +61,7 @@ public class GlucoseReading {
         validateMeasuredAt(measuredAt);
 
         return GlucoseReading.builder()
-                .readingId(UUID.randomUUID())
+                .readingId(readingId)
                 .patientId(patientId)
                 .value(value)
                 .unit(unit)

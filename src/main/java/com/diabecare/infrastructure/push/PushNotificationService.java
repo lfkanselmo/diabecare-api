@@ -1,6 +1,9 @@
 package com.diabecare.infrastructure.push;
 
+import com.diabecare.application.port.out.MobilePushTokenPort;
 import com.diabecare.application.port.out.PushSubscriptionPort;
+import com.diabecare.domain.model.MobilePlatform;
+import com.diabecare.domain.model.MobilePushToken;
 import com.diabecare.domain.model.PushSubscription;
 import com.diabecare.infrastructure.config.DiabeCareProperties;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +24,7 @@ import java.util.UUID;
 public class PushNotificationService {
 
     private final PushSubscriptionPort subscriptionPort;
+    private final MobilePushTokenPort mobilePushTokenPort;
     private final DiabeCareProperties properties;
 
     static {
@@ -40,7 +44,28 @@ public class PushNotificationService {
         subscriptionPort.deleteByEndpoint(endpoint);
     }
 
+    /**
+     * Registra el device token FCM de la app móvil — paralelo a {@link #subscribe}
+     * (Web Push). Todavía no existe un proyecto de Firebase real conectado; ver
+     * {@link #sendToMobileDevices}.
+     */
+    public void registerMobileToken(UUID patientId, String deviceToken, MobilePlatform platform) {
+        if (mobilePushTokenPort.existsByPatientIdAndDeviceToken(patientId, deviceToken)) {
+            return;
+        }
+        mobilePushTokenPort.save(patientId, deviceToken, platform);
+    }
+
+    public void unregisterMobileToken(String deviceToken) {
+        mobilePushTokenPort.deleteByDeviceToken(deviceToken);
+    }
+
     public void sendToPatient(UUID patientId, String title, String body) {
+        sendToWebSubscriptions(patientId, title, body);
+        sendToMobileDevices(patientId, title, body);
+    }
+
+    private void sendToWebSubscriptions(UUID patientId, String title, String body) {
         List<PushSubscription> subs = subscriptionPort.findAllByPatientId(patientId);
         if (subs.isEmpty()) return;
 
@@ -65,6 +90,32 @@ public class PushNotificationService {
                 }
             }
         }
+    }
+
+    /**
+     * Envío nativo (FCM) a la futura app móvil — sin usuarios reales todavía, así
+     * que no hay proyecto de Firebase configurado ({@code FCM_SERVICE_ACCOUNT_JSON}
+     * vacío). Se degrada igual que {@code ResendEmailAdapter} sin API key: registra
+     * a quién se le habría enviado y no intenta la llamada. Cuando exista un
+     * proyecto de Firebase real, este método debe firmar un JWT con la service
+     * account (OAuth2 bearer) y llamar a la FCM HTTP v1 API — mismo patrón
+     * java.net.http ya usado en el resto del proyecto, sin agregar el SDK de
+     * Firebase Admin solo para esto.
+     */
+    private void sendToMobileDevices(UUID patientId, String title, String body) {
+        List<MobilePushToken> tokens = mobilePushTokenPort.findAllByPatientId(patientId);
+        if (tokens.isEmpty()) return;
+
+        String serviceAccountJson = properties.push().fcmServiceAccountJson();
+        if (serviceAccountJson == null || serviceAccountJson.isBlank()) {
+            log.warn("FCM_SERVICE_ACCOUNT_JSON no configurada; push móvil no enviado a {} dispositivo(s) " +
+                    "del paciente {}.", tokens.size(), patientId);
+            return;
+        }
+
+        // TODO: sin proyecto de Firebase real conectado todavía — implementar el
+        // envío real (JWT firmado + FCM HTTP v1 API) cuando exista uno.
+        log.warn("Envío FCM real no implementado todavía — {} dispositivo(s) no notificados.", tokens.size());
     }
 
     protected PushService buildPushService() throws java.security.GeneralSecurityException {

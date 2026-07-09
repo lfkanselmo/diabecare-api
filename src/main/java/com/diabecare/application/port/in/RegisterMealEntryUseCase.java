@@ -15,7 +15,8 @@ public interface RegisterMealEntryUseCase {
             MealType mealType,
             LocalDateTime consumedAt,
             String notes,
-            List<MealItem> items
+            List<MealItem> items,
+            UUID clientMealId
     ) {}
 
     MealEntry execute(Command command);

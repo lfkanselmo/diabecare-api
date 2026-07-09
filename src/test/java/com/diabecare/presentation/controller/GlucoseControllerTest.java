@@ -52,6 +52,8 @@ class GlucoseControllerTest {
     @Mock
     private ExportGlucoseDataUseCase exportGlucoseDataUseCase;
     @Mock
+    private SyncGlucoseReadingsUseCase syncGlucoseReadingsUseCase;
+    @Mock
     private CurrentUserResolver currentUserResolver;
 
     private MockMvc mockMvc;
@@ -63,7 +65,7 @@ class GlucoseControllerTest {
                 registerGlucoseReadingUseCase, getGlucoseHistoryUseCase, getGlucoseStatsUseCase,
                 getLatestGlucoseReadingUseCase, deleteGlucoseReadingUseCase, getAgpProfileUseCase,
                 new GlucoseReadingPresentationMapperImpl(), new GlucoseStatsPresentationMapperImpl(),
-                exportGlucoseDataUseCase, currentUserResolver);
+                exportGlucoseDataUseCase, syncGlucoseReadingsUseCase, currentUserResolver);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -125,6 +127,35 @@ class GlucoseControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.readings.content").isEmpty())
                     .andExpect(jsonPath("$.mealMarkers").isEmpty());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/glucose/{patientId}/sync")
+    class GetSync {
+
+        @Test
+        @DisplayName("retorna 200 con las lecturas modificadas desde el cursor dado")
+        void returns200WithReadingsModifiedSinceGivenCursor() throws Exception {
+            GlucoseReading reading = GlucoseReading.create(
+                    patientId, BigDecimal.valueOf(120), GlucoseUnit.MG_DL,
+                    ReadingType.RANDOM, LocalDateTime.now().minusMinutes(5), null, null);
+            when(syncGlucoseReadingsUseCase.execute(eq(patientId), any())).thenReturn(List.of(reading));
+
+            mockMvc.perform(get("/api/v1/glucose/{patientId}/sync", patientId)
+                            .param("since", "2026-06-01T00:00:00"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].readingId").value(reading.getReadingId().toString()));
+        }
+
+        @Test
+        @DisplayName("retorna 200 con el historial completo cuando no se envía since")
+        void returns200WithFullHistoryWhenSinceIsAbsent() throws Exception {
+            when(syncGlucoseReadingsUseCase.execute(eq(patientId), isNull())).thenReturn(List.of());
+
+            mockMvc.perform(get("/api/v1/glucose/{patientId}/sync", patientId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$").isEmpty());
         }
     }
 

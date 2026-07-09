@@ -16,7 +16,8 @@ public record DiabeCareProperties(
     public record Push(
             String vapidPublicKey,
             String vapidPrivateKey,
-            String vapidSubject
+            String vapidSubject,
+            String fcmServiceAccountJson
     ) {}
 
     public record Mail(

@@ -17,7 +17,8 @@ public interface RegisterVitalSignUseCase {
             Integer heartRate,
             BigDecimal hba1c,
             LocalDateTime measuredAt,
-            String notes
+            String notes,
+            UUID clientVitalId
     ) {}
 
     VitalSign execute(Command command);

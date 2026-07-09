@@ -1,6 +1,9 @@
 package com.diabecare.infrastructure.push;
 
+import com.diabecare.application.port.out.MobilePushTokenPort;
 import com.diabecare.application.port.out.PushSubscriptionPort;
+import com.diabecare.domain.model.MobilePlatform;
+import com.diabecare.domain.model.MobilePushToken;
 import com.diabecare.domain.model.PushSubscription;
 import com.diabecare.infrastructure.config.DiabeCareProperties;
 import nl.martijndwars.webpush.Notification;
@@ -30,6 +33,8 @@ class PushNotificationServiceTest {
     @Mock
     private PushSubscriptionPort subscriptionPort;
     @Mock
+    private MobilePushTokenPort mobilePushTokenPort;
+    @Mock
     private DiabeCareProperties properties;
     @Mock
     private PushService mockPushService;
@@ -39,7 +44,7 @@ class PushNotificationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PushNotificationService(subscriptionPort, properties) {
+        service = new PushNotificationService(subscriptionPort, mobilePushTokenPort, properties) {
             @Override
             protected PushService buildPushService() {
                 return mockPushService;
@@ -86,8 +91,70 @@ class PushNotificationServiceTest {
     }
 
     @Nested
+    @DisplayName("registerMobileToken")
+    class RegisterMobileToken {
+
+        @Test
+        @DisplayName("guarda el token cuando no existe previamente para ese dispositivo")
+        void savesTokenWhenNotExisting() {
+            when(mobilePushTokenPort.existsByPatientIdAndDeviceToken(patientId, "token-1")).thenReturn(false);
+
+            service.registerMobileToken(patientId, "token-1", MobilePlatform.ANDROID);
+
+            verify(mobilePushTokenPort).save(patientId, "token-1", MobilePlatform.ANDROID);
+        }
+
+        @Test
+        @DisplayName("no guarda un token duplicado para el mismo paciente y dispositivo")
+        void doesNotSaveDuplicateToken() {
+            when(mobilePushTokenPort.existsByPatientIdAndDeviceToken(patientId, "token-1")).thenReturn(true);
+
+            service.registerMobileToken(patientId, "token-1", MobilePlatform.ANDROID);
+
+            verify(mobilePushTokenPort, never()).save(any(), any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("unregisterMobileToken")
+    class UnregisterMobileToken {
+
+        @Test
+        @DisplayName("elimina el token por su valor")
+        void deletesTokenByValue() {
+            service.unregisterMobileToken("token-1");
+
+            verify(mobilePushTokenPort).deleteByDeviceToken("token-1");
+        }
+    }
+
+    @Nested
     @DisplayName("sendToPatient")
     class SendToPatient {
+
+        @Test
+        @DisplayName("no intenta enviar push movil cuando el paciente no tiene tokens registrados")
+        void doesNotAttemptMobilePushWhenNoTokens() {
+            when(subscriptionPort.findAllByPatientId(patientId)).thenReturn(List.of());
+            when(mobilePushTokenPort.findAllByPatientId(patientId)).thenReturn(List.of());
+
+            assertThatCode(() -> service.sendToPatient(patientId, "Título", "Mensaje"))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("no lanza excepción cuando hay tokens móviles pero FCM no está configurado")
+        void doesNotThrowWhenMobileTokensExistButFcmNotConfigured() {
+            when(subscriptionPort.findAllByPatientId(patientId)).thenReturn(List.of());
+            when(mobilePushTokenPort.findAllByPatientId(patientId)).thenReturn(List.of(
+                    MobilePushToken.builder().id(UUID.randomUUID()).patientId(patientId)
+                            .deviceToken("token-1").platform(MobilePlatform.ANDROID)
+                            .createdAt(LocalDateTime.now()).build()));
+            when(properties.push()).thenReturn(new DiabeCareProperties.Push(null, null, null, null));
+
+            assertThatCode(() -> service.sendToPatient(patientId, "Título", "Mensaje"))
+                    .doesNotThrowAnyException();
+        }
 
         @Test
         @DisplayName("no hace nada cuando el paciente no tiene suscripciones")

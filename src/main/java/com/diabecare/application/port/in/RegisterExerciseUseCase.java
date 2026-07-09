@@ -17,7 +17,8 @@ public interface RegisterExerciseUseCase {
             Integer durationMinutes,
             String notes,
             LocalDateTime performedAt,
-            BigDecimal caloriesBurnedOverride
+            BigDecimal caloriesBurnedOverride,
+            UUID clientExerciseId
     ) {}
 
     ExerciseLog execute(Command command);

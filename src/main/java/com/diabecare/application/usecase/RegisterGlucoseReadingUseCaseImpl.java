@@ -27,15 +27,24 @@ public class RegisterGlucoseReadingUseCaseImpl implements RegisterGlucoseReading
                 .orElseThrow(() -> new PatientNotFoundException(
                         command.patientId().toString()));
 
-        GlucoseReading reading = GlucoseReading.create(
-                command.patientId(),
-                command.value(),
-                command.unit(),
-                command.readingType(),
-                command.measuredAt(),
-                command.notes(),
-                command.deviceSource()
-        );
+        GlucoseReading reading = command.clientReadingId() != null
+                ? GlucoseReading.createWithId(
+                        command.clientReadingId(),
+                        command.patientId(),
+                        command.value(),
+                        command.unit(),
+                        command.readingType(),
+                        command.measuredAt(),
+                        command.notes(),
+                        command.deviceSource())
+                : GlucoseReading.create(
+                        command.patientId(),
+                        command.value(),
+                        command.unit(),
+                        command.readingType(),
+                        command.measuredAt(),
+                        command.notes(),
+                        command.deviceSource());
         return saveGlucoseReadingPort.save(reading);
     }
 }

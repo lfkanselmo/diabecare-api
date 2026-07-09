@@ -21,4 +21,7 @@ public interface LoadGlucoseReadingPort {
                                                      LocalDateTime to,
                                                      Pageable pageable);
     void deleteById(UUID readingId);
+
+    // Ver GlucoseReadingJpaRepository.findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc.
+    List<GlucoseReading> findByPatientIdUpdatedAfter(UUID patientId, LocalDateTime since);
 }

@@ -49,7 +49,8 @@ public class ExerciseController {
                         request.durationMinutes(),
                         request.notes(),
                         performedAt,
-                        request.caloriesBurned()
+                        request.caloriesBurned(),
+                        request.exerciseId()
                 ));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(log));
