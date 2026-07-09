@@ -1,12 +1,12 @@
 # DiabeCare API
 
-Backend de DiabeCare — aplicación de control de salud para pacientes diabéticos. Construido con Java 17 y Spring Boot 3.5 siguiendo arquitectura hexagonal.
+Backend de DiabeCare — aplicación de control de salud para pacientes diabéticos. Construido con Java 21 y Spring Boot 3.5 siguiendo arquitectura hexagonal.
 
 ---
 
 ## Requisitos
 
-- Java 17+
+- Java 21+
 - Maven 3.8+
 - PostgreSQL 15+
 - Docker (opcional, solo para los tests de integración con Testcontainers)

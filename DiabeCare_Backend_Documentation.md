@@ -5,7 +5,7 @@
 | Campo | Valor |
 |---|---|
 | Versión de este documento | 5.0.0 |
-| Tecnología | Java 17 + Spring Boot 3.5.14 |
+| Tecnología | Java 21 + Spring Boot 3.5.14 |
 | Arquitectura | Hexagonal + Clean Architecture |
 | Base de datos | PostgreSQL 15+ |
 | Documentación API | OpenAPI 3.0 / Swagger UI |
@@ -67,7 +67,7 @@ DiabeCare es una aplicación web para pacientes diabéticos que permite registra
 
 | Componente | Tecnología |
 |---|---|
-| Backend | Java 17 + Spring Boot 3.5.14 |
+| Backend | Java 21 + Spring Boot 3.5.14 |
 | Frontend | Angular (documento separado) |
 | Base de datos | PostgreSQL 15+ |
 | Seguridad | Spring Security 6 + JWT (jjwt 0.12.5) |
