@@ -26,10 +26,17 @@ public class CacheConfig {
                         .recordStats()
                         .build());
 
+        // TTL más largo: los datos de un producto empacado (Open Food Facts) cambian
+        // con mucha menor frecuencia que el catálogo propio de alimentos genéricos.
+        CaffeineCache openFoodFactsLookupCache = new CaffeineCache("openFoodFactsLookup",
+                Caffeine.newBuilder()
+                        .maximumSize(1000)
+                        .expireAfterWrite(7, TimeUnit.DAYS)
+                        .recordStats()
+                        .build());
+
         SimpleCacheManager manager = new SimpleCacheManager();
-        manager.setCaches(List.of(foodsCache));
+        manager.setCaches(List.of(foodsCache, openFoodFactsLookupCache));
         return manager;
     }
-
-
 }
