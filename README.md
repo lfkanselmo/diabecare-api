@@ -9,6 +9,7 @@ Backend de DiabeCare — aplicación de control de salud para pacientes diabéti
 - Java 17+
 - Maven 3.8+
 - PostgreSQL 15+
+- Docker (opcional, solo para los tests de integración con Testcontainers)
 
 ---
 
@@ -31,21 +32,26 @@ GRANT ALL PRIVILEGES ON DATABASE diabecare_dev TO diabecare_user;
 | `DB_PASSWORD` | `diabecare_pass` | Contraseña de la BD |
 | `JWT_SECRET_KEY` | `clave-secreta-minimo-256-bits` | Clave JWT |
 | `JWT_ACCESS_EXPIRY_MS` | `900000` | Expiración access token (15 min) |
-| `JWT_REFRESH_EXPIRY_MS` | `604800000` | Expiración refresh token (7 días) — implementado esta sesión, ver más abajo |
+| `JWT_REFRESH_EXPIRY_MS` | `604800000` | Expiración refresh token (7 días) |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` | Orígenes permitidos |
 | `BCRYPT_STRENGTH` | `12` | Factor de costo BCrypt |
 | `VAPID_PUBLIC_KEY` | `<base64>` | Clave pública VAPID para push |
 | `VAPID_PRIVATE_KEY` | `<base64>` | Clave privada VAPID para push |
 | `VAPID_SUBJECT` | `mailto:admin@diabecare.com` | Sujeto VAPID |
+| `RESEND_API_KEY` | `re_xxx` | API key de Resend, para el correo de recuperación de contraseña |
+| `RESEND_FROM_ADDRESS` | `DiabeCare <onboarding@resend.dev>` | Remitente de los correos transaccionales |
+| `FRONTEND_BASE_URL` | `http://localhost:4200` | Base para construir el link de reseteo de contraseña que se envía por correo |
 
-> **Nota**: los parámetros clínicos (umbrales de alertas, patrones, rate limiting) ya **no** se configuran por variables de entorno ni `application.yml`. Viven en la tabla `system_config` y se gestionan vía API (`GET/POST /api/v1/system-config`) o directamente en BD — ver sección 9 de `DIABECARE.md`.
+> **`.env.example` desactualizado**: el archivo `.env.example` del repo solo lista `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET_KEY`, `JWT_ACCESS_EXPIRY_MS`, `JWT_REFRESH_EXPIRY_MS` y `CORS_ALLOWED_ORIGINS` — le faltan `BCRYPT_STRENGTH`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS` y `FRONTEND_BASE_URL`, todas ya consumidas por `application.yaml`. Actualizarlo antes de repartirlo a un nuevo desarrollador.
+
+> **Nota**: los parámetros clínicos (umbrales de alertas, patrones, rate limiting) **no** se configuran por variables de entorno ni `application.yaml`. Viven en la tabla `system_config` y se gestionan vía API (`GET/POST /api/v1/system-config`) o directamente en BD — ver sección 12 de `DiabeCare_Backend_Documentation.md`.
 
 ### 3. Configurar en IntelliJ
 
 1. **Run** → **Edit Configurations** → `DiabeCareApiApplication`
 2. **Environment variables**:
 ```
-DB_URL=jdbc:postgresql://localhost:5432/diabecare_dev;DB_USERNAME=diabecare_user;DB_PASSWORD=diabecare_pass;JWT_SECRET_KEY=mi-clave-secreta-de-minimo-32-caracteres;VAPID_PUBLIC_KEY=...;VAPID_PRIVATE_KEY=...;VAPID_SUBJECT=mailto:admin@diabecare.com
+DB_URL=jdbc:postgresql://localhost:5432/diabecare_dev;DB_USERNAME=diabecare_user;DB_PASSWORD=diabecare_pass;JWT_SECRET_KEY=mi-clave-secreta-de-minimo-32-caracteres;VAPID_PUBLIC_KEY=...;VAPID_PRIVATE_KEY=...;VAPID_SUBJECT=mailto:admin@diabecare.com;RESEND_API_KEY=...;FRONTEND_BASE_URL=http://localhost:4200
 ```
 3. **VM options**: `-Xms512m -Xmx1024m`
 
@@ -69,9 +75,7 @@ mvn clean compile
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-El servidor arranca en `http://localhost:8080`. Las migraciones Flyway se ejecutan automáticamente, incluyendo el seed de **635 alimentos** (colombianos, latinoamericanos e internacionales — V4+V12+V13), los 16 parámetros iniciales de `system_config`, y la tabla `refresh_tokens` (V15).
-
-> **Pendiente de verificación**: las migraciones V12, V13 y V15 (alimentos + refresh tokens) y el código de autenticación de esta sesión **no se compilaron ni ejecutaron contra una base de datos real** durante su desarrollo — no había Maven ni PostgreSQL disponibles en el entorno de trabajo. La primera vez que levantes el backend tras actualizar, verifica con atención que las migraciones se apliquen sin error.
+El servidor arranca en `http://localhost:8080`. Las migraciones Flyway (V1 a V23, sin V14 — ver sección 17.1 de la documentación técnica) se ejecutan automáticamente, incluyendo el seed de **635 alimentos** (colombianos, latinoamericanos e internacionales), los 20 parámetros de `system_config`, y las tablas de sesiones, cuidadores, consentimiento, recuperación de contraseña y recordatorios de glucosa.
 
 ---
 
@@ -82,16 +86,14 @@ mvn test
 mvn test -Dtest=MedicalCalculatorServiceTest
 ```
 
-| Suite | Tests |
-|---|---|
-| `MedicalCalculatorServiceTest` | 14 |
-| `RegisterGlucoseReadingUseCaseTest` | 5 |
-| `GetAlertsUseCaseTest` | 4 |
-| `ArchitectureTest` | 7 |
-| `DiabecareApiApplicationTests` | 1 |
-| **Total** | **31** |
+Suite completa verificada: **1035 tests en 173 clases, 0 fallos, 0 errores, 0 omitidos** (`mvn test` limpio). Incluye:
 
-> No hay tests para el flujo de refresh tokens (`RefreshAccessTokenUseCase`, `LogoutCurrentSessionUseCase`, `LogoutAllSessionsUseCase`, `RefreshTokenAdapter`) ni para los handlers de seguridad nuevos (`RestAuthenticationEntryPoint`, `RestAccessDeniedHandler`) — pendiente para una sesión de testing dedicada.
+- Tests unitarios (JUnit 5 + Mockito + AssertJ) de use cases, servicios de dominio y calculadoras
+- Tests de arquitectura con **ArchUnit** (14 reglas)
+- Tests de integración con **Testcontainers** (PostgreSQL real, no H2) para adaptadores de persistencia
+- Smoke test de arranque del contexto completo (`DiabecareApiApplicationTests`)
+
+Cobertura medida con **JaCoCo** (`mvn verify` genera el reporte en `target/site/jacoco/index.html`).
 
 ---
 
@@ -112,39 +114,44 @@ Arquitectura **Hexagonal (Ports & Adapters)**:
 ```
 com.diabecare
 ├── domain/
-│   ├── model/              # Entidades de dominio (incluye User, SystemConfig,
-│   │                       #   AuditLog, RefreshToken)
-│   ├── exception/          # Excepciones de dominio (incluye InvalidRefreshTokenException)
-│   └── service/            # Domain Services (MedicalCalculatorService,
-│                            #   PatternDetectorService, WeeklySummaryService,
-│                            #   GlucoseExportService, AuditService,
-│                            #   RateLimitService)
+│   ├── model/              # Patient, User, GlucoseReading, MealEntry, VitalSign,
+│   │                       #   Medication, ExerciseLog, MenstrualCycle + CycleDayEntry,
+│   │                       #   Alert, AuditLog, SystemConfig, RefreshToken,
+│   │                       #   CaregiverInvite, CaregiverLink, PasswordResetToken,
+│   │                       #   GlucoseReminder, AgpHourlyBucket, AccountExportData, ReportData
+│   ├── exception/          # Excepciones de dominio (InvalidRefreshTokenException,
+│   │                       #   InvalidCaregiverInviteException, InvalidPasswordResetTokenException,
+│   │                       #   InvalidRoleException, OpenCycleConflictException,
+│   │                       #   UnauthorizedResourceAccessException, UserNotFoundException...)
+│   └── service/             # MedicalCalculatorService, PatternDetectorService,
+│                            #   WeeklySummaryService, GlucoseExportService, AuditService,
+│                            #   RateLimitService, AgpProfileService, ExerciseLabelService,
+│                            #   MenstrualCycleGuidanceService
 ├── application/
-│   ├── port/in/             # Casos de uso (interfaces) — incluye LoginUseCase,
-│   │                        #   RegisterUseCase, RefreshAccessTokenUseCase,
-│   │                        #   LogoutCurrentSessionUseCase, LogoutAllSessionsUseCase,
-│   │                        #   GetActiveSessionsUseCase, SuspendAccountUseCase,
-│   │                        #   DeleteAccountUseCase
-│   ├── port/out/            # Puertos de salida — incluye AuthenticateUserPort,
-│   │                        #   GenerateTokenPort, RefreshTokenPort,
-│   │                        #   MessageResolverPort, SystemConfigPort
-│   └── usecase/              # Implementaciones de casos de uso
+│   ├── port/in/             # ~55 casos de uso (uno por operación) — auth, cuenta,
+│   │                        #   cuidadores, recordatorios, ciclo menstrual, admin, etc.
+│   ├── port/out/             # Puertos de salida — Load*/Save*Port, GenerateTokenPort,
+│   │                         #   RefreshTokenPort, CaregiverInvitePort, PasswordResetTokenPort,
+│   │                         #   SendEmailPort, MessageResolverPort, SystemConfigPort
+│   └── usecase/              # Implementaciones (1 clase por operación)
 ├── infrastructure/
 │   ├── persistence/         # JPA, repositorios, adaptadores, mappers
 │   ├── security/             # JWT, filtros, AuthenticateUserAdapter,
 │   │                        #   GenerateTokenAdapter, RefreshTokenAdapter
 │   │   └── handler/          #   RestAuthenticationEntryPoint, RestAccessDeniedHandler
-│   ├── config/                # RateLimitConfig, MessageSourceConfig, MessageResolverAdapter
+│   ├── config/                # RateLimitConfig, MessageSourceConfig, MessageResolverAdapter,
+│   │                          #   CacheConfig
+│   ├── food/                  # OpenFoodFactsAdapter (búsqueda por código de barras)
+│   ├── mail/                   # ResendEmailAdapter (SendEmailPort)
 │   ├── push/                 # PushNotificationService, PushNotificationAdapter
-│   ├── pdf/                   # Generador de reportes PDF
-│   └── scheduler/             # WeeklySummaryScheduler
+│   ├── pdf/                   # PdfReportAdapter + MedicalReportPdfGenerator (OpenPDF)
+│   └── scheduler/             # WeeklySummaryScheduler, GlucoseReminderScheduler,
+│                              #   MedicationReminderScheduler, AccountPurgeScheduler
 └── presentation/
-    ├── controller/           # Controllers REST — incluye AccountController,
-    │                         #   SystemConfigController, AuthController (ampliado)
+    ├── controller/           # 21 Controllers REST (ver módulos abajo)
     ├── dto/                   # Requests y responses
     ├── util/                  # DeviceLabelResolver
-    └── advice/                # GlobalExceptionHandler (incluye ACCOUNT_SUSPENDED,
-                                #   INVALID_CREDENTIALS, INVALID_REFRESH_TOKEN)
+    └── advice/                # GlobalExceptionHandler
 ```
 
 Las reglas de arquitectura se verifican automáticamente con **ArchUnit**.
@@ -155,23 +162,27 @@ Las reglas de arquitectura se verifican automáticamente con **ArchUnit**.
 
 | Módulo | Descripción |
 |---|---|
-| Glucosa | Registro, historial, estadísticas TIR/HbA1c/CV, exportación CSV/JSON |
-| Nutrición | Registro de comidas, **635 alimentos** colombianos, latinoamericanos e internacionales |
-| Medicamentos | CRUD medicamentos, auditoría de cambios |
+| Glucosa | Registro, historial, estadísticas TIR/HbA1c/CV, perfil AGP por hora, exportación CSV/JSON |
+| Nutrición | Registro de comidas, **635 alimentos**, búsqueda por código de barras vía OpenFoodFacts |
+| Medicamentos | CRUD medicamentos, auditoría de cambios, recordatorios automáticos por frecuencia |
 | Signos vitales | Peso, presión, HbA1c medida, tendencia |
 | Ejercicio | Registro de actividad física por tipo e intensidad |
 | Alertas | 7 tipos + 4 alertas de patrón + alertas de ciclo menstrual, mensajes vía `MessageResolverPort` |
-| Ciclo menstrual | 5 fases con correlación glucémica y predicción |
+| Ciclo menstrual | Registro día a día (flujo + síntomas), fases y calendario, correlación glucémica |
 | Calculadora insulina | Dosis de corrección y dosis para comida |
-| Reportes | PDF con secciones clínicas para el médico |
+| Reportes | PDF con secciones clínicas para el médico (OpenPDF) |
 | Push notifications | Web Push API con claves VAPID, suscripciones por paciente |
+| Recordatorios de glucosa | Horarios configurables por el paciente, notificación push cada minuto que corresponda |
 | Resumen semanal | Job automático lunes 8am (America/Bogota) via `@Scheduled` |
 | Auditoría | Registro de cambios en perfil y medicamentos |
-| Rate limiting | Bucket4j + Caffeine, límites configurables en `system_config` |
-| **Configuración del sistema** | `system_config`: 16 parámetros clínicos/operacionales en BD, recargables sin redeploy |
-| **Gestión de cuenta** | Suspender (`enabled=false`) y eliminar (anonimiza email) la propia cuenta — revoca automáticamente todos los refresh tokens |
-| **Autenticación** | `LoginUseCase`/`RegisterUseCase` orquestan; JWT incluye claim `userId` |
-| **Sesiones multi-dispositivo (nuevo)** | Refresh tokens con rotación, revocables; logout de la sesión actual o de todos los dispositivos; listado de sesiones activas con etiqueta de dispositivo |
+| Rate limiting | Bucket4j + Caffeine, límites configurables en `system_config` (incluye login, registro y recuperación de contraseña por IP) |
+| Configuración del sistema | `system_config`: 20 parámetros clínicos/operacionales en BD, recargables sin redeploy |
+| Gestión de cuenta | Suspender, eliminar (con purga definitiva a los 30 días) y exportar los propios datos |
+| Autenticación | Login/registro con JWT + refresh tokens rotables, sesiones multi-dispositivo, recuperación de contraseña por correo (Resend) |
+| Cuidadores | Compartir el propio historial en modo solo lectura vía código de invitación de un solo uso |
+| Consentimiento | Registro de aceptación de la política de tratamiento de datos (Ley 1581 de 2012, Habeas Data) |
+| Panel de administración | Listado de usuarios y asignación de rol `ADMIN`, protegido con `@PreAuthorize` |
+| Internacionalización | `messages.properties` (español) + `messages_en.properties` (inglés), resueltos automáticamente según el header `Accept-Language` |
 
 ---
 
@@ -190,9 +201,19 @@ Las reglas de arquitectura se verifican automáticamente con **ArchUnit**.
 | V9 | audit_log |
 | V10 | system_config (16 parámetros) |
 | V11 | users: suspended_at, deleted_at |
-| V12 | **+315 alimentos** (total 487): FRUTOS_SECOS, EMBUTIDOS, CONDIMENTOS, COMIDA_RAPIDA, PANADERIA |
-| V13 | **+148 alimentos** (total 635): VEGANOS, INDUSTRIALES + ampliación de COMIDA_RAPIDA/PREPARADOS (internacional + calle colombiana) |
-| V15 | Tabla `refresh_tokens` (sesión multi-dispositivo). *No existe V14 — numeración no consecutiva intencional, ver `DIABECARE.md`* |
+| V12 | +315 alimentos (total 487): FRUTOS_SECOS, EMBUTIDOS, CONDIMENTOS, COMIDA_RAPIDA, PANADERIA |
+| V13 | +148 alimentos (total 635): VEGANOS, INDUSTRIALES + ampliación de COMIDA_RAPIDA/PREPARADOS |
+| V15 | Tabla `refresh_tokens` (sesión multi-dispositivo) |
+| V16 | Rediseño del seguimiento de ciclo menstrual: registro día a día (`cycle_day_entries`, `cycle_day_symptoms`) en vez de un único registro por ciclo |
+| V17 | Parámetro `alert.days_before_open_cycle_alert` en `system_config` |
+| V18 | Parámetros `rate_limit.login_per_hour` y `rate_limit.register_per_hour` |
+| V19 | Compartir con cuidadores: `caregiver_invites`, `caregiver_links` |
+| V20 | Consentimiento: `users.terms_accepted_at`, `users.terms_version` |
+| V21 | Tabla `password_reset_tokens` |
+| V22 | Parámetro `rate_limit.forgot_password_per_hour` |
+| V23 | Tabla `glucose_reminders` |
+
+*No existe V14 — durante el desarrollo se generó una migración adicional de alimentos que se fusionó dentro de V13 antes de aplicarse; Flyway no exige numeración consecutiva, solo orden creciente.*
 
 ---
 
@@ -205,32 +226,37 @@ GET  /api/v1/system-config           # Lista todos los parámetros
 POST /api/v1/system-config/reload    # Recarga la caché desde BD
 ```
 
-**Categorías:** `ALERTS`, `PATTERNS`, `RATE_LIMIT`. Ver detalle completo en `DIABECARE.md` sección "Parametrización".
+**Categorías:** `ALERTS`, `PATTERNS`, `RATE_LIMIT`. 20 parámetros en total. Ver detalle completo en `DiabeCare_Backend_Documentation.md` sección 12.
 
 ---
 
 ## Gestión de cuenta
 
 ```
-PATCH  /api/v1/account/{userId}/suspend   # Suspende (enabled=false, suspended_at) + revoca todos los refresh tokens
-DELETE /api/v1/account/{userId}           # Elimina (anonimiza email, deleted_at) + revoca todos los refresh tokens
+PATCH  /api/v1/account/{userId}/suspend   # Suspende (enabled=false) + revoca todos los refresh tokens
+DELETE /api/v1/account/{userId}           # Marca para eliminación (anonimiza email) + revoca sesiones
+GET    /api/v1/account/{userId}/export    # Exporta todos los datos del paciente (perfil, lecturas, comidas, etc.)
 ```
 
-Al intentar iniciar sesión con una cuenta suspendida: `403 ACCOUNT_SUSPENDED`. Credenciales incorrectas: `401 INVALID_CREDENTIALS`.
+Una cuenta eliminada se purga definitivamente de la base de datos 30 días después (`AccountPurgeScheduler`, diario 3am America/Bogota) — antes de eso, `DeleteAccountUseCase` solo la anonimiza y desactiva.
+
+Al intentar iniciar sesión con una cuenta suspendida o eliminada: `403 ACCOUNT_SUSPENDED`. Credenciales incorrectas: `401 INVALID_CREDENTIALS`.
 
 ---
 
-## Autenticación y sesiones (esta sesión)
+## Autenticación y sesiones
 
 ### Access token + refresh token
 
 ```
-POST /api/v1/auth/login      # → accessToken (15 min) + refreshToken (7 días)
-POST /api/v1/auth/register   # → accessToken (15 min) + refreshToken (7 días)
-POST /api/v1/auth/refresh    # refreshToken vigente → nuevo accessToken + nuevo refreshToken (rotación)
+POST /api/v1/auth/login             # → accessToken (15 min) + refreshToken (7 días)
+POST /api/v1/auth/register          # → accessToken (15 min) + refreshToken (7 días)
+POST /api/v1/auth/refresh           # refreshToken vigente → nuevo accessToken + nuevo refreshToken (rotación)
+POST /api/v1/auth/forgot-password   # solicita correo de recuperación (Resend); no revela si el email existe
+POST /api/v1/auth/reset-password    # cambia la contraseña con el token recibido por correo
 ```
 
-El refresh token es un valor aleatorio opaco (no JWT), hasheado con SHA-256 antes de persistirse en `refresh_tokens`. Cada uso lo rota: el token usado se revoca y se emite uno nuevo — un token robado y reutilizado tras ser rotado ya no sirve.
+El refresh token es un valor aleatorio opaco (no JWT), hasheado con SHA-256 antes de persistirse en `refresh_tokens`. Cada uso lo rota: el token usado se revoca y se emite uno nuevo.
 
 ### Logout: sesión actual vs todos los dispositivos
 
@@ -245,21 +271,38 @@ POST /api/v1/auth/logout-all   # { userId }       → revoca TODAS las sesiones 
 GET /api/v1/auth/sessions/{userId}   # Lista dispositivos con sesión activa
 ```
 
-Cada sesión incluye `deviceLabel` (resuelto desde el header `User-Agent`, ej. "Chrome en Windows") y `lastUsedAt`.
+Cada sesión incluye `deviceLabel` (resuelto desde el header `User-Agent`) y `lastUsedAt`.
 
-### Corrección de códigos de estado HTTP
+### Rate limiting de autenticación
 
-Antes de esta sesión, un JWT expirado devolvía `403 Forbidden` (comportamiento default de Spring Security sin `AuthenticationEntryPoint` configurado), mezclándose con el caso real de "autenticado pero sin permiso". Se agregaron `RestAuthenticationEntryPoint` (401 `SESSION_EXPIRED`) y `RestAccessDeniedHandler` (403 `ACCESS_DENIED`) para separar ambos casos correctamente.
-
-Ver `DIABECARE.md` sección "Refresh Tokens y Sesiones Multi-Dispositivo" para el detalle completo de diseño y flujos.
+Login, registro y recuperación de contraseña están limitados por IP (`rate_limit.login_per_hour`=10, `rate_limit.register_per_hour`=5, `rate_limit.forgot_password_per_hour`=5) para frenar fuerza bruta y abuso del correo transaccional.
 
 ---
 
-## Internacionalización (preparación, no implementada)
+## Cuidadores (acceso de solo lectura)
 
-Los mensajes de alertas, patrones y resumen semanal NO están hardcodeados — viven en `src/main/resources/messages.properties` y se resuelven vía `MessageResolverPort` (puerto de dominio) → `MessageResolverAdapter` (usa `ResourceBundleMessageSource` de Spring).
+```
+POST   /api/v1/caregivers/{patientId}/invites        # Genera un código de invitación de un solo uso (vigencia 7 días)
+GET    /api/v1/caregivers/{patientId}/links           # Lista los cuidadores con acceso activo
+DELETE /api/v1/caregivers/{patientId}/links/{linkId}  # Revoca el acceso de un cuidador
+POST   /api/v1/caregivers/redeem                       # El cuidador canjea el código y obtiene acceso
+GET    /api/v1/caregivers/my-patients                  # Lista los pacientes a los que el usuario tiene acceso como cuidador
+```
 
-**Estado actual**: solo existe `messages.properties` (español). No hay selector de idioma ni `LocaleResolver` configurado — la app es monolingüe por decisión consciente (ver `DIABECARE.md`). Esta preparación permite agregar un segundo idioma en el futuro sin tocar lógica de negocio.
+El código de invitación sigue el mismo patrón que el refresh token: valor aleatorio, hash SHA-256 persistido, el valor crudo nunca se guarda.
+
+---
+
+## Internacionalización
+
+Los mensajes de alertas, patrones y resumen semanal se resuelven vía `MessageResolverPort` (puerto de dominio) → `MessageResolverAdapter` (usa `ResourceBundleMessageSource` de Spring).
+
+```
+src/main/resources/messages.properties      # Español (default)
+src/main/resources/messages_en.properties   # Inglés
+```
+
+No hay un `LocaleResolver` custom configurado — Spring Boot usa por defecto `AcceptHeaderLocaleResolver`, así que un cliente que envíe `Accept-Language: en` ya recibe los mensajes en inglés sin configuración adicional.
 
 ---
 
@@ -271,24 +314,28 @@ Los mensajes de alertas, patrones y resumen semanal NO están hardcodeados — v
 | Spring Boot | 3.5.14 |
 | Spring Security | 6.x |
 | PostgreSQL | 15+ |
-| Flyway | 11 |
+| Flyway | 11.7.2 |
 | MapStruct | 1.5.5 |
 | Lombok | 1.18.30 |
-| iText | 8.0.4 |
-| Caffeine Cache | 3.x |
+| OpenPDF | 3.0.5 |
+| Caffeine Cache | 3.2.3 |
 | jjwt | 0.12.5 |
 | Bucket4j | 8.10.1 |
 | web-push | 5.1.1 |
 | BouncyCastle | 1.70 |
-| ArchUnit | 1.3.0 |
-| JUnit 5 + Mockito | — |
+| ArchUnit | 1.2.1 |
+| Testcontainers | 1.19.6 |
+| JaCoCo | 0.8.12 |
+| JUnit 5 + Mockito + AssertJ | — |
 | springdoc-openapi | 2.8.9 |
+
+> **OpenPDF, no iText**: la generación de reportes usa `org.openpdf` (paquete `org.openpdf.text.*`), el fork libre y mantenido de iText 4/5 — no la librería comercial `com.itextpdf` (iText 7+). No confundir ambas al buscar documentación.
 
 ---
 
 ## Performance
 
-Resultados con JMeter — 50 usuarios simultáneos, 5 iteraciones (medidos antes de esta sesión; no se re-midió tras agregar refresh tokens y el catálogo ampliado de alimentos):
+Resultados con JMeter — 50 usuarios simultáneos, 5 iteraciones:
 
 | Endpoint | Promedio | Throughput |
 |---|---|---|
@@ -301,4 +348,4 @@ Resultados con JMeter — 50 usuarios simultáneos, 5 iteraciones (medidos antes
 
 **Throughput total: 110.7 req/s — 0% errores**
 
-> El login ahora hace una escritura adicional (`refresh_tokens`) respecto a la medición original — revalidar el tiempo promedio de 830ms tras esta sesión.
+> Medición histórica, previa a la incorporación de cuidadores, consentimiento, recuperación de contraseña, recordatorios de glucosa y AGP. No se ha vuelto a correr JMeter contra el estado actual del backend.
