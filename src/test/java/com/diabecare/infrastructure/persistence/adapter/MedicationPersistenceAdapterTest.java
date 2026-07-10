@@ -105,7 +105,6 @@ class MedicationPersistenceAdapterTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private MedicationEntity validEntity() {
         return MedicationEntity.builder()

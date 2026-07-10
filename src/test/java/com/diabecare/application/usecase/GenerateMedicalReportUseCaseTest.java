@@ -161,7 +161,6 @@ class GenerateMedicalReportUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private void stubEmptyDataFor(Patient patient) {
         when(loadPatientPort.findById(patientId)).thenReturn(Optional.of(patient));

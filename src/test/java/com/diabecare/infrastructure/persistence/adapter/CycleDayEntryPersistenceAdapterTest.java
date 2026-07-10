@@ -167,7 +167,6 @@ class CycleDayEntryPersistenceAdapterTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private CycleDayEntryEntity entityWithOneSymptom() {
         CycleDaySymptomEntity symptomEntity = CycleDaySymptomEntity.builder()

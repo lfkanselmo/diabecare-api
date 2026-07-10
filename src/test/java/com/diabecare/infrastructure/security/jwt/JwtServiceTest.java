@@ -130,7 +130,6 @@ class JwtServiceTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private UserDetails validUserDetails(String email) {
         return new User(email, "irrelevant-password", true, true, true, true,

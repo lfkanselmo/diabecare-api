@@ -106,7 +106,6 @@ class SendWeeklySummaryUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private Patient validPatient() {
         return Patient.create(

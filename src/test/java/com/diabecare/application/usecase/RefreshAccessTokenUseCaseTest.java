@@ -143,7 +143,6 @@ class RefreshAccessTokenUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private User enabledUser() {
         return User.builder()

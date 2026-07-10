@@ -119,7 +119,6 @@ class PatientPersistenceAdapterTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private PatientEntity validEntity() {
         return PatientEntity.builder()

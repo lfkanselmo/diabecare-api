@@ -164,7 +164,6 @@ class GetMenstrualCycleStatusUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private Patient validPatient() {
         return Patient.create(

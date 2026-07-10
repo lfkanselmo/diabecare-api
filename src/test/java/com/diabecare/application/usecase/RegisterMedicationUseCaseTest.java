@@ -94,7 +94,6 @@ class RegisterMedicationUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private RegisterMedicationUseCase.Command validCommand() {
         return new RegisterMedicationUseCase.Command(

@@ -137,7 +137,6 @@ class RegisterUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private void stubHappyPath() {
         UserRecord userRecord = new UserRecord(userId, "ana@example.com", "PATIENT");

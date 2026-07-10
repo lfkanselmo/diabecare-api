@@ -359,7 +359,6 @@ class AuthControllerTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private Patient validPatient() {
         Patient patient = Patient.create(

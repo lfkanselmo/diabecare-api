@@ -115,7 +115,6 @@ class MedicalReportPdfGeneratorTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private ReportData fullReportData() {
         Patient patient = validPatient();

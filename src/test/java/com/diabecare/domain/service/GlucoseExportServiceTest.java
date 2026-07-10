@@ -108,7 +108,6 @@ class GlucoseExportServiceTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private GlucoseReading readingWith(BigDecimal value, String notes) {
         return GlucoseReading.builder()

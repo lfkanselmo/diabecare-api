@@ -162,7 +162,6 @@ class MealEntryTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private MealEntry mealWithoutItems() {
         return MealEntry.create(patientId, MealType.BREAKFAST, LocalDateTime.now().minusMinutes(5), null);

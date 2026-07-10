@@ -110,7 +110,6 @@ class FoodPersistenceAdapterTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private FoodEntity validFoodEntity() {
         return FoodEntity.builder()

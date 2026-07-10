@@ -415,7 +415,6 @@ class PatientTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private Patient validPatient() {
         return Patient.create(

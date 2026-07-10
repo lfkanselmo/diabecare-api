@@ -145,7 +145,6 @@ class GetDailySummaryUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private Patient validPatient() {
         return Patient.create(

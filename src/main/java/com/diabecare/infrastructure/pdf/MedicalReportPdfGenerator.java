@@ -253,7 +253,6 @@ public class MedicalReportPdfGenerator {
         doc.add(footerText);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Font font(float size, int style, Color color) {
         return new Font(Font.HELVETICA, size, style, color);
@@ -597,7 +596,6 @@ public class MedicalReportPdfGenerator {
         doc.add(guidanceTable);
     }
 
-    // ── Helpers adicionales ───────────────────────────────────────────────────
 
     private String formatMealType(String type) {
         return switch (type) {

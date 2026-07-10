@@ -137,7 +137,6 @@ class LoginUseCaseTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private Patient validPatient() {
         return Patient.create(

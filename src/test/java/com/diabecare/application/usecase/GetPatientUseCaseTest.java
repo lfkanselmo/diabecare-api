@@ -86,7 +86,6 @@ class GetPatientUseCaseTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private Patient validPatient() {
         return Patient.create(

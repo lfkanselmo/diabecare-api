@@ -220,7 +220,6 @@ class UserPersistenceAdapterTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private UserEntity validEntity() {
         return UserEntity.builder()

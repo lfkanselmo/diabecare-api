@@ -201,7 +201,6 @@ class UpdatePatientUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private UpdatePatientUseCase.Command commandFor(UUID patientId) {
         return new UpdatePatientUseCase.Command(

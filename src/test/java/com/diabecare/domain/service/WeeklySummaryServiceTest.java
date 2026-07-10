@@ -137,7 +137,6 @@ class WeeklySummaryServiceTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private Patient validPatient() {
         return Patient.create(

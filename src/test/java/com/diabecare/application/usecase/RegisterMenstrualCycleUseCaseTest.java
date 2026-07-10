@@ -134,7 +134,6 @@ class RegisterMenstrualCycleUseCaseTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private Patient femalePatient() {
         Patient patient = Patient.create(

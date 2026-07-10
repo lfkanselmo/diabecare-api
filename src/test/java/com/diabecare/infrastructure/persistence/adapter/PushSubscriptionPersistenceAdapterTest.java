@@ -121,7 +121,6 @@ class PushSubscriptionPersistenceAdapterTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private PushSubscriptionEntity entityWithEndpoint(String endpoint) {
         return PushSubscriptionEntity.builder()

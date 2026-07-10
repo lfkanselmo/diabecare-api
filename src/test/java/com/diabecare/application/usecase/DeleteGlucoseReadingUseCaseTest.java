@@ -76,7 +76,6 @@ class DeleteGlucoseReadingUseCaseTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private GlucoseReading readingOwnedBy(UUID ownerId) {
         return GlucoseReading.builder()

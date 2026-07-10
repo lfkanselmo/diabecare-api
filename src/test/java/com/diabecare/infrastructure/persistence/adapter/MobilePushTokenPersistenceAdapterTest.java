@@ -112,7 +112,6 @@ class MobilePushTokenPersistenceAdapterTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private MobilePushTokenEntity entityWithToken(String token) {
         return MobilePushTokenEntity.builder()

@@ -125,7 +125,6 @@ class VitalSignPersistenceAdapterTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private VitalSignEntity validEntity() {
         return VitalSignEntity.builder()

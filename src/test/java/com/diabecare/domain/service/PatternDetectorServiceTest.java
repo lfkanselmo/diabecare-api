@@ -237,7 +237,6 @@ class PatternDetectorServiceTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private List<GlucoseReading> readingsOfType(ReadingType type, int... values) {
         return java.util.Arrays.stream(values)

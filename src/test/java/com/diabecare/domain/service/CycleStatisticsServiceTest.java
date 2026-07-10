@@ -109,7 +109,6 @@ class CycleStatisticsServiceTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private MenstrualCycle cycleStarting(LocalDate startDate) {
         return MenstrualCycle.startNewCycle(patientId, startDate, null);

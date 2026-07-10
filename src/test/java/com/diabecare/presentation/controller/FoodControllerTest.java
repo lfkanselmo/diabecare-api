@@ -66,7 +66,6 @@ class FoodControllerTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private Food validFood() {
         return Food.builder()

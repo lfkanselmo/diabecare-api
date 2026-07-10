@@ -192,7 +192,6 @@ class MenstrualCycleControllerTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private GetMenstrualCycleStatusUseCase.CycleStatus validCycleStatus() {
         return new GetMenstrualCycleStatusUseCase.CycleStatus(

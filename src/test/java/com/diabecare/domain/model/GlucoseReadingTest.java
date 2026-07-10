@@ -173,7 +173,6 @@ class GlucoseReadingTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private GlucoseReading readingWith(BigDecimal value, GlucoseUnit unit) {
         return GlucoseReading.builder()

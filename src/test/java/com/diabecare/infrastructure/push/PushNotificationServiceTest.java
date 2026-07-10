@@ -233,7 +233,6 @@ class PushNotificationServiceTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     // Punto EC P-256 sin comprimir real (65 bytes), válido para Subscription.Keys.
     // auth: 16 bytes aleatorios válidos según el protocolo Web Push.

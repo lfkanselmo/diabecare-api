@@ -96,7 +96,6 @@ class SearchFoodUseCaseTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private Food validFood() {
         return Food.builder()

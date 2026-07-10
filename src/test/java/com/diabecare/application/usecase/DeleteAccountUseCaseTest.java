@@ -77,7 +77,6 @@ class DeleteAccountUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private User activeUser() {
         return User.builder()

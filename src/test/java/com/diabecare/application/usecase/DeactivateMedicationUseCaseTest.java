@@ -104,7 +104,6 @@ class DeactivateMedicationUseCaseTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private Medication medicationOwnedBy(UUID ownerId) {
         return Medication.create(

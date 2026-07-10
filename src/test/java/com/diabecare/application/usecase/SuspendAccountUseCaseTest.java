@@ -89,7 +89,6 @@ class SuspendAccountUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private User activeUser() {
         return User.builder()

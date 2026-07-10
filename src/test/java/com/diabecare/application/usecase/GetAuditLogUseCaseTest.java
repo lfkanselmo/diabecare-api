@@ -62,7 +62,6 @@ class GetAuditLogUseCaseTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private AuditLog auditLog() {
         return AuditLog.builder()

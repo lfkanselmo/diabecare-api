@@ -173,7 +173,6 @@ class MealEntryPersistenceAdapterTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private MealEntryEntity validEntity() {
         return MealEntryEntity.builder()

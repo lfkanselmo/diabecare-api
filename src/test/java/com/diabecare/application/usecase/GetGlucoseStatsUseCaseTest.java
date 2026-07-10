@@ -107,7 +107,6 @@ class GetGlucoseStatsUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private Patient validPatient() {
         return Patient.create(

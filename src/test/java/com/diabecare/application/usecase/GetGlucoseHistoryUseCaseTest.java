@@ -106,7 +106,6 @@ class GetGlucoseHistoryUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private GlucoseReading readingAt(LocalDateTime measuredAt) {
         return GlucoseReading.builder()

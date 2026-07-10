@@ -128,7 +128,6 @@ class RegisterExerciseUseCaseTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private Patient validPatient() {
         return Patient.create(

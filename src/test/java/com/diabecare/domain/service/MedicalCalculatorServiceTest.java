@@ -436,7 +436,6 @@ class MedicalCalculatorServiceTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private GlucoseReading reading(double value) {
         return GlucoseReading.builder()

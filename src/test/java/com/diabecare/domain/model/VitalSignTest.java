@@ -193,7 +193,6 @@ class VitalSignTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private VitalSign vitalWith(BigDecimal weightKg, BigDecimal heightCm) {
         return VitalSign.builder()

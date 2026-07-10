@@ -97,7 +97,6 @@ class MenstrualCyclePersistenceAdapterTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private MenstrualCycleEntity validEntity() {
         return MenstrualCycleEntity.builder()

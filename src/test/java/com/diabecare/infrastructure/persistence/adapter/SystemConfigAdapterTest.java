@@ -124,7 +124,6 @@ class SystemConfigAdapterTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private SystemConfigEntity entityWith(String key, String value) {
         return SystemConfigEntity.builder()

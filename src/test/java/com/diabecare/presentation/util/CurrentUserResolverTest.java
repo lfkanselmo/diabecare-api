@@ -206,7 +206,6 @@ class CurrentUserResolverTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private Authentication authenticationWithUserDetails(String email) {
         UserDetails userDetails = new User(email, "hash", true, true, true, true,

@@ -174,7 +174,6 @@ class GlucoseReadingPersistenceAdapterTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private GlucoseReadingEntity validEntity() {
         return GlucoseReadingEntity.builder()

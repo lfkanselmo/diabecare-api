@@ -178,7 +178,6 @@ class CalculateInsulinDoseUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private Patient validPatient() {
         return Patient.create(

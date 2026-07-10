@@ -106,7 +106,6 @@ class GetHba1cTrendUseCaseTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private GlucoseReading readingWith(BigDecimal value) {
         return GlucoseReading.builder()

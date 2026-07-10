@@ -91,7 +91,6 @@ class GetVitalSignsUseCaseTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private VitalSign vitalWith(BigDecimal weightKg) {
         return VitalSign.builder()

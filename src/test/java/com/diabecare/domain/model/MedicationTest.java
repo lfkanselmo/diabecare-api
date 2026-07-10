@@ -133,7 +133,6 @@ class MedicationTest {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
 
     private Medication validMedication() {
         return Medication.create(

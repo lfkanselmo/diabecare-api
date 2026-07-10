@@ -157,7 +157,6 @@ class RedeemCaregiverInviteUseCaseTest {
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private CaregiverInvite validInvite() {
         return CaregiverInvite.builder()
