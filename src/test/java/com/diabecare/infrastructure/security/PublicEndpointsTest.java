@@ -14,6 +14,10 @@ class PublicEndpointsTest {
     @ValueSource(strings = {
             "/api/v1/auth/login",
             "/api/v1/auth/register",
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/logout",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
             "/api/v1/metadata/diabetes-types",
             "/api/v1/metadata/activity-levels",
             "/swagger-ui/index.html",
@@ -39,6 +43,16 @@ class PublicEndpointsTest {
     })
     @DisplayName("matches retorna false para rutas privadas o que solo coinciden parcialmente")
     void matchesReturnsFalseForPrivateOrPartiallyMatchingRoutes(String path) {
+        assertThat(PublicEndpoints.matches(path)).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/api/v1/auth/sessions/11111111-1111-1111-1111-111111111111",
+            "/api/v1/auth/logout-all"
+    })
+    @DisplayName("matches retorna false para los 2 endpoints de /auth que sí requieren JWT (regresión: un wildcard los dejaba pasar sin autenticar)")
+    void matchesReturnsFalseForAuthenticatedAuthEndpoints(String path) {
         assertThat(PublicEndpoints.matches(path)).isFalse();
     }
 
