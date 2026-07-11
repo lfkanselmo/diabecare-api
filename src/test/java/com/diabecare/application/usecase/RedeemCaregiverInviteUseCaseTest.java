@@ -139,6 +139,30 @@ class RedeemCaregiverInviteUseCaseTest {
         }
 
         @Test
+        @DisplayName("reactiva un vínculo revocado en vez de crear uno nuevo (patientId+caregiverUserId es único)")
+        void reactivatesRevokedLinkInsteadOfCreatingANewOne() {
+            CaregiverInvite invite = validInvite();
+            Patient patient = validPatient(patientOwnerUserId);
+            CaregiverLink revoked = CaregiverLink.create(patientId, caregiverUserId);
+            revoked.revoke();
+
+            when(caregiverInvitePort.findByRawCode("ABCD-1234")).thenReturn(Optional.of(invite));
+            when(loadPatientPort.findById(patientId)).thenReturn(Optional.of(patient));
+            when(loadCaregiverLinkPort.existsActive(patientId, caregiverUserId)).thenReturn(false);
+            when(loadCaregiverLinkPort.findByPatientIdAndCaregiverUserId(patientId, caregiverUserId))
+                    .thenReturn(Optional.of(revoked));
+            when(saveCaregiverLinkPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            useCase.execute(new RedeemCaregiverInviteUseCase.Command("ABCD-1234", caregiverUserId));
+
+            var captor = org.mockito.ArgumentCaptor.forClass(CaregiverLink.class);
+            verify(saveCaregiverLinkPort).save(captor.capture());
+            assertThat(captor.getValue().getId()).isEqualTo(revoked.getId());
+            assertThat(captor.getValue().isActive()).isTrue();
+            assertThat(captor.getValue().getRevokedAt()).isNull();
+        }
+
+        @Test
         @DisplayName("lanza InvalidCaregiverInviteException cuando el cuidador ya tiene acceso activo")
         void throwsWhenCaregiverAlreadyHasActiveAccess() {
             CaregiverInvite invite = validInvite();

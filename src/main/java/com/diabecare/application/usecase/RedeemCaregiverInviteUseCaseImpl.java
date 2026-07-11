@@ -50,8 +50,19 @@ public class RedeemCaregiverInviteUseCaseImpl implements RedeemCaregiverInviteUs
 
         caregiverInvitePort.markRedeemed(invite.getId(), command.caregiverUserId());
 
-        CaregiverLink saved = saveCaregiverLinkPort.save(
-                CaregiverLink.create(patient.getPatientId(), command.caregiverUserId()));
+        // Si ya existe un vínculo revocado para este par paciente-cuidador, se
+        // reactiva en vez de crear uno nuevo — (patientId, caregiverUserId) es
+        // único en la base de datos (el check de arriba ya descartó que exista
+        // uno activo).
+        CaregiverLink link = loadCaregiverLinkPort
+                .findByPatientIdAndCaregiverUserId(patient.getPatientId(), command.caregiverUserId())
+                .map(existing -> {
+                    existing.reactivate();
+                    return existing;
+                })
+                .orElseGet(() -> CaregiverLink.create(patient.getPatientId(), command.caregiverUserId()));
+
+        CaregiverLink saved = saveCaregiverLinkPort.save(link);
 
         saveAuditLogPort.save(auditService.buildCreateLog(
                 patient.getPatientId(), "CAREGIVER_LINK", saved.getId()));

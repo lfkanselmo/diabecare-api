@@ -14,6 +14,8 @@ public interface CaregiverLinkJpaRepository extends JpaRepository<CaregiverLinkE
     boolean existsByPatientIdAndCaregiverUserIdAndStatus(
             UUID patientId, UUID caregiverUserId, String status);
 
+    Optional<CaregiverLinkEntity> findByPatientIdAndCaregiverUserId(UUID patientId, UUID caregiverUserId);
+
     List<CaregiverLinkEntity> findByPatientIdAndStatus(UUID patientId, String status);
 
     List<CaregiverLinkEntity> findByCaregiverUserIdAndStatus(UUID caregiverUserId, String status);

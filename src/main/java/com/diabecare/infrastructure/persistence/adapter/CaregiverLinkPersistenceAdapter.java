@@ -41,6 +41,14 @@ public class CaregiverLinkPersistenceAdapter implements SaveCaregiverLinkPort, L
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<CaregiverLink> findByPatientIdAndCaregiverUserId(UUID patientId, UUID caregiverUserId) {
+        return caregiverLinkJpaRepository
+                .findByPatientIdAndCaregiverUserId(patientId, caregiverUserId)
+                .map(this::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<CaregiverLink> findActiveByPatientId(UUID patientId) {
         return caregiverLinkJpaRepository
                 .findByPatientIdAndStatus(patientId, CaregiverLinkStatus.ACTIVE.name())

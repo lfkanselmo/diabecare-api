@@ -12,6 +12,13 @@ public interface LoadCaregiverLinkPort {
 
     boolean existsActive(UUID patientId, UUID caregiverUserId);
 
+    /**
+     * Cualquier vínculo con este paciente y cuidador, sin importar su estado —
+     * usado al canjear una invitación para reactivar un vínculo revocado en vez
+     * de intentar crear uno nuevo (violaría la restricción de unicidad).
+     */
+    Optional<CaregiverLink> findByPatientIdAndCaregiverUserId(UUID patientId, UUID caregiverUserId);
+
     List<CaregiverLink> findActiveByPatientId(UUID patientId);
 
     List<CaregiverLink> findActiveByCaregiverUserId(UUID caregiverUserId);

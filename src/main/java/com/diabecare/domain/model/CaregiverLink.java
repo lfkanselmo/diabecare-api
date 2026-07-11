@@ -35,4 +35,16 @@ public class CaregiverLink {
         this.status = CaregiverLinkStatus.REVOKED;
         this.revokedAt = LocalDateTime.now();
     }
+
+    /**
+     * Reactiva un vínculo previamente revocado (el paciente vuelve a invitar a un
+     * cuidador que ya había quitado) — reutiliza la fila existente en vez de crear
+     * una nueva, porque (patientId, caregiverUserId) tiene una restricción de
+     * unicidad en la base de datos.
+     */
+    public void reactivate() {
+        this.status = CaregiverLinkStatus.ACTIVE;
+        this.createdAt = LocalDateTime.now();
+        this.revokedAt = null;
+    }
 }
