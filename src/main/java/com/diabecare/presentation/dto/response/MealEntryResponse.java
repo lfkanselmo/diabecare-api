@@ -14,7 +14,8 @@ public record MealEntryResponse(
         BigDecimal totalCarbohydrates,
         BigDecimal totalProteins,
         BigDecimal totalFats,
-        List<MealItemResponse> items
+        List<MealItemResponse> items,
+        LocalDateTime updatedAt
 ) {
     public record MealItemResponse(
             UUID mealItemId,

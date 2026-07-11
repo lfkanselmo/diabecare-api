@@ -15,5 +15,6 @@ public record VitalSignResponse(
         Integer heartRate,
         BigDecimal hba1c,
         LocalDateTime measuredAt,
-        String notes
+        String notes,
+        LocalDateTime updatedAt
 ) {}

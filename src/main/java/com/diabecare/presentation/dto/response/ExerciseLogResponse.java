@@ -1,6 +1,7 @@
 package com.diabecare.presentation.dto.response;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record ExerciseLogResponse(
@@ -10,5 +11,6 @@ public record ExerciseLogResponse(
         Integer durationMinutes,
         BigDecimal caloriesBurned,
         String notes,
-        String performedAt
+        String performedAt,
+        LocalDateTime updatedAt
 ) {}

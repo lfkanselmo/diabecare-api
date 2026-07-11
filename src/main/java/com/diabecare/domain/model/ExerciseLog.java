@@ -21,6 +21,9 @@ public class ExerciseLog {
     private String notes;
     private LocalDateTime performedAt;
 
+    // Solo poblado al leer desde persistencia — ver GlucoseReading#updatedAt.
+    private LocalDateTime updatedAt;
+
     public static ExerciseLog create(
             UUID patientId,
             ExerciseType exerciseType,

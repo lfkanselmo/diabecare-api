@@ -24,6 +24,9 @@ public class VitalSign {
     private LocalDateTime measuredAt;
     private String notes;
 
+    // Solo poblado al leer desde persistencia — ver GlucoseReading#updatedAt.
+    private LocalDateTime updatedAt;
+
     public static VitalSign create(
             UUID patientId,
             BigDecimal weightKg,

@@ -103,7 +103,8 @@ public class ExerciseController {
                 log.getDurationMinutes(),
                 log.getCaloriesBurned(),
                 log.getNotes(),
-                log.getPerformedAt().toString()
+                log.getPerformedAt().toString(),
+                log.getUpdatedAt()
         );
     }
 }

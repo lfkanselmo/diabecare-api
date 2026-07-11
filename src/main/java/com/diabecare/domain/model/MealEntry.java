@@ -24,6 +24,9 @@ public class MealEntry {
     @Builder.Default
     private List<MealItem> items = new ArrayList<>();
 
+    // Solo poblado al leer desde persistencia — ver GlucoseReading#updatedAt.
+    private LocalDateTime updatedAt;
+
     public static MealEntry create(
             UUID patientId,
             MealType mealType,
