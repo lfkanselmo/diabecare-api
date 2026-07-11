@@ -2,6 +2,7 @@ package com.diabecare.presentation.dto.response;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record MedicationResponse(
@@ -13,5 +14,6 @@ public record MedicationResponse(
         String frequency,
         LocalDate startDate,
         boolean active,
-        String notes
+        String notes,
+        LocalDateTime updatedAt
 ) {}

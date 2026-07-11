@@ -4,6 +4,7 @@ import com.diabecare.domain.model.VitalSign;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,4 +15,8 @@ public interface LoadVitalSignPort {
     // Historial completo, usado solo por la exportación de datos (Habeas Data).
     List<VitalSign> findByPatientId(UUID patientId);
     Page<VitalSign> findByPatientId(UUID patientId, Pageable pageable);
+
+    // Cursor de sincronización incremental para el móvil offline-first — ver
+    // VitalSignJpaRepository.findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc.
+    List<VitalSign> findByPatientIdUpdatedAfter(UUID patientId, LocalDateTime since);
 }

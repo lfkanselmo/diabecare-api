@@ -3,6 +3,7 @@ package com.diabecare.presentation.controller;
 import com.diabecare.application.port.in.GetHba1cTrendUseCase;
 import com.diabecare.application.port.in.GetVitalSignsUseCase;
 import com.diabecare.application.port.in.RegisterVitalSignUseCase;
+import com.diabecare.application.port.in.SyncVitalSignsUseCase;
 import com.diabecare.domain.model.VitalSign;
 import com.diabecare.presentation.advice.GlobalExceptionHandler;
 import com.diabecare.presentation.mapper.VitalSignPresentationMapperImpl;
@@ -38,6 +39,7 @@ class VitalSignControllerTest {
     @Mock private RegisterVitalSignUseCase registerVitalSignUseCase;
     @Mock private GetVitalSignsUseCase getVitalSignsUseCase;
     @Mock private GetHba1cTrendUseCase getHba1cTrendUseCase;
+    @Mock private SyncVitalSignsUseCase syncVitalSignsUseCase;
     @Mock private CurrentUserResolver currentUserResolver;
 
     private MockMvc mockMvc;
@@ -48,7 +50,7 @@ class VitalSignControllerTest {
         VitalSignController controller = new VitalSignController(
                 registerVitalSignUseCase, getVitalSignsUseCase,
                 new VitalSignPresentationMapperImpl(),
-                getHba1cTrendUseCase, currentUserResolver);
+                getHba1cTrendUseCase, syncVitalSignsUseCase, currentUserResolver);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }

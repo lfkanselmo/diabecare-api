@@ -6,6 +6,7 @@ import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
@@ -23,8 +24,30 @@ public class Medication {
     private LocalDate endDate;
     private boolean active;
     private String notes;
+    // Solo poblado al leer desde persistencia — es el cursor que usa el motor
+    // de sync offline del móvil, no un dato de dominio que se establezca al
+    // crear un medicamento nuevo (mismo patrón que GlucoseReading.updatedAt).
+    private LocalDateTime updatedAt;
 
     public static Medication create(
+            UUID patientId,
+            String name,
+            MedicationType type,
+            BigDecimal dose,
+            DoseUnit doseUnit,
+            MedicationFrequency frequency,
+            LocalDate startDate,
+            String notes
+    ) {
+        return createWithId(UUID.randomUUID(), patientId, name, type, dose, doseUnit, frequency, startDate, notes);
+    }
+
+    /**
+     * Igual que {@link #create}, honrando un ID provisto por el cliente — ver
+     * {@link GlucoseReading#createWithId}.
+     */
+    public static Medication createWithId(
+            UUID medicationId,
             UUID patientId,
             String name,
             MedicationType type,
@@ -38,7 +61,7 @@ public class Medication {
         validateDose(dose);
 
         return Medication.builder()
-                .medicationId(UUID.randomUUID())
+                .medicationId(medicationId)
                 .patientId(patientId)
                 .name(name)
                 .type(type)

@@ -16,4 +16,8 @@ public interface ExerciseLogJpaRepository extends JpaRepository<ExerciseLogEntit
     Page<ExerciseLogEntity> findByPatientIdAndPerformedAtBetweenOrderByPerformedAtDesc(
             UUID patientId, LocalDateTime from, LocalDateTime to, Pageable pageable);
     void deleteByPatientId(UUID patientId);
+
+    // Cursor de sincronización incremental para el móvil offline-first.
+    List<ExerciseLogEntity> findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc(
+            UUID patientId, LocalDateTime since);
 }

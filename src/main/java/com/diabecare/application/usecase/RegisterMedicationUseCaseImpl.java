@@ -27,16 +27,26 @@ public class RegisterMedicationUseCaseImpl implements RegisterMedicationUseCase 
                 .orElseThrow(() -> new PatientNotFoundException(
                         command.patientId().toString()));
 
-        Medication medication = Medication.create(
-                command.patientId(),
-                command.name(),
-                command.type(),
-                command.dose(),
-                command.doseUnit(),
-                command.frequency(),
-                command.startDate(),
-                command.notes()
-        );
+        Medication medication = command.clientMedicationId() != null
+                ? Medication.createWithId(
+                        command.clientMedicationId(),
+                        command.patientId(),
+                        command.name(),
+                        command.type(),
+                        command.dose(),
+                        command.doseUnit(),
+                        command.frequency(),
+                        command.startDate(),
+                        command.notes())
+                : Medication.create(
+                        command.patientId(),
+                        command.name(),
+                        command.type(),
+                        command.dose(),
+                        command.doseUnit(),
+                        command.frequency(),
+                        command.startDate(),
+                        command.notes());
 
         Medication saved = saveMedicationPort.save(medication);
 

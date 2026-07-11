@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 public record RegisterMedicationRequest(
         @NotBlank
@@ -24,5 +25,8 @@ public record RegisterMedicationRequest(
         String frequency,
 
         LocalDate startDate,
-        String notes
+        String notes,
+
+        // Opcional — ver RegisterGlucoseRequest.readingId para el porqué.
+        UUID medicationId
 ) {}

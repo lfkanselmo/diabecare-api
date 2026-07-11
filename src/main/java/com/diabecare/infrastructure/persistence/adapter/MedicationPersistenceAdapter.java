@@ -8,6 +8,7 @@ import com.diabecare.infrastructure.persistence.repository.MedicationJpaReposito
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -44,6 +45,12 @@ public class MedicationPersistenceAdapter implements SaveMedicationPort, LoadMed
     @Override
     public List<Medication> findAllActive() {
         return repository.findByActiveTrue()
+                .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public List<Medication> findByPatientIdUpdatedAfter(UUID patientId, LocalDateTime since) {
+        return repository.findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc(patientId, since)
                 .stream().map(mapper::toDomain).toList();
     }
 }

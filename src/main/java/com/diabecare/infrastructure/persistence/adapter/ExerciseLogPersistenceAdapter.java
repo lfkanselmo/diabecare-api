@@ -46,4 +46,10 @@ public class ExerciseLogPersistenceAdapter implements SaveExerciseLogPort, LoadE
                 .findByPatientIdAndPerformedAtBetweenOrderByPerformedAtDesc(patientId, from, to, pageable)
                 .map(mapper::toDomain);
     }
+
+    @Override
+    public List<ExerciseLog> findByPatientIdUpdatedAfter(UUID patientId, LocalDateTime since) {
+        return repository.findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc(patientId, since)
+                .stream().map(mapper::toDomain).toList();
+    }
 }

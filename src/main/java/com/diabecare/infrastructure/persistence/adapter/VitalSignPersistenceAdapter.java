@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,5 +48,11 @@ public class VitalSignPersistenceAdapter implements SaveVitalSignPort, LoadVital
     public Page<VitalSign> findByPatientId(UUID patientId, Pageable pageable) {
         return repository.findByPatientIdOrderByMeasuredAtDesc(patientId, pageable)
                 .map(mapper::toDomain);
+    }
+
+    @Override
+    public List<VitalSign> findByPatientIdUpdatedAfter(UUID patientId, LocalDateTime since) {
+        return repository.findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc(patientId, since)
+                .stream().map(mapper::toDomain).toList();
     }
 }

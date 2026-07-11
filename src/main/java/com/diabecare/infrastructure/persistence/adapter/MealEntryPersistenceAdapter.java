@@ -74,6 +74,12 @@ public class MealEntryPersistenceAdapter implements SaveMealEntryPort, LoadMealE
         repository.deleteById(mealId);
     }
 
+    @Override
+    public List<MealEntry> findByPatientIdUpdatedAfter(UUID patientId, LocalDateTime since) {
+        return repository.findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc(patientId, since)
+                .stream().map(mapper::toDomain).toList();
+    }
+
     private MealItemEntity buildItemEntity(MealItem item, MealEntryEntity parent) {
         MealItemEntity entity = mapper.toItemEntity(item);
         entity.setMealEntry(parent);

@@ -19,7 +19,8 @@ public interface RegisterMedicationUseCase {
             DoseUnit doseUnit,
             MedicationFrequency frequency,
             LocalDate startDate,
-            String notes
+            String notes,
+            UUID clientMedicationId
     ) {}
 
     Medication execute(Command command);

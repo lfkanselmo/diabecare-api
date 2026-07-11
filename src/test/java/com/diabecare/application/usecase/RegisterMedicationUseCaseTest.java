@@ -92,13 +92,31 @@ class RegisterMedicationUseCaseTest {
                             && "MEDICATION".equals(log.getEntityType())
                             && log.getEntityId().equals(result.getMedicationId())));
         }
+
+        @Test
+        @DisplayName("honra el ID provisto por el cliente en vez de generar uno nuevo")
+        void honorsClientProvidedId() {
+            when(loadPatientPort.findById(patientId)).thenReturn(Optional.of(validPatient()));
+            when(saveMedicationPort.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            UUID clientId = UUID.randomUUID();
+
+            RegisterMedicationUseCase.Command command = new RegisterMedicationUseCase.Command(
+                    patientId, "Metformina", MedicationType.ORAL, BigDecimal.valueOf(500),
+                    DoseUnit.MG, MedicationFrequency.TWICE_DAILY, LocalDate.of(2026, 1, 1),
+                    "con comidas", clientId);
+
+            Medication result = useCase.execute(command);
+
+            assertThat(result.getMedicationId()).isEqualTo(clientId);
+        }
     }
 
 
     private RegisterMedicationUseCase.Command validCommand() {
         return new RegisterMedicationUseCase.Command(
                 patientId, "Metformina", MedicationType.ORAL, BigDecimal.valueOf(500),
-                DoseUnit.MG, MedicationFrequency.TWICE_DAILY, LocalDate.of(2026, 1, 1), "con comidas");
+                DoseUnit.MG, MedicationFrequency.TWICE_DAILY, LocalDate.of(2026, 1, 1),
+                "con comidas", null);
     }
 
     private Patient validPatient() {

@@ -17,4 +17,8 @@ public interface LoadExerciseLogPort {
                                                   LocalDateTime from,
                                                   LocalDateTime to,
                                                   Pageable pageable);
+
+    // Cursor de sincronización incremental para el móvil offline-first — ver
+    // ExerciseLogJpaRepository.findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc.
+    List<ExerciseLog> findByPatientIdUpdatedAfter(UUID patientId, LocalDateTime since);
 }

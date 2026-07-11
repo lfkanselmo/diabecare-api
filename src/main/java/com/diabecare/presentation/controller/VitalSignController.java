@@ -3,6 +3,7 @@ package com.diabecare.presentation.controller;
 import com.diabecare.application.port.in.GetHba1cTrendUseCase;
 import com.diabecare.application.port.in.GetVitalSignsUseCase;
 import com.diabecare.application.port.in.RegisterVitalSignUseCase;
+import com.diabecare.application.port.in.SyncVitalSignsUseCase;
 import com.diabecare.presentation.dto.request.RegisterVitalSignRequest;
 import com.diabecare.presentation.dto.response.Hba1cTrendResponse;
 import com.diabecare.presentation.dto.response.PageResponse;
@@ -11,11 +12,13 @@ import com.diabecare.presentation.mapper.VitalSignPresentationMapper;
 import com.diabecare.presentation.util.CurrentUserResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +31,7 @@ public class VitalSignController {
     private final GetVitalSignsUseCase getVitalSignsUseCase;
     private final VitalSignPresentationMapper mapper;
     private final GetHba1cTrendUseCase getHba1cTrendUseCase;
+    private final SyncVitalSignsUseCase syncVitalSignsUseCase;
     private final CurrentUserResolver currentUserResolver;
 
     @PostMapping("/{patientId}")
@@ -78,6 +82,26 @@ public class VitalSignController {
                 .map(mapper::toResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
+    }
+
+    /**
+     * Cursor de sincronización incremental para el motor offline-first del móvil —
+     * distinto de la lista paginada de arriba (pensada para la UI web).
+     * {@code since} ausente trae el historial completo (primera sincronización).
+     */
+    @GetMapping("/{patientId}/sync")
+    public ResponseEntity<List<VitalSignResponse>> sync(
+            @PathVariable UUID patientId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime since,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
+        List<VitalSignResponse> vitals = syncVitalSignsUseCase.execute(patientId, since).stream()
+                .map(mapper::toResponse)
+                .toList();
+
+        return ResponseEntity.ok(vitals);
     }
 
     @GetMapping("/{patientId}/hba1c-trend")

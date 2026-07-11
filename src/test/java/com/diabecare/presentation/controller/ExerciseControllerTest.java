@@ -2,6 +2,7 @@ package com.diabecare.presentation.controller;
 
 import com.diabecare.application.port.in.GetExerciseHistoryUseCase;
 import com.diabecare.application.port.in.RegisterExerciseUseCase;
+import com.diabecare.application.port.in.SyncExerciseLogsUseCase;
 import com.diabecare.domain.model.ExerciseIntensity;
 import com.diabecare.domain.model.ExerciseLog;
 import com.diabecare.domain.model.ExerciseType;
@@ -39,6 +40,8 @@ class ExerciseControllerTest {
     @Mock
     private GetExerciseHistoryUseCase getExerciseHistoryUseCase;
     @Mock
+    private SyncExerciseLogsUseCase syncExerciseLogsUseCase;
+    @Mock
     private CurrentUserResolver currentUserResolver;
 
     private MockMvc mockMvc;
@@ -47,7 +50,7 @@ class ExerciseControllerTest {
     @BeforeEach
     void setUp() {
         ExerciseController controller = new ExerciseController(
-                registerExerciseUseCase, getExerciseHistoryUseCase, currentUserResolver);
+                registerExerciseUseCase, getExerciseHistoryUseCase, syncExerciseLogsUseCase, currentUserResolver);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();

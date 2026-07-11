@@ -4,6 +4,7 @@ import com.diabecare.application.dto.DailySummaryRecord;
 import com.diabecare.application.port.in.GetDailySummaryUseCase;
 import com.diabecare.application.port.in.GetMealHistoryUseCase;
 import com.diabecare.application.port.in.RegisterMealEntryUseCase;
+import com.diabecare.application.port.in.SyncMealEntriesUseCase;
 import com.diabecare.domain.model.MealEntry;
 import com.diabecare.domain.model.MealType;
 import com.diabecare.presentation.advice.GlobalExceptionHandler;
@@ -41,6 +42,7 @@ class NutritionControllerTest {
     @Mock private RegisterMealEntryUseCase registerMealEntryUseCase;
     @Mock private GetDailySummaryUseCase getDailySummaryUseCase;
     @Mock private GetMealHistoryUseCase getMealHistoryUseCase;
+    @Mock private SyncMealEntriesUseCase syncMealEntriesUseCase;
     @Mock private CurrentUserResolver currentUserResolver;
 
     private MockMvc mockMvc;
@@ -50,8 +52,8 @@ class NutritionControllerTest {
     void setUp() {
         NutritionController controller = new NutritionController(
                 registerMealEntryUseCase, getDailySummaryUseCase, getMealHistoryUseCase,
-                new MealEntryPresentationMapperImpl(), new DailySummaryPresentationMapperImpl(),
-                currentUserResolver);
+                syncMealEntriesUseCase, new MealEntryPresentationMapperImpl(),
+                new DailySummaryPresentationMapperImpl(), currentUserResolver);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }

@@ -2,6 +2,7 @@ package com.diabecare.presentation.controller;
 
 import com.diabecare.application.port.in.GetExerciseHistoryUseCase;
 import com.diabecare.application.port.in.RegisterExerciseUseCase;
+import com.diabecare.application.port.in.SyncExerciseLogsUseCase;
 import com.diabecare.domain.model.ExerciseIntensity;
 import com.diabecare.domain.model.ExerciseLog;
 import com.diabecare.domain.model.ExerciseType;
@@ -19,6 +20,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -28,6 +30,7 @@ public class ExerciseController {
 
     private final RegisterExerciseUseCase registerExerciseUseCase;
     private final GetExerciseHistoryUseCase getExerciseHistoryUseCase;
+    private final SyncExerciseLogsUseCase syncExerciseLogsUseCase;
     private final CurrentUserResolver currentUserResolver;
 
     @PostMapping("/{patientId}")
@@ -70,6 +73,26 @@ public class ExerciseController {
         return ResponseEntity.ok(PageResponse.of(
                 getExerciseHistoryUseCase.getHistory(patientId, from, to, PageRequest.of(page, size)),
                 this::toResponse));
+    }
+
+    /**
+     * Cursor de sincronización incremental para el motor offline-first del móvil —
+     * distinto de /history (que pagina por fecha de rutina para la UI web).
+     * {@code since} ausente trae el historial completo (primera sincronización).
+     */
+    @GetMapping("/{patientId}/sync")
+    public ResponseEntity<List<ExerciseLogResponse>> sync(
+            @PathVariable UUID patientId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime since,
+            Authentication authentication) {
+
+        currentUserResolver.verifyOwnsPatient(patientId, authentication);
+
+        List<ExerciseLogResponse> logs = syncExerciseLogsUseCase.execute(patientId, since).stream()
+                .map(this::toResponse)
+                .toList();
+
+        return ResponseEntity.ok(logs);
     }
 
     private ExerciseLogResponse toResponse(ExerciseLog log) {

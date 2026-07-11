@@ -3,6 +3,7 @@ package com.diabecare.infrastructure.persistence.repository;
 import com.diabecare.infrastructure.persistence.entity.MedicationEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,4 +12,8 @@ public interface MedicationJpaRepository extends JpaRepository<MedicationEntity,
     List<MedicationEntity> findByPatientId(UUID patientId);
     List<MedicationEntity> findByActiveTrue();
     void deleteByPatientId(UUID patientId);
+
+    // Cursor de sincronización incremental para el móvil offline-first.
+    List<MedicationEntity> findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc(
+            UUID patientId, LocalDateTime since);
 }

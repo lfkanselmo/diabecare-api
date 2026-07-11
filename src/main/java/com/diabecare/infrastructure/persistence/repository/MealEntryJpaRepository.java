@@ -29,4 +29,14 @@ public interface MealEntryJpaRepository extends JpaRepository<MealEntryEntity, U
             UUID patientId, LocalDateTime from, LocalDateTime to, Pageable pageable);
 
     void deleteByPatientId(UUID patientId);
+
+    // Cursor de sincronización incremental para el móvil offline-first: todo lo
+    // que cambió desde la última sincronización, sin importar consumedAt — mismo
+    // espíritu que GlucoseReadingJpaRepository.findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc.
+    @Query("SELECT DISTINCT m FROM MealEntryEntity m LEFT JOIN FETCH m.items " +
+            "WHERE m.patientId = :patientId AND m.updatedAt > :since " +
+            "ORDER BY m.updatedAt ASC")
+    List<MealEntryEntity> findByPatientIdAndUpdatedAtAfterOrderByUpdatedAtAsc(
+            @Param("patientId") UUID patientId,
+            @Param("since") LocalDateTime since);
 }

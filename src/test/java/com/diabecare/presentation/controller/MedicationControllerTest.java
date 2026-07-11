@@ -3,6 +3,7 @@ package com.diabecare.presentation.controller;
 import com.diabecare.application.port.in.DeactivateMedicationUseCase;
 import com.diabecare.application.port.in.GetMedicationsUseCase;
 import com.diabecare.application.port.in.RegisterMedicationUseCase;
+import com.diabecare.application.port.in.SyncMedicationsUseCase;
 import com.diabecare.domain.model.DoseUnit;
 import com.diabecare.domain.model.Medication;
 import com.diabecare.domain.model.MedicationFrequency;
@@ -42,6 +43,8 @@ class MedicationControllerTest {
     @Mock
     private DeactivateMedicationUseCase deactivateMedicationUseCase;
     @Mock
+    private SyncMedicationsUseCase syncMedicationsUseCase;
+    @Mock
     private CurrentUserResolver currentUserResolver;
 
     private MockMvc mockMvc;
@@ -51,7 +54,7 @@ class MedicationControllerTest {
     void setUp() {
         MedicationController controller = new MedicationController(
                 registerMedicationUseCase, getMedicationsUseCase, deactivateMedicationUseCase,
-                new MedicationPresentationMapperImpl(), currentUserResolver);
+                syncMedicationsUseCase, new MedicationPresentationMapperImpl(), currentUserResolver);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
