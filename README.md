@@ -1,12 +1,12 @@
 # DiabeCare API
 
-Backend de DiabeCare — aplicación de control de salud para pacientes diabéticos. Construido con Java 21 y Spring Boot 3.5 siguiendo arquitectura hexagonal.
+Backend de DiabeCare — aplicación de control de salud para pacientes diabéticos. Construido con Java 25 y Spring Boot 3.5 siguiendo arquitectura hexagonal.
 
 ---
 
 ## Requisitos
 
-- Java 21+
+- Java 25+
 - Maven 3.8+
 - PostgreSQL 15+
 - Docker (opcional, solo para los tests de integración con Testcontainers)
@@ -25,22 +25,22 @@ GRANT ALL PRIVILEGES ON DATABASE diabecare_dev TO diabecare_user;
 
 ### 2. Variables de entorno
 
-| Variable | Ejemplo | Descripción |
-|---|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/diabecare_dev` | URL de conexión |
-| `DB_USERNAME` | `diabecare_user` | Usuario de la BD |
-| `DB_PASSWORD` | `diabecare_pass` | Contraseña de la BD |
-| `JWT_SECRET_KEY` | `clave-secreta-minimo-256-bits` | Clave JWT |
-| `JWT_ACCESS_EXPIRY_MS` | `900000` | Expiración access token (15 min) |
-| `JWT_REFRESH_EXPIRY_MS` | `604800000` | Expiración refresh token (7 días) |
-| `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` | Orígenes permitidos |
-| `BCRYPT_STRENGTH` | `12` | Factor de costo BCrypt |
-| `VAPID_PUBLIC_KEY` | `<base64>` | Clave pública VAPID para push |
-| `VAPID_PRIVATE_KEY` | `<base64>` | Clave privada VAPID para push |
-| `VAPID_SUBJECT` | `mailto:admin@diabecare.com` | Sujeto VAPID |
-| `RESEND_API_KEY` | `re_xxx` | API key de Resend, para el correo de recuperación de contraseña |
-| `RESEND_FROM_ADDRESS` | `DiabeCare <onboarding@resend.dev>` | Remitente de los correos transaccionales |
-| `FRONTEND_BASE_URL` | `http://localhost:4200` | Base para construir el link de reseteo de contraseña que se envía por correo |
+| Variable                | Ejemplo                                          | Descripción                                                                  |
+| ----------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `DB_URL`                | `jdbc:postgresql://localhost:5432/diabecare_dev` | URL de conexión                                                              |
+| `DB_USERNAME`           | `diabecare_user`                                 | Usuario de la BD                                                             |
+| `DB_PASSWORD`           | `diabecare_pass`                                 | Contraseña de la BD                                                          |
+| `JWT_SECRET_KEY`        | `clave-secreta-minimo-256-bits`                  | Clave JWT                                                                    |
+| `JWT_ACCESS_EXPIRY_MS`  | `900000`                                         | Expiración access token (15 min)                                             |
+| `JWT_REFRESH_EXPIRY_MS` | `604800000`                                      | Expiración refresh token (7 días)                                            |
+| `CORS_ALLOWED_ORIGINS`  | `http://localhost:4200`                          | Orígenes permitidos                                                          |
+| `BCRYPT_STRENGTH`       | `12`                                             | Factor de costo BCrypt                                                       |
+| `VAPID_PUBLIC_KEY`      | `<base64>`                                       | Clave pública VAPID para push                                                |
+| `VAPID_PRIVATE_KEY`     | `<base64>`                                       | Clave privada VAPID para push                                                |
+| `VAPID_SUBJECT`         | `mailto:admin@diabecare.com`                     | Sujeto VAPID                                                                 |
+| `RESEND_API_KEY`        | `re_xxx`                                         | API key de Resend, para el correo de recuperación de contraseña              |
+| `RESEND_FROM_ADDRESS`   | `DiabeCare <onboarding@resend.dev>`              | Remitente de los correos transaccionales                                     |
+| `FRONTEND_BASE_URL`     | `http://localhost:4200`                          | Base para construir el link de reseteo de contraseña que se envía por correo |
 
 > **`.env.example` desactualizado**: el archivo `.env.example` del repo solo lista `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET_KEY`, `JWT_ACCESS_EXPIRY_MS`, `JWT_REFRESH_EXPIRY_MS` y `CORS_ALLOWED_ORIGINS` — le faltan `BCRYPT_STRENGTH`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS` y `FRONTEND_BASE_URL`, todas ya consumidas por `application.yaml`. Actualizarlo antes de repartirlo a un nuevo desarrollador.
 
@@ -50,9 +50,11 @@ GRANT ALL PRIVILEGES ON DATABASE diabecare_dev TO diabecare_user;
 
 1. **Run** → **Edit Configurations** → `DiabeCareApiApplication`
 2. **Environment variables**:
+
 ```
 DB_URL=jdbc:postgresql://localhost:5432/diabecare_dev;DB_USERNAME=diabecare_user;DB_PASSWORD=diabecare_pass;JWT_SECRET_KEY=mi-clave-secreta-de-minimo-32-caracteres;VAPID_PUBLIC_KEY=...;VAPID_PRIVATE_KEY=...;VAPID_SUBJECT=mailto:admin@diabecare.com;RESEND_API_KEY=...;FRONTEND_BASE_URL=http://localhost:4200
 ```
+
 3. **VM options**: `-Xms512m -Xmx1024m`
 
 ### 4. Generar claves VAPID
@@ -163,62 +165,62 @@ Las reglas de arquitectura se verifican automáticamente con **ArchUnit**.
 
 ## Módulos
 
-| Módulo | Descripción |
-|---|---|
-| Glucosa | Registro, historial, estadísticas TIR/HbA1c/CV, perfil AGP por hora, exportación CSV/JSON |
-| Nutrición | Registro de comidas, **635 alimentos**, búsqueda por código de barras vía OpenFoodFacts |
-| Medicamentos | CRUD medicamentos, auditoría de cambios, recordatorios automáticos por frecuencia |
-| Signos vitales | Peso, presión, HbA1c medida, tendencia |
-| Ejercicio | Registro de actividad física por tipo e intensidad |
-| Alertas | 7 tipos + 4 alertas de patrón + alertas de ciclo menstrual, mensajes vía `MessageResolverPort` |
-| Ciclo menstrual | Registro día a día (flujo + síntomas), fases y calendario, correlación glucémica |
-| Calculadora insulina | Dosis de corrección y dosis para comida |
-| Reportes | PDF con secciones clínicas para el médico (OpenPDF) |
-| Push notifications | Web Push API con claves VAPID, suscripciones por paciente |
-| Recordatorios de glucosa | Horarios configurables por el paciente, notificación push cada minuto que corresponda |
-| Resumen semanal | Job automático lunes 8am (America/Bogota) via `@Scheduled` |
-| Auditoría | Registro de cambios en perfil y medicamentos |
-| Rate limiting | Bucket4j + Caffeine, límites configurables en `system_config` (incluye login, registro y recuperación de contraseña por IP) |
-| Configuración del sistema | `system_config`: 20 parámetros clínicos/operacionales en BD, recargables sin redeploy |
-| Gestión de cuenta | Suspender, eliminar (con purga definitiva a los 30 días) y exportar los propios datos |
-| Autenticación | Login/registro con JWT + refresh tokens rotables, sesiones multi-dispositivo, recuperación de contraseña por correo (Resend) |
-| Cuidadores | Compartir el propio historial en modo solo lectura vía código de invitación de un solo uso |
-| Consentimiento | Registro de aceptación de la política de tratamiento de datos (Ley 1581 de 2012, Habeas Data) |
-| Panel de administración | Listado de usuarios y asignación de rol `ADMIN`, protegido con `@PreAuthorize` |
-| Internacionalización | `messages.properties` (español) + `messages_en.properties` (inglés), resueltos automáticamente según el header `Accept-Language` |
+| Módulo                      | Descripción                                                                                                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Glucosa                     | Registro, historial, estadísticas TIR/HbA1c/CV, perfil AGP por hora, exportación CSV/JSON                                                                        |
+| Nutrición                   | Registro de comidas, **635 alimentos**, búsqueda por código de barras vía OpenFoodFacts                                                                          |
+| Medicamentos                | CRUD medicamentos, auditoría de cambios, recordatorios automáticos por frecuencia                                                                                |
+| Signos vitales              | Peso, presión, HbA1c medida, tendencia                                                                                                                           |
+| Ejercicio                   | Registro de actividad física por tipo e intensidad                                                                                                               |
+| Alertas                     | 7 tipos + 4 alertas de patrón + alertas de ciclo menstrual, mensajes vía `MessageResolverPort`                                                                   |
+| Ciclo menstrual             | Registro día a día (flujo + síntomas), fases y calendario, correlación glucémica                                                                                 |
+| Calculadora insulina        | Dosis de corrección y dosis para comida                                                                                                                          |
+| Reportes                    | PDF con secciones clínicas para el médico (OpenPDF)                                                                                                              |
+| Push notifications          | Web Push API con claves VAPID, suscripciones por paciente                                                                                                        |
+| Recordatorios de glucosa    | Horarios configurables por el paciente, notificación push cada minuto que corresponda                                                                            |
+| Resumen semanal             | Job automático lunes 8am (America/Bogota) via `@Scheduled`                                                                                                       |
+| Auditoría                   | Registro de cambios en perfil y medicamentos                                                                                                                     |
+| Rate limiting               | Bucket4j + Caffeine, límites configurables en `system_config` (incluye login, registro y recuperación de contraseña por IP)                                      |
+| Configuración del sistema   | `system_config`: 20 parámetros clínicos/operacionales en BD, recargables sin redeploy                                                                            |
+| Gestión de cuenta           | Suspender, eliminar (con purga definitiva a los 30 días) y exportar los propios datos                                                                            |
+| Autenticación               | Login/registro con JWT + refresh tokens rotables, sesiones multi-dispositivo, recuperación de contraseña por correo (Resend)                                     |
+| Cuidadores                  | Compartir el propio historial en modo solo lectura vía código de invitación de un solo uso                                                                       |
+| Consentimiento              | Registro de aceptación de la política de tratamiento de datos (Ley 1581 de 2012, Habeas Data)                                                                    |
+| Panel de administración     | Listado de usuarios y asignación de rol `ADMIN`, protegido con `@PreAuthorize`                                                                                   |
+| Internacionalización        | `messages.properties` (español) + `messages_en.properties` (inglés), resueltos automáticamente según el header `Accept-Language`                                 |
 | Importación de dispositivos | API key opaca por paciente (revocable) para que un bridge externo (CGM, Nightscout, un glucómetro) importe lecturas sin login interactivo — ver sección dedicada |
 
 ---
 
 ## Migraciones Flyway
 
-| Versión | Descripción |
-|---|---|
-| V1 | Schema inicial: users, patients, glucose_readings, meal_entries, meal_items, vital_signs, medications |
-| V2 | Eliminar columnas de versión |
-| V3 | Actualización tabla foods |
-| V4 | Seed de 172 alimentos colombianos |
-| V5 | Perfil de insulina (ISF, ratio, objetivo) |
-| V6 | Tabla exercise_logs |
-| V7 | biological_sex + menstrual_cycles |
-| V8 | push_subscriptions |
-| V9 | audit_log |
-| V10 | system_config (16 parámetros) |
-| V11 | users: suspended_at, deleted_at |
-| V12 | +315 alimentos (total 487): FRUTOS_SECOS, EMBUTIDOS, CONDIMENTOS, COMIDA_RAPIDA, PANADERIA |
-| V13 | +148 alimentos (total 635): VEGANOS, INDUSTRIALES + ampliación de COMIDA_RAPIDA/PREPARADOS |
-| V15 | Tabla `refresh_tokens` (sesión multi-dispositivo) |
-| V16 | Rediseño del seguimiento de ciclo menstrual: registro día a día (`cycle_day_entries`, `cycle_day_symptoms`) en vez de un único registro por ciclo |
-| V17 | Parámetro `alert.days_before_open_cycle_alert` en `system_config` |
-| V18 | Parámetros `rate_limit.login_per_hour` y `rate_limit.register_per_hour` |
-| V19 | Compartir con cuidadores: `caregiver_invites`, `caregiver_links` |
-| V20 | Consentimiento: `users.terms_accepted_at`, `users.terms_version` |
-| V21 | Tabla `password_reset_tokens` |
-| V22 | Parámetro `rate_limit.forgot_password_per_hour` |
-| V23 | Tabla `glucose_reminders` |
-| V24 | Tabla `device_api_keys` + parámetro `rate_limit.device_import_per_hour` |
+| Versión | Descripción                                                                                                                                       |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| V1      | Schema inicial: users, patients, glucose_readings, meal_entries, meal_items, vital_signs, medications                                             |
+| V2      | Eliminar columnas de versión                                                                                                                      |
+| V3      | Actualización tabla foods                                                                                                                         |
+| V4      | Seed de 172 alimentos colombianos                                                                                                                 |
+| V5      | Perfil de insulina (ISF, ratio, objetivo)                                                                                                         |
+| V6      | Tabla exercise_logs                                                                                                                               |
+| V7      | biological_sex + menstrual_cycles                                                                                                                 |
+| V8      | push_subscriptions                                                                                                                                |
+| V9      | audit_log                                                                                                                                         |
+| V10     | system_config (16 parámetros)                                                                                                                     |
+| V11     | users: suspended_at, deleted_at                                                                                                                   |
+| V12     | +315 alimentos (total 487): FRUTOS_SECOS, EMBUTIDOS, CONDIMENTOS, COMIDA_RAPIDA, PANADERIA                                                        |
+| V13     | +148 alimentos (total 635): VEGANOS, INDUSTRIALES + ampliación de COMIDA_RAPIDA/PREPARADOS                                                        |
+| V15     | Tabla `refresh_tokens` (sesión multi-dispositivo)                                                                                                 |
+| V16     | Rediseño del seguimiento de ciclo menstrual: registro día a día (`cycle_day_entries`, `cycle_day_symptoms`) en vez de un único registro por ciclo |
+| V17     | Parámetro `alert.days_before_open_cycle_alert` en `system_config`                                                                                 |
+| V18     | Parámetros `rate_limit.login_per_hour` y `rate_limit.register_per_hour`                                                                           |
+| V19     | Compartir con cuidadores: `caregiver_invites`, `caregiver_links`                                                                                  |
+| V20     | Consentimiento: `users.terms_accepted_at`, `users.terms_version`                                                                                  |
+| V21     | Tabla `password_reset_tokens`                                                                                                                     |
+| V22     | Parámetro `rate_limit.forgot_password_per_hour`                                                                                                   |
+| V23     | Tabla `glucose_reminders`                                                                                                                         |
+| V24     | Tabla `device_api_keys` + parámetro `rate_limit.device_import_per_hour`                                                                           |
 
-*No existe V14 — durante el desarrollo se generó una migración adicional de alimentos que se fusionó dentro de V13 antes de aplicarse; Flyway no exige numeración consecutiva, solo orden creciente.*
+_No existe V14 — durante el desarrollo se generó una migración adicional de alimentos que se fusionó dentro de V13 antes de aplicarse; Flyway no exige numeración consecutiva, solo orden creciente._
 
 ---
 
@@ -329,26 +331,26 @@ No hay un `LocaleResolver` custom configurado — Spring Boot usa por defecto `A
 
 ## Tecnologías
 
-| Tecnología | Versión |
-|---|---|
-| Java | 17 |
-| Spring Boot | 3.5.14 |
-| Spring Security | 6.x |
-| PostgreSQL | 15+ |
-| Flyway | 11.7.2 |
-| MapStruct | 1.5.5 |
-| Lombok | 1.18.30 |
-| OpenPDF | 3.0.5 |
-| Caffeine Cache | 3.2.3 |
-| jjwt | 0.12.5 |
-| Bucket4j | 8.10.1 |
-| web-push | 5.1.1 |
-| BouncyCastle | 1.70 |
-| ArchUnit | 1.2.1 |
-| Testcontainers | 1.19.6 |
-| JaCoCo | 0.8.12 |
-| JUnit 5 + Mockito + AssertJ | — |
-| springdoc-openapi | 2.8.9 |
+| Tecnología                  | Versión |
+| --------------------------- | ------- |
+| Java                        | 17      |
+| Spring Boot                 | 3.5.14  |
+| Spring Security             | 6.x     |
+| PostgreSQL                  | 15+     |
+| Flyway                      | 11.7.2  |
+| MapStruct                   | 1.5.5   |
+| Lombok                      | 1.18.30 |
+| OpenPDF                     | 3.0.5   |
+| Caffeine Cache              | 3.2.3   |
+| jjwt                        | 0.12.5  |
+| Bucket4j                    | 8.10.1  |
+| web-push                    | 5.1.1   |
+| BouncyCastle                | 1.70    |
+| ArchUnit                    | 1.2.1   |
+| Testcontainers              | 1.19.6  |
+| JaCoCo                      | 0.8.12  |
+| JUnit 5 + Mockito + AssertJ | —       |
+| springdoc-openapi           | 2.8.9   |
 
 > **OpenPDF, no iText**: la generación de reportes usa `org.openpdf` (paquete `org.openpdf.text.*`), el fork libre y mantenido de iText 4/5 — no la librería comercial `com.itextpdf` (iText 7+). No confundir ambas al buscar documentación.
 
@@ -358,14 +360,14 @@ No hay un `LocaleResolver` custom configurado — Spring Boot usa por defecto `A
 
 Resultados con JMeter — 50 usuarios simultáneos, 5 iteraciones:
 
-| Endpoint | Promedio | Throughput |
-|---|---|---|
-| Login | 830 ms | 18.5 req/s |
-| Stats glucosa | 10 ms | 22.8 req/s |
-| Historial glucosa | 8 ms | 18.9 req/s |
-| Buscar alimento | 6 ms | 18.9 req/s |
-| Alertas | 11 ms | 19.0 req/s |
-| Reporte PDF | 44 ms | 19.0 req/s |
+| Endpoint          | Promedio | Throughput |
+| ----------------- | -------- | ---------- |
+| Login             | 830 ms   | 18.5 req/s |
+| Stats glucosa     | 10 ms    | 22.8 req/s |
+| Historial glucosa | 8 ms     | 18.9 req/s |
+| Buscar alimento   | 6 ms     | 18.9 req/s |
+| Alertas           | 11 ms    | 19.0 req/s |
+| Reporte PDF       | 44 ms    | 19.0 req/s |
 
 **Throughput total: 110.7 req/s — 0% errores**
 
