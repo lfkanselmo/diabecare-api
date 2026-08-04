@@ -13,6 +13,22 @@ Backend de DiabeCare — aplicación de control de salud para pacientes diabéti
 
 ---
 
+## Docker (desarrollo local)
+
+`docker-compose.yml` levanta Postgres, este backend y `diabecare-web` (asumiendo que ambos repos son carpetas hermanas) con un solo comando:
+
+```bash
+docker compose up --build
+```
+
+- Backend: `http://localhost:8080`
+- Frontend: `http://localhost:4200` (nginx sirve el build de producción y reenvía `/api/v1/**` al backend)
+- Postgres: `localhost:5432` (db `diabecare`, user `diabecare_user`)
+
+Para push web real hay que exportar `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` antes de levantar el stack; para correo real, `RESEND_API_KEY`. Sin esas variables la app degrada (logea en vez de enviar) en vez de fallar.
+
+---
+
 ## Configuración
 
 ### 1. Base de datos
@@ -41,8 +57,7 @@ GRANT ALL PRIVILEGES ON DATABASE diabecare_dev TO diabecare_user;
 | `RESEND_API_KEY`        | `re_xxx`                                         | API key de Resend, para el correo de recuperación de contraseña              |
 | `RESEND_FROM_ADDRESS`   | `DiabeCare <onboarding@resend.dev>`              | Remitente de los correos transaccionales                                     |
 | `FRONTEND_BASE_URL`     | `http://localhost:4200`                          | Base para construir el link de reseteo de contraseña que se envía por correo |
-
-> **`.env.example` desactualizado**: el archivo `.env.example` del repo solo lista `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET_KEY`, `JWT_ACCESS_EXPIRY_MS`, `JWT_REFRESH_EXPIRY_MS` y `CORS_ALLOWED_ORIGINS` — le faltan `BCRYPT_STRENGTH`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS` y `FRONTEND_BASE_URL`, todas ya consumidas por `application.yaml`. Actualizarlo antes de repartirlo a un nuevo desarrollador.
+| `FCM_SERVICE_ACCOUNT_JSON` | `` (vacío)                                    | Service account de Firebase para push nativo móvil; vacío degrada a no-op   |
 
 > **Nota**: los parámetros clínicos (umbrales de alertas, patrones, rate limiting) **no** se configuran por variables de entorno ni `application.yaml`. Viven en la tabla `system_config` y se gestionan vía API (`GET/POST /api/v1/system-config`) o directamente en BD — ver sección 12 de `DiabeCare_Backend_Documentation.md`.
 
