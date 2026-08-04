@@ -10,9 +10,6 @@ import lombok.RequiredArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Detecta ausencia de comidas registradas en el día en curso.
- */
 @RequiredArgsConstructor
 public class NoMealAlertDetector implements AlertDetector {
 

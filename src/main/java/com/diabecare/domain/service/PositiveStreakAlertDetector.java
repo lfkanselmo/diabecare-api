@@ -12,9 +12,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Detecta una racha positiva de buen tiempo en rango durante los últimos N días.
- */
 @RequiredArgsConstructor
 public class PositiveStreakAlertDetector implements AlertDetector {
 

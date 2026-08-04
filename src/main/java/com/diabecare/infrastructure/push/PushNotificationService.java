@@ -113,8 +113,6 @@ public class PushNotificationService {
             return;
         }
 
-        // TODO: sin proyecto de Firebase real conectado todavía — implementar el
-        // envío real (JWT firmado + FCM HTTP v1 API) cuando exista uno.
         log.warn("Envío FCM real no implementado todavía — {} dispositivo(s) no notificados.", tokens.size());
     }
 
