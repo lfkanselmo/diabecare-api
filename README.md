@@ -4,6 +4,7 @@
 ![Java](https://img.shields.io/badge/java-25-437291?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-4169E1?logo=postgresql&logoColor=white)
+![License](https://img.shields.io/badge/license-proprietary-lightgrey)
 
 Backend de DiabeCare — aplicación de control de salud para pacientes diabéticos. Construido con Java 25 y Spring Boot 3.5 siguiendo arquitectura hexagonal.
 
