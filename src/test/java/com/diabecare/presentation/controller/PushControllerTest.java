@@ -1,12 +1,15 @@
 package com.diabecare.presentation.controller;
 
+import com.diabecare.application.port.in.RegisterMobileTokenUseCase;
+import com.diabecare.application.port.in.SubscribeToPushUseCase;
+import com.diabecare.application.port.in.UnregisterMobileTokenUseCase;
+import com.diabecare.application.port.in.UnsubscribeFromPushUseCase;
 import com.diabecare.application.port.out.LoadPatientPort;
 import com.diabecare.application.port.out.LoadUserPort;
 import com.diabecare.domain.model.DiabetesType;
 import com.diabecare.domain.model.MobilePlatform;
 import com.diabecare.domain.model.Patient;
 import com.diabecare.infrastructure.config.DiabeCareProperties;
-import com.diabecare.infrastructure.push.PushNotificationService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +41,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("PushController")
 class PushControllerTest {
 
-    @Mock private PushNotificationService pushService;
+    @Mock private SubscribeToPushUseCase subscribeToPushUseCase;
+    @Mock private UnsubscribeFromPushUseCase unsubscribeFromPushUseCase;
+    @Mock private RegisterMobileTokenUseCase registerMobileTokenUseCase;
+    @Mock private UnregisterMobileTokenUseCase unregisterMobileTokenUseCase;
     @Mock private LoadUserPort loadUserPort;
     @Mock private LoadPatientPort loadPatientPort;
 
@@ -50,7 +56,10 @@ class PushControllerTest {
                 new DiabeCareProperties.Security(new String[]{"http://localhost:4200"}, 10),
                 new DiabeCareProperties.Push("test-vapid-public-key", "test-vapid-private-key", "mailto:test@test.com", ""),
                 new DiabeCareProperties.Mail("", "DiabeCare <onboarding@resend.dev>", "http://localhost:4200"));
-        PushController controller = new PushController(pushService, loadUserPort, loadPatientPort, properties);
+        PushController controller = new PushController(
+                subscribeToPushUseCase, unsubscribeFromPushUseCase,
+                registerMobileTokenUseCase, unregisterMobileTokenUseCase,
+                loadUserPort, loadPatientPort, properties);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();
@@ -96,8 +105,8 @@ class PushControllerTest {
                                     + "\"p256dh\":\"key\",\"auth\":\"auth\"}"))
                     .andExpect(status().isOk());
 
-            verify(pushService).subscribe(eq(realPatientId), eq("https://push.example.com/sub"),
-                    eq("key"), eq("auth"));
+            verify(subscribeToPushUseCase).execute(new SubscribeToPushUseCase.Command(
+                    realPatientId, "https://push.example.com/sub", "key", "auth"));
         }
 
         @Test @DisplayName("retorna 200 sin suscribir cuando el usuario no tiene paciente asociado")
@@ -113,20 +122,21 @@ class PushControllerTest {
                                     + "\"p256dh\":\"key\",\"auth\":\"auth\"}"))
                     .andExpect(status().isOk());
 
-            verifyNoInteractions(pushService);
+            verifyNoInteractions(subscribeToPushUseCase);
         }
     }
 
     @Nested @DisplayName("DELETE /api/v1/push/unsubscribe")
     class Unsubscribe {
-        @Test @DisplayName("retorna 200 y delega la desuscripción al servicio")
+        @Test @DisplayName("retorna 200 y delega la desuscripción al caso de uso")
         void returns200AndDelegatesUnsubscription() throws Exception {
             mockMvc.perform(delete("/api/v1/push/unsubscribe")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"endpoint\":\"https://push.example.com/sub\"}"))
                     .andExpect(status().isOk());
 
-            verify(pushService).unsubscribe("https://push.example.com/sub");
+            verify(unsubscribeFromPushUseCase).execute(
+                    new UnsubscribeFromPushUseCase.Command("https://push.example.com/sub"));
         }
     }
 
@@ -148,7 +158,8 @@ class PushControllerTest {
                             .content("{\"deviceToken\":\"fcm-token-1\",\"platform\":\"ANDROID\"}"))
                     .andExpect(status().isOk());
 
-            verify(pushService).registerMobileToken(realPatientId, "fcm-token-1", MobilePlatform.ANDROID);
+            verify(registerMobileTokenUseCase).execute(new RegisterMobileTokenUseCase.Command(
+                    realPatientId, "fcm-token-1", MobilePlatform.ANDROID));
         }
 
         @Test @DisplayName("retorna 400 cuando el device token está en blanco")
@@ -158,20 +169,21 @@ class PushControllerTest {
                             .content("{\"deviceToken\":\"\",\"platform\":\"ANDROID\"}"))
                     .andExpect(status().isBadRequest());
 
-            verifyNoInteractions(pushService);
+            verifyNoInteractions(registerMobileTokenUseCase);
         }
     }
 
     @Nested @DisplayName("DELETE /api/v1/push/mobile-token")
     class UnregisterMobileToken {
-        @Test @DisplayName("retorna 200 y delega la eliminación al servicio")
+        @Test @DisplayName("retorna 200 y delega la eliminación al caso de uso")
         void returns200AndDelegatesUnregistration() throws Exception {
             mockMvc.perform(delete("/api/v1/push/mobile-token")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"deviceToken\":\"fcm-token-1\"}"))
                     .andExpect(status().isOk());
 
-            verify(pushService).unregisterMobileToken("fcm-token-1");
+            verify(unregisterMobileTokenUseCase).execute(
+                    new UnregisterMobileTokenUseCase.Command("fcm-token-1"));
         }
     }
 }

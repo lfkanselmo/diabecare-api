@@ -56,6 +56,22 @@ class ArchitectureTest {
     }
 
     @Test
+    @DisplayName("los controllers solo dependen de infrastructure.config (lectura de propiedades), nunca de otro paquete de infraestructura")
+    void controllersOnlyDependOnConfigWithinInfrastructure() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("..presentation.controller..")
+                .should().dependOnClassesThat(
+                        com.tngtech.archunit.core.domain.JavaClass.Predicates
+                                .resideInAPackage("..infrastructure..")
+                                .and(com.tngtech.archunit.base.DescribedPredicate.not(
+                                        com.tngtech.archunit.core.domain.JavaClass.Predicates
+                                                .resideInAPackage("..infrastructure.config..")))
+                );
+
+        rule.check(classes);
+    }
+
+    @Test
     @DisplayName("los repositorios JPA solo se usan desde adaptadores de persistencia")
     void jpaRepositoriesOnlyUsedFromAdapters() {
         ArchRule rule = noClasses()

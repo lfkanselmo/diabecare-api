@@ -2,7 +2,6 @@ package com.diabecare.infrastructure.push;
 
 import com.diabecare.application.port.out.MobilePushTokenPort;
 import com.diabecare.application.port.out.PushSubscriptionPort;
-import com.diabecare.domain.model.MobilePlatform;
 import com.diabecare.domain.model.MobilePushToken;
 import com.diabecare.domain.model.PushSubscription;
 import com.diabecare.infrastructure.config.DiabeCareProperties;
@@ -31,33 +30,6 @@ public class PushNotificationService {
         if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
             Security.addProvider(new BouncyCastleProvider());
         }
-    }
-
-    public void subscribe(UUID patientId, String endpoint, String p256dh, String auth) {
-        if (subscriptionPort.existsByPatientIdAndEndpoint(patientId, endpoint)) {
-            return;
-        }
-        subscriptionPort.save(patientId, endpoint, p256dh, auth);
-    }
-
-    public void unsubscribe(String endpoint) {
-        subscriptionPort.deleteByEndpoint(endpoint);
-    }
-
-    /**
-     * Registra el device token FCM de la app móvil — paralelo a {@link #subscribe}
-     * (Web Push). Todavía no existe un proyecto de Firebase real conectado; ver
-     * {@link #sendToMobileDevices}.
-     */
-    public void registerMobileToken(UUID patientId, String deviceToken, MobilePlatform platform) {
-        if (mobilePushTokenPort.existsByPatientIdAndDeviceToken(patientId, deviceToken)) {
-            return;
-        }
-        mobilePushTokenPort.save(patientId, deviceToken, platform);
-    }
-
-    public void unregisterMobileToken(String deviceToken) {
-        mobilePushTokenPort.deleteByDeviceToken(deviceToken);
     }
 
     public void sendToPatient(UUID patientId, String title, String body) {

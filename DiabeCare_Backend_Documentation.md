@@ -5,11 +5,11 @@
 | Campo | Valor |
 |---|---|
 | Versión de este documento | 5.0.0 |
-| Tecnología | Java 21 + Spring Boot 3.5.14 |
+| Tecnología | Java 25 + Spring Boot 3.5.16 |
 | Arquitectura | Hexagonal + Clean Architecture |
 | Base de datos | PostgreSQL 15+ |
 | Documentación API | OpenAPI 3.0 / Swagger UI |
-| Tests | 1059 tests, 180 clases, 0 fallos (`mvn test`) |
+| Tests | 1098 tests, 190 clases, 0 fallos (`mvn test`) |
 
 ---
 
@@ -68,10 +68,10 @@ DiabeCare es una aplicación web para pacientes diabéticos que permite registra
 
 | Componente | Tecnología |
 |---|---|
-| Backend | Java 21 + Spring Boot 3.5.14 |
+| Backend | Java 25 + Spring Boot 3.5.16 |
 | Frontend | Angular (documento separado) |
 | Base de datos | PostgreSQL 15+ |
-| Seguridad | Spring Security 6 + JWT (jjwt 0.12.5) |
+| Seguridad | Spring Security 6 + JWT (jjwt 0.13.0) |
 | Cache | Caffeine |
 | Push | Web Push API + BouncyCastle VAPID |
 | Correo transaccional | Resend (recuperación de contraseña) |
@@ -117,7 +117,8 @@ com.diabecare
 │   │                       #   RefreshToken, CaregiverInvite, CaregiverLink,
 │   │                       #   PasswordResetToken, GlucoseReminder, AgpHourlyBucket,
 │   │                       #   AccountExportData, ReportData, WeeklySummaryData,
-│   │                       #   ExternalFoodInfo
+│   │                       #   ExternalFoodInfo, PushSubscription, MobilePushToken,
+│   │                       #   MobilePlatform, DeviceApiKey
 │   ├── exception/          # DomainException + subclases por caso: InvalidRefreshTokenException,
 │   │                       #   InvalidCaregiverInviteException, InvalidPasswordResetTokenException,
 │   │                       #   InvalidRoleException, OpenCycleConflictException,
@@ -128,14 +129,16 @@ com.diabecare
 │                            #   RateLimitService, AgpProfileService, ExerciseLabelService,
 │                            #   MenstrualCycleGuidanceService
 ├── application/
-│   ├── port/in/             # ~55 casos de uso — autenticación, cuenta, cuidadores,
+│   ├── port/in/             # ~60 casos de uso — autenticación, cuenta, cuidadores,
 │   │                        #   recordatorios, ciclo menstrual, administración, glucosa,
-│   │                        #   nutrición, medicamentos, signos vitales, ejercicio, reportes
+│   │                        #   nutrición, medicamentos, signos vitales, ejercicio, reportes,
+│   │                        #   push web/móvil, API keys de dispositivo
 │   ├── port/out/             # LoadPatientPort, SavePatientPort, LoadUserPort, SaveUserPort,
 │   │                         #   AuthenticateUserPort, GenerateTokenPort, RefreshTokenPort,
 │   │                         #   CaregiverInvitePort, PasswordResetTokenPort, SendEmailPort,
 │   │                         #   MessageResolverPort, SystemConfigPort, NotifyPatientPort,
-│   │                         #   LoadGlucoseReadingPort, SaveAuditLogPort
+│   │                         #   LoadGlucoseReadingPort, SaveAuditLogPort, PushSubscriptionPort,
+│   │                         #   MobilePushTokenPort, DeviceApiKeyPort
 │   └── usecase/               # Implementaciones (1 clase por operación)
 ├── infrastructure/
 │   ├── persistence/          # JPA entities, repositories, adapters, mappers
@@ -151,7 +154,7 @@ com.diabecare
 │   └── scheduler/               # WeeklySummaryScheduler, GlucoseReminderScheduler,
 │                                #   MedicationReminderScheduler, AccountPurgeScheduler
 └── presentation/
-    ├── controller/             # 21 Controllers REST (ver sección 6)
+    ├── controller/             # 23 Controllers REST (ver sección 6)
     ├── dto/                     # Request/Response records
     ├── mapper/                  # MapStruct mappers
     ├── util/                     # DeviceLabelResolver
@@ -160,13 +163,16 @@ com.diabecare
 
 ### 2.4 Reglas de Arquitectura (ArchUnit)
 
-Verificadas automáticamente en cada `mvn test` (14 reglas en `ArchitectureTest`):
+Verificadas automáticamente en cada `mvn test` (8 reglas en `ArchitectureTest`):
 
-- El dominio **no puede** importar clases de Spring, JPA o cualquier framework
+- El dominio **no puede** depender de infraestructura ni de presentación
 - Los Use Cases solo pueden depender del dominio y de interfaces (puertos)
-- Los Controllers no pueden acceder directamente a repositorios
-- Las entidades JPA deben estar en `infrastructure.persistence.entity`
-- Los adaptadores de infraestructura implementan puertos, nunca al revés
+- Los Controllers no pueden depender de `infrastructure.persistence`
+- Los Controllers no pueden depender de ningún paquete de infraestructura salvo `infrastructure.config` (lectura de propiedades)
+- Los repositorios JPA solo se usan desde adaptadores de persistencia
+- Las entidades JPA no se usan fuera de la capa de infraestructura
+- Los servicios de dominio no tienen dependencias de Spring
+- Los adaptadores de persistencia implementan puertos de salida, nunca al revés
 
 ### 2.5 Flujo de Autenticación
 
@@ -486,6 +492,14 @@ PATCH  /api/v1/glucose-reminders/{patientId}/{reminderId}
 DELETE /api/v1/glucose-reminders/{patientId}/{reminderId}
 ```
 
+### Dispositivos externos (CGM/glucómetros)
+```
+POST   /api/v1/device-keys/{patientId}
+GET    /api/v1/device-keys/{patientId}
+DELETE /api/v1/device-keys/{patientId}/{keyId}
+POST   /api/v1/glucose/import
+```
+
 ### Nutrición
 ```
 POST   /api/v1/nutrition/{patientId}/meals
@@ -553,6 +567,8 @@ GET    /api/v1/reports/{patientId}/medical?from=&to=
 GET    /api/v1/push/vapid-public-key
 POST   /api/v1/push/subscribe
 DELETE /api/v1/push/unsubscribe
+POST   /api/v1/push/mobile-token
+DELETE /api/v1/push/mobile-token
 ```
 
 ### Auditoría
@@ -776,6 +792,30 @@ Al recibir respuesta HTTP 410 (Gone) al enviar una notificación, la suscripció
 
 Además del resumen semanal, dos schedulers adicionales usan el mismo canal push: `GlucoseReminderScheduler` (recordatorios de medición configurados por el paciente) y `MedicationReminderScheduler` (recordatorios derivados de la frecuencia de cada medicamento activo).
 
+### 8.4 Push nativo a app móvil (FCM) — scaffolding
+
+Junto al Web Push, el dominio ya modela el registro de dispositivos móviles (`MobilePushToken`, con `MobilePlatform` = `ANDROID` | `IOS`) para una futura app nativa que todavía no tiene usuarios reales:
+
+```
+POST   /api/v1/push/mobile-token    → RegisterMobileTokenUseCase
+DELETE /api/v1/push/mobile-token    → UnregisterMobileTokenUseCase
+```
+
+`PushNotificationService.sendToPatient()` intenta el envío nativo junto al Web Push en cada notificación (`sendToMobileDevices`), pero se degrada de forma silenciosa — igual que `ResendEmailAdapter` sin API key — mientras `FCM_SERVICE_ACCOUNT_JSON` esté vacía: solo registra en log a qué dispositivos se les habría notificado, sin intentar la llamada HTTP. Cuando exista un proyecto de Firebase real, ese método debe firmar un JWT con la service account (OAuth2 bearer) y llamar a la FCM HTTP v1 API, siguiendo el mismo patrón `java.net.http` ya usado en el resto del proyecto, sin incorporar el SDK de Firebase Admin solo para esto.
+
+### 8.5 API keys de dispositivo e importación de glucosa (CGM/glucómetros) — scaffolding
+
+Preparación, también sin usuarios reales todavía, para que un bridge externo (Nightscout, la app de sincronización de un glucómetro, un CGM) importe lecturas de glucosa sin login interactivo:
+
+```
+POST   /api/v1/device-keys/{patientId}          → GenerateDeviceApiKeyUseCase   (JWT, dueño del paciente)
+GET    /api/v1/device-keys/{patientId}          → ListDeviceApiKeysUseCase      (JWT, dueño del paciente)
+DELETE /api/v1/device-keys/{patientId}/{keyId}  → RevokeDeviceApiKeyUseCase     (JWT, dueño del paciente)
+POST   /api/v1/glucose/import                   → ImportGlucoseReadingsUseCase  (público a nivel de filtro; header X-Device-Api-Key)
+```
+
+`device_api_keys` guarda solo el hash de la key (mismo patrón secreto+hash que `refresh_tokens`/`caregiver_invites`); la key en claro se devuelve una única vez en la respuesta de generación. `/api/v1/glucose/import` es público a nivel de Spring Security (igual que `/auth/**`) porque un bridge desatendido no puede autenticarse con JWT — la key se valida manualmente dentro de `ImportGlucoseReadingsUseCaseImpl`. El límite de importación (`rate_limit.device_import_per_hour`, default 300/hora) es independiente del límite de registro manual de glucosa para no asfixiar la importación legítima de un sensor continuo.
+
 ---
 
 ## 9. Tareas Programadas
@@ -803,6 +843,7 @@ Implementado con **Bucket4j** + **Caffeine Cache**. Límites configurables vía 
 | Login (por IP) | `rate_limit.login_per_hour` | 10 |
 | Registro de cuenta (por IP) | `rate_limit.register_per_hour` | 5 |
 | Recuperación de contraseña (por IP) | `rate_limit.forgot_password_per_hour` | 5 |
+| Importación por API key de dispositivo | `rate_limit.device_import_per_hour` | 300 |
 
 Al exceder el límite: `HTTP 429 Too Many Requests` con código `RATE_LIMIT_EXCEEDED`.
 
@@ -835,7 +876,7 @@ CREATE TABLE system_config (
 );
 ```
 
-### 12.3 Parámetros (20 totales)
+### 12.3 Parámetros (21 totales)
 
 | Categoría | Key | Default | Descripción |
 |---|---|---|---|
@@ -859,6 +900,7 @@ CREATE TABLE system_config (
 | RATE_LIMIT | `rate_limit.login_per_hour` | 10 | Máx intentos de login por hora por IP |
 | RATE_LIMIT | `rate_limit.register_per_hour` | 5 | Máx registros de cuenta por hora por IP |
 | RATE_LIMIT | `rate_limit.forgot_password_per_hour` | 5 | Máx solicitudes de recuperación de contraseña por hora por IP |
+| RATE_LIMIT | `rate_limit.device_import_per_hour` | 300 | Máx lecturas de glucosa importadas por hora por API key de dispositivo |
 
 ### 12.4 Arquitectura
 
@@ -1136,6 +1178,8 @@ alert.pattern.fasting-high.message={0} de tus últimas {1} lecturas de ayuno sup
 | V21 | `V21__password_reset_tokens.sql` | Tabla password_reset_tokens |
 | V22 | `V22__add_forgot_password_rate_limit.sql` | Parámetro rate_limit.forgot_password_per_hour |
 | V23 | `V23__glucose_reminders.sql` | Tabla glucose_reminders |
+| V24 | `V24__device_api_keys.sql` | Tabla device_api_keys |
+| V25 | `V25__mobile_push_tokens.sql` | Tabla mobile_push_tokens |
 
 > **Nota sobre la numeración**: no existe `V14`. Se generó una migración adicional de alimentos como `V14` y se fusionó dentro de `V13` antes de aplicarse ninguna de las dos. Flyway no exige numeración consecutiva, solo orden estrictamente creciente.
 
@@ -1154,11 +1198,13 @@ alert.pattern.fasting-high.message={0} de tus últimas {1} lecturas de ayuno sup
 | `menstrual_cycles` + `cycle_day_entries` + `cycle_day_symptoms` | Ciclos menstruales, registro día a día |
 | `push_subscriptions` | Suscripciones Web Push por paciente |
 | `audit_log` | Historial de cambios auditables |
-| `system_config` | Parámetros clínicos y operacionales (20) |
+| `system_config` | Parámetros clínicos y operacionales (21) |
 | `refresh_tokens` | Sesiones activas por dispositivo |
 | `caregiver_invites` + `caregiver_links` | Invitaciones y accesos activos de cuidadores |
 | `password_reset_tokens` | Tokens de recuperación de contraseña (vigencia 1h, un solo uso) |
 | `glucose_reminders` | Horarios configurables de recordatorio de medición |
+| `device_api_keys` | API keys opacas y revocables por paciente, para importación de lecturas por un bridge externo (CGM, Nightscout) |
+| `mobile_push_tokens` | Tokens de dispositivo (FCM) por paciente, para push nativo desde la futura app móvil |
 
 ### 19.3 Índices de Rendimiento
 
@@ -1184,12 +1230,12 @@ alert.pattern.fasting-high.message={0} de tus últimas {1} lecturas de ayuno sup
 |---|---|---|
 | Unit Tests | JUnit 5 + Mockito + AssertJ | Use cases, Domain services, Calculators, PatternDetector |
 | Integration Tests | Testcontainers (PostgreSQL real) | Adaptadores de persistencia contra una BD real, no H2 |
-| Architecture Tests | ArchUnit | Dependencias entre capas (14 reglas) |
+| Architecture Tests | ArchUnit | Dependencias entre capas (8 reglas) |
 | Smoke Test | `@SpringBootTest` | Arranque del contexto completo |
 
-### 20.2 Estado actual: 1059 tests, 180 clases, 0 fallos
+### 20.2 Estado actual: 1098 tests, 190 clases, 0 fallos
 
-Verificado con `mvn test` (Surefire + JaCoCo instrumentando la ejecución): **1059 tests ejecutados en 180 clases de test, 0 fallos, 0 errores, 0 omitidos** — número tomado del resumen agregado que imprime Maven al final de la ejecución (`Tests run: 1059, Failures: 0, Errors: 0, Skipped: 0`). Cobertura visible en `target/site/jacoco/index.html` tras `mvn verify`.
+Verificado con `mvn test` (Surefire + JaCoCo instrumentando la ejecución): **1098 tests ejecutados en 190 clases de test, 0 fallos, 0 errores, 0 omitidos** — número tomado del resumen agregado que imprime Maven al final de la ejecución (`Tests run: 1098, Failures: 0, Errors: 0, Skipped: 0`). Cobertura visible en `target/site/jacoco/index.html` tras `mvn verify`.
 
 > Nota de diagnóstico: el atributo `tests` de los XML individuales en `target/surefire-reports/TEST-*.xml` subestima el total (suma 1006) para clases que agrupan tests dentro de `@Nested` — no lo uses como fuente; el conteo agregado que imprime Maven en consola es el confiable.
 
@@ -1199,27 +1245,29 @@ Verificado con `mvn test` (Surefire + JaCoCo instrumentando la ejecución): **10
 
 | Dependencia | Versión | Propósito |
 |---|---|---|
-| `spring-boot-starter-web` | 3.5.14 | REST API |
-| `spring-boot-starter-security` | 3.5.14 | Autenticación |
-| `spring-boot-starter-data-jpa` | 3.5.14 | Persistencia |
-| `spring-boot-starter-validation` | 3.5.14 | Bean Validation |
-| `spring-boot-starter-cache` | 3.5.14 | Abstracción de caché |
-| `spring-boot-starter-actuator` | 3.5.14 | Health/info/metrics |
-| `jjwt-api` + `jjwt-impl` + `jjwt-jackson` | 0.12.5 | JWT |
+| `spring-boot-starter-web` | 3.5.16 | REST API |
+| `spring-boot-starter-security` | 3.5.16 | Autenticación |
+| `spring-boot-starter-data-jpa` | 3.5.16 | Persistencia |
+| `spring-boot-starter-validation` | 3.5.16 | Bean Validation |
+| `spring-boot-starter-cache` | 3.5.16 | Abstracción de caché |
+| `spring-boot-starter-actuator` | 3.5.16 | Health/info/metrics |
+| `jjwt-api` + `jjwt-impl` + `jjwt-jackson` | 0.13.0 | JWT |
 | `postgresql` | (driver JDBC, gestionado por Spring Boot BOM) | Driver JDBC |
 | `h2` | (gestionado por Spring Boot BOM) | Solo para tests que no usan Testcontainers |
-| `flyway-core` + `flyway-database-postgresql` | 11.x | Migraciones |
-| `mapstruct` | 1.5.5.Final | Mapeo entre capas |
-| `lombok` | 1.18.30 | Boilerplate |
-| `springdoc-openapi-starter-webmvc-ui` | 2.8.9 | Swagger UI |
+| `flyway-core` + `flyway-database-postgresql` | (gestionado por Spring Boot BOM) | Migraciones |
+| `mapstruct` | 1.6.3 | Mapeo entre capas |
+| `lombok` | 1.18.46 | Boilerplate |
+| `springdoc-openapi-starter-webmvc-ui` | 2.9.0 | Swagger UI |
 | `openpdf` | 3.0.5 | Generación PDF (reemplaza a iText) |
 | `caffeine` | (gestionado por Spring Boot BOM) | Cache en memoria |
-| `web-push` | 5.1.1 | Notificaciones push |
+| `web-push` | 5.1.2 | Notificaciones push |
+| `httpclient` (Apache HttpComponents) | 4.5.14 | Dependencia de compilación explícita de `web-push` (bajada a scope `runtime` en su propio POM) |
+| `jose4j` | 0.7.9 | Dependencia de compilación explícita de `web-push` (misma razón que `httpclient`) |
 | `bcprov-jdk15on` | 1.70 | BouncyCastle (VAPID) |
 | `bucket4j-core` | 8.10.1 | Rate limiting |
-| `archunit-junit5` | 1.2.1 | Tests de arquitectura |
-| `testcontainers` (`junit-jupiter`, `postgresql`) + `spring-boot-testcontainers` | 1.19.6 | Tests de integración contra PostgreSQL real |
-| `jacoco-maven-plugin` | 0.8.12 | Cobertura de tests |
+| `archunit-junit5` | 1.5.0 | Tests de arquitectura |
+| `testcontainers` (`junit-jupiter`, `postgresql`) + `spring-boot-testcontainers` | 1.21.4 | Tests de integración contra PostgreSQL real |
+| `jacoco-maven-plugin` | 0.8.14 | Cobertura de tests |
 | `maven-failsafe-plugin` | (gestionado por Spring Boot parent) | Ejecución de integration tests (`*IT`) separada de unit tests |
 
 ---
@@ -1262,8 +1310,6 @@ FRONTEND_BASE_URL=https://app.diabecare.com
 ```
 
 > Los parámetros clínicos y de rate limiting **no** van aquí — viven en `system_config` (BD), gestionables vía API sin redeploy.
-
-> **`.env.example` desactualizado**: el archivo real en el repositorio (`C:\Users\lfkan\...\diabecare-api\.env.example`) solo cubre `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET_KEY`, `JWT_ACCESS_EXPIRY_MS`, `JWT_REFRESH_EXPIRY_MS` y `CORS_ALLOWED_ORIGINS`. Faltan `BCRYPT_STRENGTH`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS` y `FRONTEND_BASE_URL`, todas leídas por `application.yaml`. Debe actualizarse para que un entorno nuevo configurado solo a partir de ese archivo no falle en runtime.
 
 ### 22.3 Docker Compose (Desarrollo)
 
